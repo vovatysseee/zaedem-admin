@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Заедем.by — Админ-панель</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf8f4;--surf:#ffffff;--surf2:#f2efe8;--surf3:#e8e3d8;
+  --border:#e8e3d8;--border2:#d5cfc5;
+  --text:#0f0f0f;--muted:#777;--hint:#bbb;
+  --lime:#c8f135;--lime2:#d9f554;--lime-dim:rgba(200,241,53,0.1);
+  --green:#1a5c38;--green2:#246b44;
+  --blue:#4a9eff;--blue-dim:rgba(74,158,255,0.12);
+  --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,0.12);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+  --r:10px;--rl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+button{cursor:pointer;font-family:inherit}
+
+/* SIDEBAR */
+.sb{width:220px;background:#0a2814;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid var(--border)}
+.sb-logo-main{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:800;color:var(--lime)}
+.sb-logo-main em{color:rgba(255,255,255,.7);font-style:normal}
+.sb-logo-sub{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.5px}
+.sb-admin{padding:12px 16px;background:var(--lime-dim);border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:center}
+.sb-ava{width:32px;height:32px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000}
+.sb-admin-name{font-size:12px;font-weight:700}
+.sb-admin-role{font-size:10px;color:rgba(255,255,255,.5)}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.sb-sec{padding:5px 16px 3px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);font-weight:700}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12px;color:rgba(255,255,255,.55);cursor:pointer;border-left:3px solid transparent;transition:.15s}
+.ni:hover{background:rgba(255,255,255,.08);color:#fff}
+.ni.on{background:var(--lime-dim);color:var(--lime);border-left-color:var(--lime)}
+.ni-ico{font-size:15px;width:18px;text-align:center}
+.nb{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:8px}
+.nb.lime{background:var(--lime);color:#000}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.topbar{background:var(--surf);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.tb-title{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:700;color:var(--lime)}
+.tb-r{display:flex;gap:8px;align-items:center}
+.tb-btn{background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 14px;border-radius:7px;font-size:11px;font-weight:700;transition:.15s}
+.tb-btn:hover{border-color:var(--lime);color:var(--lime)}
+.tb-btn.danger{border-color:rgba(248,113,113,.4);color:var(--red)}
+.content{padding:1.5rem;flex:1}
+
+/* PAGES */
+.page{display:none}.page.on{display:block}
+
+/* STAT CARDS */
+.stats4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:1.5rem}
+.stat{background:var(--surf);border:1px solid var(--border);border-radius:var(--rl);padding:16px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:2px}
+.sl::before{background:var(--lime)}
+.sb2::before{background:var(--blue)}
+.sa::before{background:var(--amber)}
+.sr::before{background:var(--red)}
+.stat-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--hint);font-weight:700;margin-bottom:8px}
+.stat-val{font-family:'Unbounded',sans-serif;font-size:1.5rem;font-weight:800;margin-bottom:4px}
+.stat-ch{font-size:11px;color:var(--muted)}
+.up{color:#4ade80}.down{color:var(--red)}
+
+/* SECTIONS */
+.sec-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.sec-title{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:700}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:1.5rem}
+
+/* TABLE */
+.tbl-wrap{background:var(--surf);border:1px solid var(--border);border-radius:var(--rl);overflow:hidden;margin-bottom:1.5rem}
+.tbl-head{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.tbl-title{font-size:13px;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surf2);padding:9px 14px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--hint);font-weight:700;border-bottom:1px solid var(--border)}
+td{padding:11px 14px;border-bottom:1px solid var(--border);font-size:12px;vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.badge{display:inline-block;font-size:10px;font-weight:700;padding:3px 8px;border-radius:5px}
+.bg{background:rgba(74,222,128,.12);color:#4ade80}
+.ba{background:var(--amber-dim);color:var(--amber)}
+.br{background:var(--red-dim);color:var(--red)}
+.bb{background:var(--blue-dim);color:var(--blue)}
+.bm{background:var(--hint);color:var(--muted)}
+.action-btn{background:none;border:1px solid var(--border2);color:var(--muted);padding:4px 10px;border-radius:5px;font-size:10px;font-weight:700;transition:.15s;margin:0 2px}
+.action-btn:hover{border-color:var(--lime);color:var(--lime)}
+.action-btn.red:hover{border-color:var(--red);color:var(--red)}
+.action-btn.green{border-color:rgba(74,222,128,.4);color:#4ade80}
+.action-btn.green:hover{background:rgba(74,222,128,.1)}
+
+/* CHARTS */
+.chart-card{background:var(--surf);border:1px solid var(--border);border-radius:var(--rl);padding:1.1rem;margin-bottom:1.5rem}
+.chart-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem}
+.chart-title{font-size:13px;font-weight:700}
+.bars{display:flex;gap:6px;align-items:flex-end;height:110px;padding-bottom:4px}
+.bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px}
+.bar{border-radius:4px 4px 0 0;width:100%;transition:height .5s}
+.bar.lime{background:var(--lime)}
+.bar.blue{background:var(--blue);opacity:.6}
+.bar-lbl{font-size:9px;color:var(--hint)}
+.bar-v{font-size:9px;color:var(--muted)}
+
+/* REVENUE SPLIT */
+.rev-split{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.rs-item{background:var(--surf2);border-radius:var(--r);padding:12px}
+.rs-label{font-size:10px;color:var(--hint);margin-bottom:5px;text-transform:uppercase;font-weight:700}
+.rs-val{font-size:1.1rem;font-weight:800;font-family:'Unbounded',sans-serif}
+.rs-bar{height:3px;border-radius:2px;margin-top:6px}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;z-index:200;padding:1rem}
+.overlay.open{display:flex}
+.modal{background:var(--surf);border:1px solid var(--border2);border-radius:20px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto;box-shadow:0 24px 80px rgba(0,0,0,.5)}
+.mh{padding:1.1rem 1.25rem;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
+.mh-title{font-size:14px;font-weight:700}
+.mc{background:none;border:none;color:var(--muted);font-size:20px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:6px;transition:.15s}
+.mc:hover{background:var(--surf2);color:var(--text)}
+.mb{padding:1.25rem}
+.fg{margin-bottom:12px}
+.fg label{display:block;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--hint);font-weight:700;margin-bottom:5px}
+.fg input,.fg select,.fg textarea{width:100%;background:var(--surf2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;font-size:13px;color:var(--text);outline:none;transition:.15s}
+.fg input:focus,.fg select:focus{border-color:rgba(200,241,53,.4)}
+.fg select option{background:var(--surf2)}
+.fg textarea{resize:vertical;min-height:70px}
+.fgrow{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.mf{padding:1rem 1.25rem;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.btn-cancel{background:none;border:1px solid var(--border2);color:var(--muted);padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700}
+.btn-save{background:var(--lime);border:none;color:#000;padding:9px 22px;border-radius:8px;font-size:12px;font-weight:800;transition:.15s}
+.btn-save:hover{background:var(--lime2)}
+.btn-danger{background:var(--red-dim);border:1px solid rgba(248,113,113,.3);color:var(--red);padding:9px 22px;border-radius:8px;font-size:12px;font-weight:700}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--surf3);border:1px solid var(--border2);color:var(--text);padding:10px 16px;border-radius:10px;font-size:12px;font-weight:600;display:none;z-index:400;box-shadow:0 8px 24px rgba(0,0,0,.4);max-width:300px}
+.toast.show{display:block;animation:sup .3s ease}
+@keyframes sup{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+
+/* MISC */
+.search-input{background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:7px;font-size:12px;outline:none;width:200px}
+.search-input:focus{border-color:rgba(200,241,53,.4)}
+.toggle{width:36px;height:18px;background:var(--hint);border-radius:9px;position:relative;cursor:pointer;transition:.2s}
+.toggle.on{background:var(--lime)}
+.toggle::after{content:'';position:absolute;top:2px;left:2px;width:14px;height:14px;background:#fff;border-radius:50%;transition:.2s}
+.toggle.on::after{left:20px}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border);font-size:12px}
+.info-row:last-child{border-bottom:none}
+.ir-label{color:var(--muted)}
+.ir-val{font-weight:700}
+</style>
+</head>
+<body>
+
+<aside class="sb">
+  <div class="sb-logo">
+    <div class="sb-logo-main">Заедем<em>.by</em></div>
+    <div class="sb-logo-sub">Панель администратора</div>
+  </div>
+  <div class="sb-admin">
+    <div class="sb-ava">А</div>
+    <div>
+      <div class="sb-admin-name">Администратор</div>
+      <div class="sb-admin-role">Полный доступ</div>
+    </div>
+  </div>
+  <nav class="sb-nav">
+    <div class="sb-sec">Главное</div>
+    <div class="ni on" onclick="go('dash',this)"><span class="ni-ico">📊</span>Дашборд</div>
+    <div class="ni" onclick="go('bookings',this)"><span class="ni-ico">📋</span>Все брони<span class="nb">7</span></div>
+    <div class="ni" onclick="go('revenue',this)"><span class="ni-ico">💰</span>Финансы</div>
+    <div class="sb-sec">Партнёры</div>
+    <div class="ni" onclick="go('hotels',this)"><span class="ni-ico">🏨</span>Отели<span class="nb lime">3</span></div>
+    <div class="ni" onclick="go('applications',this)"><span class="ni-ico">📝</span>Заявки<span class="nb">5</span></div>
+    <div class="sb-sec">Пользователи</div>
+    <div class="ni" onclick="go('users',this)"><span class="ni-ico">👥</span>Туристы</div>
+    <div class="ni" onclick="go('reviews',this)"><span class="ni-ico">⭐</span>Отзывы<span class="nb">2</span></div>
+    <div class="sb-sec">Система</div>
+    <div class="ni" onclick="go('settings',this)"><span class="ni-ico">⚙️</span>Настройки</div>
+    <div class="ni" onclick="go('logs',this)"><span class="ni-ico">📜</span>Логи</div>
+  </nav>
+</aside>
+
+<div class="main">
+<header class="topbar">
+  <div class="tb-title" id="tb-title">Дашборд</div>
+  <div class="tb-r">
+    <input class="search-input" placeholder="🔍 Поиск брони, отеля, пользователя...">
+    <button class="tb-btn" onclick="toast('📤 Экспорт данных готов!')">Экспорт CSV</button>
+    <button class="tb-btn danger" onclick="toast('🔴 Вы вышли из системы')">Выйти</button>
+  </div>
+</header>
+
+<div class="content">
+
+<!-- DASHBOARD -->
+<div id="page-dash" class="page on">
+  <div class="stats4">
+    <div class="stat sl">
+      <div class="stat-lbl">Выручка (июнь)</div>
+      <div class="stat-val" style="color:var(--lime)">$4 820</div>
+      <div class="stat-ch up">↑ +34% vs май</div>
+    </div>
+    <div class="stat sb2">
+      <div class="stat-lbl">Броней всего</div>
+      <div class="stat-val" style="color:var(--blue)">124</div>
+      <div class="stat-ch up">↑ +18 vs май</div>
+    </div>
+    <div class="stat sa">
+      <div class="stat-lbl">Активных отелей</div>
+      <div class="stat-val" style="color:var(--amber)">7</div>
+      <div class="stat-ch" style="color:var(--muted)">+3 на проверке</div>
+    </div>
+    <div class="stat sr">
+      <div class="stat-lbl">Пользователей</div>
+      <div class="stat-val" style="color:var(--purple)">341</div>
+      <div class="stat-ch up">↑ +47 этот месяц</div>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="chart-card">
+      <div class="chart-head">
+        <div class="chart-title">Выручка платформы</div>
+        <div style="display:flex;gap:10px;font-size:10px;color:var(--muted)">
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--lime);display:inline-block"></span>2026</span>
+          <span style="display:flex;align-items:center;gap:4px"><span style="width:8px;height:8px;border-radius:2px;background:var(--blue);opacity:.6;display:inline-block"></span>2025</span>
+        </div>
+      </div>
+      <div class="bars" id="rev-chart"></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-head"><div class="chart-title">Брони по городам</div></div>
+      <div id="city-chart" style="display:flex;flex-direction:column;gap:8px"></div>
+    </div>
+  </div>
+
+  <div class="rev-split" style="margin-bottom:1.5rem">
+    <div class="rs-item">
+      <div class="rs-label">Комиссия платформы</div>
+      <div class="rs-val" style="color:var(--lime)">$482</div>
+      <div class="rs-bar" style="background:var(--lime);width:100%"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">10% от $4 820</div>
+    </div>
+    <div class="rs-item">
+      <div class="rs-label">Выплачено отелям</div>
+      <div class="rs-val" style="color:var(--blue)">$4 338</div>
+      <div class="rs-bar" style="background:var(--blue);width:90%"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">90% от оборота</div>
+    </div>
+    <div class="rs-item">
+      <div class="rs-label">Ожидает выплаты</div>
+      <div class="rs-val" style="color:var(--amber)">$210</div>
+      <div class="rs-bar" style="background:var(--amber);width:44%"></div>
+      <div style="font-size:10px;color:var(--muted);margin-top:4px">3 отеля · 5 броней</div>
+    </div>
+  </div>
+
+  <!-- New applications alert -->
+  <div style="background:var(--amber-dim);border:1px solid rgba(245,158,11,.25);border-radius:var(--rl);padding:12px 16px;margin-bottom:1.5rem;display:flex;align-items:center;justify-content:space-between">
+    <div style="display:flex;align-items:center;gap:10px">
+      <span style="font-size:18px">📝</span>
+      <div>
+        <div style="font-size:13px;font-weight:700;color:var(--amber)">5 новых заявок от отелей</div>
+        <div style="font-size:11px;color:var(--muted)">Брест (2), Гродно (2), Витебск (1) — ожидают проверки</div>
+      </div>
+    </div>
+    <button class="tb-btn" onclick="go('applications',document.querySelectorAll('.ni')[5])">Рассмотреть →</button>
+  </div>
+
+  <!-- Recent bookings -->
+  <div class="sec-head"><div class="sec-title">Последние брони</div><button class="tb-btn" onclick="go('bookings',document.querySelectorAll('.ni')[1])">Все →</button></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Даты</th><th>Сумма</th><th>Комиссия</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="recent-bk"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ALL BOOKINGS -->
+<div id="page-bookings" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:1rem;flex-wrap:wrap;align-items:center">
+    <button class="tb-btn on" onclick="setBF(this,'all')" style="border-color:var(--lime);color:var(--lime)">Все (124)</button>
+    <button class="tb-btn" onclick="setBF(this,'confirmed')">✅ Подтверждены (98)</button>
+    <button class="tb-btn" onclick="setBF(this,'pending')">⏳ Ожидают (7)</button>
+    <button class="tb-btn" onclick="setBF(this,'cancelled')">❌ Отменены (14)</button>
+    <button class="tb-btn" onclick="setBF(this,'completed')">🏁 Завершены (5)</button>
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <input type="date" style="background:var(--surf2);border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text);font-size:11px;outline:none">
+      <input type="date" style="background:var(--surf2);border:1px solid var(--border);border-radius:7px;padding:5px 8px;color:var(--text);font-size:11px;outline:none">
+      <button class="tb-btn" onclick="toast('📤 CSV экспортирован')">⬇ CSV</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Бронь</th><th>Гость</th><th>Телефон</th><th>Отель</th><th>Город</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Комиссия</th><th>Оплата</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="all-bk"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- HOTELS MANAGEMENT -->
+<div id="page-hotels" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:1.25rem;align-items:center">
+    <input class="search-input" placeholder="🔍 Поиск отеля...">
+    <div style="margin-left:auto;display:flex;gap:6px">
+      <select style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;font-size:11px;outline:none">
+        <option>Все города</option><option>Пинск</option><option>Минск</option><option>Брест</option><option>Гродно</option>
+      </select>
+      <select style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:7px;font-size:11px;outline:none">
+        <option>Все статусы</option><option>Активен</option><option>На проверке</option><option>Заблокирован</option>
+      </select>
+      <button class="btn-save" onclick="openAddHotel()">+ Добавить отель</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>Отель</th><th>Город</th><th>Тип</th><th>Владелец</th><th>Брони</th><th>Выручка</th><th>Комиссия</th><th>Рейтинг</th><th>Статус</th><th>Комиссия %</th><th></th></tr></thead>
+      <tbody id="hotels-tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- APPLICATIONS -->
+<div id="page-applications" class="page">
+  <div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Заявки на подключение отелей</div><span style="font-size:11px;color:var(--muted)">5 новых заявок</span></div>
+    <table>
+      <thead><tr><th>Дата</th><th>Название</th><th>Город</th><th>Контакт</th><th>Телефон</th><th>Email</th><th>Номеров</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="apps-tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- USERS -->
+<div id="page-users" class="page">
+  <div style="display:flex;gap:8px;margin-bottom:1.25rem;align-items:center">
+    <input class="search-input" placeholder="🔍 Email, имя...">
+    <div style="margin-left:auto">
+      <button class="tb-btn" onclick="toast('📤 Список пользователей экспортирован')">⬇ CSV</button>
+    </div>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Имя</th><th>Email</th><th>Телефон</th><th>Броней</th><th>Сумма</th><th>Регистрация</th><th>Роль</th><th></th></tr></thead>
+      <tbody id="users-tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- REVIEWS MODERATION -->
+<div id="page-reviews" class="page">
+  <div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Отзывы на модерации</div><span style="font-size:11px;color:var(--red)">2 ожидают проверки</span></div>
+    <table>
+      <thead><tr><th>Дата</th><th>Автор</th><th>Отель</th><th>Оценка</th><th>Отзыв</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="reviews-tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- REVENUE -->
+<div id="page-revenue" class="page">
+  <div class="stats4" style="margin-bottom:1.5rem">
+    <div class="stat sl"><div class="stat-lbl">Оборот за месяц</div><div class="stat-val" style="color:var(--lime)">$4 820</div><div class="stat-ch up">↑ 34%</div></div>
+    <div class="stat sb2"><div class="stat-lbl">Комиссия платформы</div><div class="stat-val" style="color:var(--blue)">$482</div><div class="stat-ch">10% от оборота</div></div>
+    <div class="stat sa"><div class="stat-lbl">Выплачено отелям</div><div class="stat-val" style="color:var(--amber)">$4 338</div><div class="stat-ch">12 выплат</div></div>
+    <div class="stat sr"><div class="stat-lbl">К выплате</div><div class="stat-val" style="color:var(--red)">$210</div><div class="stat-ch">3 отеля</div></div>
+  </div>
+  <div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Выплаты отелям</div><button class="btn-save" style="font-size:11px;padding:6px 14px" onclick="toast('💸 Выплата отправлена!')">Выплатить всем</button></div>
+    <table>
+      <thead><tr><th>Отель</th><th>Город</th><th>Броней</th><th>Оборот</th><th>Комиссия (10%)</th><th>К выплате</th><th>Последняя выплата</th><th>Статус</th><th></th></tr></thead>
+      <tbody id="revenue-tbl"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- SETTINGS -->
+<div id="page-settings" class="page">
+  <div class="grid2">
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:1rem">⚙️ Настройки платформы</div>
+      <div class="info-row"><span class="ir-label">Домен</span><span class="ir-val">zaedembv.by</span></div>
+      <div class="info-row"><span class="ir-label">Комиссия платформы</span>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" value="10" min="1" max="30" style="width:60px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;text-align:center;outline:none">
+          <span style="font-size:12px;color:var(--muted)">%</span>
+        </div>
+      </div>
+      <div class="info-row"><span class="ir-label">Бесплатный период (мес.)</span>
+        <input type="number" value="3" style="width:60px;background:var(--surf2);border:1px solid var(--border);border-radius:6px;padding:4px 8px;color:var(--text);font-size:12px;text-align:center;outline:none">
+      </div>
+      <div class="info-row"><span class="ir-label">Валюта отображения</span>
+        <select style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;font-size:12px;outline:none">
+          <option>USD ($)</option><option>BYN (Br)</option><option>EUR (€)</option>
+        </select>
+      </div>
+      <div class="info-row"><span class="ir-label">Автоподтверждение броней</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="info-row"><span class="ir-label">Email уведомления</span><div class="toggle on" onclick="this.classList.toggle('on')"></div></div>
+      <div class="info-row"><span class="ir-label">SMS уведомления</span><div class="toggle" onclick="this.classList.toggle('on')"></div></div>
+      <div style="margin-top:14px"><button class="btn-save" onclick="toast('✅ Настройки сохранены!')">Сохранить</button></div>
+    </div>
+    <div class="chart-card">
+      <div class="chart-title" style="margin-bottom:1rem">🔗 Интеграции</div>
+      <div class="info-row"><span class="ir-label">bePaid (эквайринг)</span><span class="badge bg">Подключён</span></div>
+      <div class="info-row"><span class="ir-label">ЕРИП</span><span class="badge ba">Настройка</span></div>
+      <div class="info-row"><span class="ir-label">SendGrid (email)</span><span class="badge bg">Активен</span></div>
+      <div class="info-row"><span class="ir-label">Firebase (push)</span><span class="badge bm">Не настроен</span></div>
+      <div class="info-row"><span class="ir-label">Travelline API</span><span class="badge bm">Скоро</span></div>
+      <div class="info-row"><span class="ir-label">Google Analytics</span><span class="badge bg">Активен</span></div>
+      <div class="info-row"><span class="ir-label">Яндекс.Метрика</span><span class="badge bg">Активен</span></div>
+    </div>
+  </div>
+</div>
+
+<!-- LOGS -->
+<div id="page-logs" class="page">
+  <div class="tbl-wrap">
+    <div class="tbl-head"><div class="tbl-title">Журнал событий</div>
+      <select style="background:var(--surf2);border:1px solid var(--border);color:var(--text);padding:5px 10px;border-radius:7px;font-size:11px;outline:none">
+        <option>Все события</option><option>Брони</option><option>Оплаты</option><option>Ошибки</option><option>Пользователи</option>
+      </select>
+    </div>
+    <div id="logs-list" style="padding:8px 0"></div>
+  </div>
+</div>
+
+</div><!-- content -->
+</div><!-- main -->
+
+<!-- MODAL -->
+<div class="overlay" id="modal">
+  <div class="modal">
+    <div class="mh"><div class="mh-title" id="m-title"></div><button class="mc" onclick="closeModal()">✕</button></div>
+    <div class="mb" id="m-body"></div>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+/* DATA */
+const BK=[
+  {id:'ZB-48291',guest:'Иван Иванов',email:'ivan@mail.ru',phone:'+375297654321',hotel:'Пинский дворик',city:'Пинск',cin:'2026-06-10',cout:'2026-06-13',nights:3,sum:144,comm:14.4,pay:'card',status:'confirmed'},
+  {id:'ZB-48285',guest:'Мария Ковалёва',email:'maria@mail.ru',phone:'+375291234567',hotel:'Комплекс «Припять»',city:'Пинск',cin:'2026-06-11',cout:'2026-06-12',nights:1,sum:45,comm:4.5,pay:'erip',status:'pending'},
+  {id:'ZB-48270',guest:'Сергей Петров',email:'sergey@gmail.com',phone:'+79161234567',hotel:'Отель «Европа»',city:'Минск',cin:'2026-06-14',cout:'2026-06-16',nights:2,sum:260,comm:26,pay:'card',status:'confirmed'},
+  {id:'ZB-48251',guest:'Анна Сидорова',email:'anna@yandex.ru',phone:'+375337654321',hotel:'Санаторий «Нарочь»',city:'Нарочь',cin:'2026-06-20',cout:'2026-06-23',nights:3,sum:285,comm:28.5,pay:'erip',status:'pending'},
+  {id:'ZB-48230',guest:'Дмитрий Козлов',email:'dmitry@mail.ru',phone:'+375291111111',hotel:'Отель «Спорт»',city:'Пинск',cin:'2026-06-07',cout:'2026-06-08',nights:1,sum:38,comm:3.8,pay:'cash',status:'completed'},
+  {id:'ZB-48198',guest:'Ольга Белова',email:'olga@gmail.com',phone:'+375296543210',hotel:'Ezera Park Hotel',city:'Пинск',cin:'2026-06-05',cout:'2026-06-06',nights:1,sum:70,comm:7,pay:'card',status:'cancelled'},
+  {id:'ZB-48175',guest:'Николай Фёдоров',email:'nick@mail.ru',phone:'+375291234000',hotel:'Комплекс «Припять»',city:'Пинск',cin:'2026-06-25',cout:'2026-06-27',nights:2,sum:90,comm:9,pay:'erip',status:'pending'},
+];
+const HOTELS_D=[
+  {id:'h1',name:'Пинский дворик',city:'Пинск',type:'Гостевой дом',owner:'Светлана Димич',owner_email:'sdimich@mail.by',bookings:18,revenue:842,commission:84.2,rating:9.3,status:'active',comm_rate:10},
+  {id:'h2',name:'Комплекс «Припять»',city:'Пинск',type:'Отель 3★',owner:'Пётр Сидоров',owner_email:'hotel@example.by',bookings:74,revenue:3330,commission:333,rating:6.6,status:'active',comm_rate:10},
+  {id:'h3',name:'Отель «Спорт»',city:'Пинск',type:'Отель 2★',owner:'Иван Спортов',owner_email:'sport@hotelsport.by',bookings:145,revenue:2175,commission:217.5,rating:8.1,status:'active',comm_rate:10},
+  {id:'h4',name:'Ezera Park Hotel',city:'Пинск',type:'Коттеджи',owner:'Николай Езерный',owner_email:'ezera@park.by',bookings:31,revenue:2170,commission:217,rating:9.1,status:'active',comm_rate:10},
+  {id:'h5',name:'Отель «Европа»',city:'Минск',type:'Отель 5★',owner:'ООО ЕвропаХотел',owner_email:'info@europahotel.by',bookings:284,revenue:36920,commission:3692,rating:9.2,status:'active',comm_rate:10},
+  {id:'h6',name:'Санаторий «Нарочь»',city:'Нарочь',type:'Санаторий 4★',owner:'РУП Нарочь',owner_email:'info@naroch.by',bookings:203,revenue:19285,commission:1928.5,rating:9.4,status:'review',comm_rate:8},
+  {id:'h7',name:'Отель «Кронон Парк»',city:'Гродно',type:'Отель 4★',owner:'ООО КрононГродно',owner_email:'info@kronon.by',bookings:0,revenue:0,commission:0,rating:0,status:'review',comm_rate:10},
+];
+const APPS=[
+  {id:1,date:'2026-06-01',name:'Гостиница «Беларусь»',city:'Витебск',contact:'Ольга Кузнецова',phone:'+375213334455',email:'vitebsk@hotel.by',rooms:'11-30',status:'new'},
+  {id:2,date:'2026-06-02',name:'Мини-отель «Замок»',city:'Несвиж',contact:'Игорь Павлов',phone:'+375291237890',email:'nesvizh@mail.by',rooms:'1-10',status:'reviewing'},
+  {id:3,date:'2026-06-03',name:'Отель «Буг»',city:'Брест',contact:'Сергей Бугов',phone:'+375162770680',email:'info@bughotel.by',rooms:'31-100',status:'new'},
+  {id:4,date:'2026-06-04',name:'Агроусадьба «Полесье»',city:'Пинск',contact:'Мария Полесская',phone:'+375336667788',email:'polesye@mail.by',rooms:'1-10',status:'new'},
+  {id:5,date:'2026-06-05',name:'Хостел «Арт»',city:'Гродно',contact:'Дмитрий Хостелов',phone:'+375152334455',email:'art@hostel.by',rooms:'1-10',status:'new'},
+];
+const USERS=[
+  {id:'u1',name:'Иван Иванов',email:'ivan@mail.ru',phone:'+375297654321',bookings:3,spent:$299,reg:'2026-05-01',role:'tourist'},
+  {id:'u2',name:'Мария Ковалёва',email:'maria@mail.ru',phone:'+375291234567',bookings:1,spent:$45,reg:'2026-05-15',role:'tourist'},
+  {id:'u3',name:'Пётр Сидоров',email:'hotel@example.by',phone:'+375291234567',bookings:0,spent:$0,reg:'2026-04-01',role:'hotel_owner'},
+  {id:'u4',name:'Сергей Петров',email:'sergey@gmail.com',phone:'+79161234567',bookings:2,spent:$390,reg:'2026-04-20',role:'tourist'},
+  {id:'u5',name:'Анна Сидорова',email:'anna@yandex.ru',phone:'+375337654321',bookings:4,spent:$510,reg:'2026-03-10',role:'tourist'},
+];
+const REVIEWS_D=[
+  {id:1,date:'2026-06-10',author:'Наталья К.',hotel:'Пинский дворик',rating:5,text:'Наконец-то в Пинске появилась приличная гостиница! Идеальная локация в центре.',status:'pending'},
+  {id:2,date:'2026-06-09',author:'Аноним',hotel:'Комплекс «Припять»',rating:1,text:'СПАМ СПАМ купи диплом купи...',status:'spam'},
+  {id:3,date:'2026-06-08',author:'Дмитрий Р.',hotel:'Отель «Европа»',rating:4,text:'Хороший отель, персонал вежливый. Завтрак отличный.',status:'published'},
+];
+const LOGS=[
+  {t:'9:41:03',type:'booking',ico:'📋',msg:'Новая бронь ZB-48291 — Иван Иванов → Пинский дворик · $144',ok:true},
+  {t:'9:38:22',type:'payment',ico:'💳',msg:'Оплата подтверждена ZB-48291 — $144 via bePaid',ok:true},
+  {t:'9:35:11',type:'user',ico:'👤',msg:'Новый пользователь: ivan@mail.ru',ok:true},
+  {t:'9:20:05',type:'booking',ico:'📋',msg:'Бронь ZB-48270 отменена пользователем',ok:false},
+  {t:'9:12:44',type:'hotel',ico:'🏨',msg:'Новая заявка на подключение: Гостиница «Беларусь» (Витебск)',ok:true},
+  {t:'8:55:31',type:'payment',ico:'💳',msg:'Ошибка платежа ZB-48199 — карта отклонена',ok:false},
+  {t:'8:40:10',type:'system',ico:'⚙️',msg:'iCal синхронизация — Пинский дворик — 2 даты обновлено',ok:true},
+  {t:'8:30:00',type:'system',ico:'📊',msg:'Ежедневный отчёт сгенерирован и отправлен на admin@zaedembv.by',ok:true},
+];
+
+/* HELPERS */
+const $=id=>document.getElementById(id);
+const fmtD=d=>new Date(d).toLocaleDateString('ru-RU',{day:'2-digit',month:'short'});
+const payLbl={card:'💳',erip:'🏧',cash:'💵'};
+const statusBadge=s=>{const m={confirmed:'<span class="badge bg">✅ Подтверждено</span>',pending:'<span class="badge ba">⏳ Ожидает</span>',cancelled:'<span class="badge br">❌ Отменено</span>',completed:'<span class="badge bb">🏁 Завершено</span>'};return m[s]||s};
+const roleB=r=>r==='hotel_owner'?'<span class="badge ba">Отельер</span>':'<span class="badge bb">Турист</span>';
+const hotelStatus=s=>({active:'<span class="badge bg">Активен</span>',review:'<span class="badge ba">На проверке</span>',blocked:'<span class="badge br">Заблокирован</span>'}[s]||s);
+const appStatus=s=>({new:'<span class="badge ba">Новая</span>',reviewing:'<span class="badge bb">Рассматривается</span>',approved:'<span class="badge bg">Одобрена</span>',rejected:'<span class="badge br">Отклонена</span>'}[s]||s);
+
+/* NAV */
+function go(id,el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n=>n.classList.remove('on'));
+  $('page-'+id).classList.add('on');
+  if(el) el.classList.add('on');
+  const t={dash:'Дашборд',bookings:'Все бронирования',hotels:'Управление отелями',applications:'Заявки на подключение',users:'Пользователи',reviews:'Модерация отзывов',revenue:'Финансы',settings:'Настройки',logs:'Журнал событий'};
+  $('tb-title').textContent=t[id]||id;
+  closeNotif();
+}
+
+/* RENDER */
+function renderRecent(){
+  $('recent-bk').innerHTML=BK.slice(0,5).map(b=>`<tr>
+    <td><span style="font-family:monospace;font-weight:700;color:var(--lime);font-size:11px">${b.id}</span></td>
+    <td><div style="font-weight:700">${b.guest}</div><div style="font-size:10px;color:var(--muted)">${b.email}</div></td>
+    <td>${b.hotel}</td>
+    <td>${fmtD(b.cin)} — ${fmtD(b.cout)}</td>
+    <td><strong>$${b.sum}</strong></td>
+    <td style="color:var(--lime)">$${b.comm.toFixed(1)}</td>
+    <td>${statusBadge(b.status)}</td>
+    <td><button class="action-btn" onclick="viewBK('${b.id}')">Детали</button></td>
+  </tr>`).join('');
+}
+
+function renderAllBK(){
+  $('all-bk').innerHTML=BK.map(b=>`<tr>
+    <td><span style="font-family:monospace;font-weight:700;color:var(--lime);font-size:11px">${b.id}</span></td>
+    <td>${b.guest}</td>
+    <td style="font-size:11px;color:var(--muted)">${b.phone}</td>
+    <td>${b.hotel}</td>
+    <td>${b.city}</td>
+    <td>${fmtD(b.cin)}</td>
+    <td>${fmtD(b.cout)}</td>
+    <td style="text-align:center">${b.nights}</td>
+    <td><strong>$${b.sum}</strong></td>
+    <td style="color:var(--lime)">$${b.comm.toFixed(1)}</td>
+    <td>${payLbl[b.pay]||b.pay}</td>
+    <td>${statusBadge(b.status)}</td>
+    <td>
+      <button class="action-btn" onclick="viewBK('${b.id}')">👁</button>
+      ${b.status==='pending'?`<button class="action-btn green" onclick="approveBK('${b.id}')">✓</button>`:''}
+      ${b.status!=='cancelled'&&b.status!=='completed'?`<button class="action-btn red" onclick="cancelBK('${b.id}')">✕</button>`:''}
+    </td>
+  </tr>`).join('');
+}
+
+function renderHotels(){
+  $('hotels-tbl').innerHTML=HOTELS_D.map(h=>`<tr>
+    <td><div style="font-weight:700">${h.name}</div></td>
+    <td>${h.city}</td>
+    <td style="font-size:11px;color:var(--muted)">${h.type}</td>
+    <td><div style="font-size:12px">${h.owner}</div><div style="font-size:10px;color:var(--muted)">${h.owner_email}</div></td>
+    <td style="text-align:center">${h.bookings}</td>
+    <td>$${h.revenue.toLocaleString()}</td>
+    <td style="color:var(--lime)">$${h.commission.toFixed(0)}</td>
+    <td>${h.rating>0?`<span class="badge bg">${h.rating}</span>`:'—'}</td>
+    <td>${hotelStatus(h.status)}</td>
+    <td>
+      <input type="number" value="${h.comm_rate}" min="0" max="30" style="width:48px;background:var(--surf2);border:1px solid var(--border);border-radius:5px;padding:3px 6px;color:var(--text);font-size:11px;text-align:center;outline:none">%
+    </td>
+    <td>
+      <button class="action-btn" onclick="viewHotel('${h.id}')">👁</button>
+      ${h.status==='review'?`<button class="action-btn green" onclick="approveHotel('${h.id}')">✓ Одобрить</button>`:''}
+      <button class="action-btn red" onclick="blockHotel('${h.id}')">🚫</button>
+    </td>
+  </tr>`).join('');
+}
+
+function renderApps(){
+  $('apps-tbl').innerHTML=APPS.map(a=>`<tr>
+    <td style="font-size:11px;color:var(--muted)">${a.date}</td>
+    <td><strong>${a.name}</strong></td>
+    <td>${a.city}</td>
+    <td>${a.contact}</td>
+    <td style="font-size:11px">${a.phone}</td>
+    <td style="font-size:11px;color:var(--blue)">${a.email}</td>
+    <td style="text-align:center">${a.rooms}</td>
+    <td>${appStatus(a.status)}</td>
+    <td>
+      ${a.status==='new'||a.status==='reviewing'?`
+        <button class="action-btn green" onclick="approveApp(${a.id})">✓ Одобрить</button>
+        <button class="action-btn red" onclick="rejectApp(${a.id})">✕</button>
+      `:`<button class="action-btn" onclick="viewApp(${a.id})">👁 Детали</button>`}
+    </td>
+  </tr>`).join('');
+}
+
+function renderUsers(){
+  $('users-tbl').innerHTML=USERS.map(u=>`<tr>
+    <td style="font-family:monospace;font-size:10px;color:var(--hint)">${u.id}</td>
+    <td><strong>${u.name}</strong></td>
+    <td style="font-size:11px;color:var(--blue)">${u.email}</td>
+    <td style="font-size:11px">${u.phone}</td>
+    <td style="text-align:center">${u.bookings}</td>
+    <td>${u.spent}</td>
+    <td style="font-size:11px;color:var(--muted)">${u.reg}</td>
+    <td>${roleB(u.role)}</td>
+    <td>
+      <button class="action-btn" onclick="toast('👤 Профиль пользователя')">👁</button>
+      <button class="action-btn red" onclick="toast('🚫 Пользователь заблокирован')">🚫</button>
+    </td>
+  </tr>`).join('');
+}
+
+function renderReviews(){
+  $('reviews-tbl').innerHTML=REVIEWS_D.map(r=>`<tr>
+    <td style="font-size:11px;color:var(--muted)">${r.date}</td>
+    <td>${r.author}</td>
+    <td>${r.hotel}</td>
+    <td><span style="color:var(--amber)">${'★'.repeat(r.rating)}</span></td>
+    <td style="font-size:11px;color:var(--muted);max-width:200px">${r.text.slice(0,80)}${r.text.length>80?'...':''}</td>
+    <td>${r.status==='pending'?'<span class="badge ba">На проверке</span>':r.status==='spam'?'<span class="badge br">Спам</span>':'<span class="badge bg">Опубликован</span>'}</td>
+    <td>
+      ${r.status==='pending'?`
+        <button class="action-btn green" onclick="approveReview(${r.id})">✓ Публикую</button>
+        <button class="action-btn red" onclick="deleteReview(${r.id})">🗑 Удалить</button>
+      `:''}
+      ${r.status==='spam'?`<button class="action-btn red" onclick="deleteReview(${r.id})">🗑 Удалить</button>`:''}
+    </td>
+  </tr>`).join('');
+}
+
+function renderRevenue(){
+  $('revenue-tbl').innerHTML=HOTELS_D.map(h=>`<tr>
+    <td><strong>${h.name}</strong></td>
+    <td>${h.city}</td>
+    <td style="text-align:center">${h.bookings}</td>
+    <td>$${h.revenue.toLocaleString()}</td>
+    <td style="color:var(--lime)">$${h.commission.toFixed(0)}</td>
+    <td style="color:var(--amber);font-weight:700">$${(h.revenue-h.commission).toFixed(0)}</td>
+    <td style="font-size:11px;color:var(--muted)">2026-06-01</td>
+    <td>${h.revenue>0?'<span class="badge ba">К выплате</span>':'<span class="badge bm">—</span>'}</td>
+    <td>${h.revenue>0?`<button class="action-btn green" onclick="toast('💸 Выплата $${(h.revenue-h.commission).toFixed(0)} → ${h.owner}')">Выплатить</button>`:'—'}</td>
+  </tr>`).join('');
+}
+
+function renderLogs(){
+  $('logs-list').innerHTML=LOGS.map(l=>`
+    <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 16px;border-bottom:1px solid var(--border)">
+      <span style="font-family:monospace;font-size:10px;color:var(--hint);min-width:56px;margin-top:1px">${l.t}</span>
+      <span style="font-size:14px">${l.ico}</span>
+      <span style="font-size:12px;color:${l.ok?'var(--text)':'var(--red)'};line-height:1.5">${l.msg}</span>
+      <span style="margin-left:auto;font-size:10px;font-weight:700;color:${l.ok?'#4ade80':'var(--red)'}">${l.ok?'OK':'ERR'}</span>
+    </div>`).join('');
+}
+
+function renderChart(){
+  const data=[
+    {m:'Янв',v:280,p:180},{m:'Фев',v:380,p:240},{m:'Мар',v:520,p:380},
+    {m:'Апр',v:720,p:560},{m:'Май',v:3600,p:2800},{m:'Июн',v:4820,p:3400},
+  ];
+  const mx=Math.max(...data.map(d=>d.v));
+  $('rev-chart').innerHTML=data.map(d=>`
+    <div class="bar-col">
+      <div class="bar-v">$${d.v>=1000?(d.v/1000).toFixed(1)+'k':d.v}</div>
+      <div style="width:100%;display:flex;gap:3px;align-items:flex-end">
+        <div class="bar blue" style="height:${Math.round((d.p/mx)*95)}px;flex:1"></div>
+        <div class="bar lime" style="height:${Math.round((d.v/mx)*95)}px;flex:1"></div>
+      </div>
+      <div class="bar-lbl">${d.m}</div>
+    </div>`).join('');
+
+  const cities=[
+    {name:'Пинск',cnt:78,color:'var(--lime)'},
+    {name:'Минск',cnt:31,color:'var(--blue)'},
+    {name:'Нарочь',cnt:12,color:'var(--amber)'},
+    {name:'Гродно',cnt:3,color:'var(--purple)'},
+  ];
+  const mxc=78;
+  $('city-chart').innerHTML=cities.map(c=>`
+    <div>
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px">
+        <span style="color:var(--text);font-weight:600">${c.name}</span>
+        <span style="color:var(--muted)">${c.cnt} броней</span>
+      </div>
+      <div style="height:6px;background:var(--surf3);border-radius:3px;overflow:hidden">
+        <div style="height:100%;border-radius:3px;background:${c.color};width:${Math.round((c.cnt/mxc)*100)}%"></div>
+      </div>
+    </div>`).join('');
+}
+
+/* ACTIONS */
+function viewBK(id){
+  const b=BK.find(x=>x.id===id);if(!b)return;
+  $('m-title').textContent='Бронирование '+b.id;
+  $('m-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div style="background:var(--surf2);border-radius:9px;padding:12px">
+        <div style="font-size:10px;color:var(--hint);text-transform:uppercase;font-weight:700;margin-bottom:6px">Гость</div>
+        <div style="font-weight:700;margin-bottom:3px">${b.guest}</div>
+        <div style="font-size:11px;color:var(--muted)">${b.email}</div>
+        <div style="font-size:11px;color:var(--muted)">${b.phone}</div>
+      </div>
+      <div style="background:var(--surf2);border-radius:9px;padding:12px">
+        <div style="font-size:10px;color:var(--hint);text-transform:uppercase;font-weight:700;margin-bottom:6px">Отель</div>
+        <div style="font-weight:700;margin-bottom:3px">${b.hotel}</div>
+        <div style="font-size:11px;color:var(--muted)">${b.city}</div>
+        <div style="font-size:11px;color:var(--muted)">${fmtD(b.cin)} — ${fmtD(b.cout)} · ${b.nights} ноч.</div>
+      </div>
+    </div>
+    <div style="background:var(--surf2);border-radius:9px;padding:12px;margin-bottom:14px">
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--muted)">Сумма брони</span><strong>$${b.sum}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--muted)">Комиссия платформы (10%)</span><strong style="color:var(--lime)">$${b.comm.toFixed(2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--muted)">К выплате отелю</span><strong style="color:var(--amber)">$${(b.sum-b.comm).toFixed(2)}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-top:1px solid var(--border);margin-top:6px;padding-top:8px"><span style="color:var(--muted)">Способ оплаты</span><strong>${payLbl[b.pay]} ${b.pay}</strong></div>
+      <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0"><span style="color:var(--muted)">Статус</span>${statusBadge(b.status)}</div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      ${b.status==='pending'?`<button class="btn-save" onclick="approveBK('${b.id}');closeModal()">✅ Подтвердить</button>`:''}
+      ${b.status!=='cancelled'&&b.status!=='completed'?`<button class="btn-danger" onclick="cancelBK('${b.id}');closeModal()">❌ Отменить</button>`:''}
+    </div>`;
+  openModal();
+}
+
+function approveBK(id){const b=BK.find(x=>x.id===id);if(b){b.status='confirmed';renderAllBK();renderRecent();toast('✅ Бронь '+id+' подтверждена');}}
+function cancelBK(id){const b=BK.find(x=>x.id===id);if(b){b.status='cancelled';renderAllBK();renderRecent();toast('❌ Бронь '+id+' отменена');}}
+
+function viewHotel(id){
+  const h=HOTELS_D.find(x=>x.id===id);if(!h)return;
+  $('m-title').textContent=h.name;
+  $('m-body').innerHTML=`
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px;font-size:12px">
+      <div style="background:var(--surf2);border-radius:8px;padding:10px">
+        <div style="color:var(--hint);font-size:10px;text-transform:uppercase;font-weight:700;margin-bottom:5px">Основное</div>
+        <div>Город: <strong>${h.city}</strong></div>
+        <div style="margin-top:3px">Тип: <strong>${h.type}</strong></div>
+        <div style="margin-top:3px">Рейтинг: <strong style="color:var(--lime)">${h.rating}</strong></div>
+      </div>
+      <div style="background:var(--surf2);border-radius:8px;padding:10px">
+        <div style="color:var(--hint);font-size:10px;text-transform:uppercase;font-weight:700;margin-bottom:5px">Владелец</div>
+        <div><strong>${h.owner}</strong></div>
+        <div style="margin-top:3px;color:var(--blue)">${h.owner_email}</div>
+      </div>
+    </div>
+    <div style="background:var(--surf2);border-radius:8px;padding:10px;margin-bottom:14px;font-size:12px">
+      <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Броней</span><strong>${h.bookings}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Оборот</span><strong>$${h.revenue.toLocaleString()}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Комиссия платформы</span><strong style="color:var(--lime)">$${h.commission.toFixed(0)}</strong></div>
+      <div style="display:flex;justify-content:space-between;padding:3px 0"><span style="color:var(--muted)">Комиссия %</span>
+        <input type="number" value="${h.comm_rate}" style="width:50px;background:var(--surf3);border:1px solid var(--border);border-radius:5px;padding:2px 6px;color:var(--text);font-size:12px;text-align:center;outline:none">%
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end">
+      ${h.status==='review'?`<button class="btn-save" onclick="approveHotel('${h.id}');closeModal()">✅ Активировать</button>`:''}
+      <button class="btn-danger" onclick="blockHotel('${h.id}');closeModal()">🚫 Заблокировать</button>
+    </div>`;
+  openModal();
+}
+
+function approveHotel(id){const h=HOTELS_D.find(x=>x.id===id);if(h){h.status='active';renderHotels();toast('✅ Отель «'+h.name+'» активирован!');}}
+function blockHotel(id){const h=HOTELS_D.find(x=>x.id===id);if(h){h.status='blocked';renderHotels();toast('🚫 Отель «'+h.name+'» заблокирован');}}
+function approveApp(id){const a=APPS.find(x=>x.id===id);if(a){a.status='approved';renderApps();toast('✅ Заявка одобрена! Отправляем приветственное письмо '+a.email);}}
+function rejectApp(id){const a=APPS.find(x=>x.id===id);if(a){a.status='rejected';renderApps();toast('❌ Заявка отклонена');}}
+function viewApp(id){const a=APPS.find(x=>x.id===id);if(a)toast('📋 '+a.name+' — '+a.city+' — '+a.contact);}
+function approveReview(id){const r=REVIEWS_D.find(x=>x.id===id);if(r){r.status='published';renderReviews();toast('✅ Отзыв опубликован');}}
+function deleteReview(id){const i=REVIEWS_D.findIndex(x=>x.id===id);if(i>=0){REVIEWS_D.splice(i,1);renderReviews();toast('🗑 Отзыв удалён');}}
+function openAddHotel(){
+  $('m-title').textContent='Добавить отель вручную';
+  $('m-body').innerHTML=`
+    <div class="fg"><label>Название отеля</label><input type="text" placeholder="Гостиница «Беларусь»"></div>
+    <div class="fgrow">
+      <div class="fg"><label>Город</label><select><option>Минск</option><option>Брест</option><option>Гродно</option><option>Пинск</option><option>Витебск</option><option>Другой</option></select></div>
+      <div class="fg"><label>Тип</label><select><option>Отель</option><option>Хостел</option><option>Апартаменты</option><option>Санаторий</option><option>Агроусадьба</option></select></div>
+    </div>
+    <div class="fg"><label>Email владельца</label><input type="email" placeholder="owner@hotel.by"></div>
+    <div class="fg"><label>Телефон</label><input type="tel" placeholder="+375 29 000-00-00"></div>
+    <div class="fg"><label>Адрес</label><input type="text" placeholder="ул. Ленина, 1"></div>
+    <div class="fgrow">
+      <div class="fg"><label>Комиссия %</label><input type="number" value="10" min="0" max="30"></div>
+      <div class="fg"><label>Звёзды</label><select><option>Без звёзд</option><option>2★</option><option>3★</option><option>4★</option><option>5★</option></select></div>
+    </div>
+    <div class="mf" style="padding:0;margin-top:14px;border:none">
+      <button class="btn-cancel" onclick="closeModal()">Отмена</button>
+      <button class="btn-save" onclick="closeModal();toast('✅ Отель добавлен! Письмо владельцу отправлено.')">Добавить и уведомить</button>
+    </div>`;
+  openModal();
+}
+
+function setBF(el,f){document.querySelectorAll('#page-bookings button').forEach(b=>b.style.borderColor='');el.style.borderColor='var(--lime)';el.style.color='var(--lime)';renderAllBK();}
+
+/* MODAL */
+function openModal(){$('modal').classList.add('open');}
+function closeModal(){$('modal').classList.remove('open');}
+function closeNotif(){}
+
+/* TOAST */
+let tt;
+function toast(msg){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(tt);tt=setTimeout(()=>t.classList.remove('show'),3000);}
+
+/* INIT */
+document.addEventListener('DOMContentLoaded',()=>{
+  $('modal').addEventListener('click',e=>{if(e.target===$('modal'))closeModal();});
+  renderRecent();renderAllBK();renderHotels();renderApps();renderUsers();renderReviews();renderRevenue();renderLogs();renderChart();
+});
+</script>
+</body>
+</html>
