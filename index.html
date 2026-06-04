@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Заедем.by — Админ-панель</title>
+<link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#faf8f4;--surf:#ffffff;--surf2:#f2efe8;--surf3:#e8e3d8;
+  --border:#e8e3d8;--border2:#d5cfc5;
+  --text:#0f0f0f;--muted:#777;--hint:#bbb;
+  --lime:#c8f135;--lime2:#d9f554;--lime-dim:rgba(200,241,53,0.1);
+  --green:#1a5c38;--green2:#246b44;
+  --blue:#4a9eff;--blue-dim:rgba(74,158,255,0.12);
+  --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.12);
+  --red:#f87171;--red-dim:rgba(248,113,113,0.12);
+  --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+  --r:10px;--rl:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Golos Text',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+button{cursor:pointer;font-family:inherit}
+
+/* LOGIN */
+.login-wrap{display:flex;align-items:center;justify-content:center;min-height:100vh;width:100%;background:#0a2814}
+.login-box{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
+.login-logo{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:800;color:var(--green);margin-bottom:4px}
+.login-logo span{color:var(--lime)}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+.login-field{margin-bottom:16px}
+.login-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
+.login-field input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;transition:.2s}
+.login-field input:focus{border-color:var(--green)}
+.login-btn{width:100%;padding:14px;background:var(--green);color:#fff;border:none;border-radius:var(--r);font-size:15px;font-weight:700;font-family:inherit;margin-top:8px;transition:.2s}
+.login-btn:hover{background:var(--green2)}
+.login-err{color:var(--red);font-size:13px;margin-top:10px;text-align:center}
+
+/* SIDEBAR */
+.sb{width:220px;background:#0a2814;border-right:1px solid rgba(255,255,255,.08);display:flex;flex-direction:column;position:fixed;top:0;left:0;bottom:0;z-index:50}
+.sb-logo{padding:18px 16px 14px;border-bottom:1px solid rgba(255,255,255,.08)}
+.sb-logo-main{font-family:'Unbounded',sans-serif;font-size:1rem;font-weight:800;color:var(--lime)}
+.sb-logo-main em{color:rgba(255,255,255,.7);font-style:normal}
+.sb-logo-sub{font-size:10px;color:var(--muted);margin-top:3px;letter-spacing:.5px}
+.sb-admin{padding:12px 16px;background:var(--lime-dim);border-bottom:1px solid rgba(255,255,255,.08);display:flex;gap:10px;align-items:center}
+.sb-ava{width:32px;height:32px;border-radius:50%;background:var(--lime);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:#000}
+.sb-admin-name{font-size:12px;font-weight:700;color:#fff}
+.sb-admin-role{font-size:10px;color:rgba(255,255,255,.5)}
+.sb-nav{flex:1;padding:10px 0;overflow-y:auto}
+.sb-sec{padding:5px 16px 3px;font-size:9px;text-transform:uppercase;letter-spacing:1px;color:rgba(255,255,255,.35);font-weight:700}
+.ni{display:flex;align-items:center;gap:9px;padding:8px 16px;font-size:12px;color:rgba(255,255,255,.55);cursor:pointer;border-left:3px solid transparent;transition:.15s}
+.ni:hover{background:rgba(255,255,255,.08);color:#fff}
+.ni.on{background:var(--lime-dim);color:var(--lime);border-left-color:var(--lime)}
+.ni-ico{font-size:15px;width:18px;text-align:center}
+.nb{margin-left:auto;background:var(--red);color:#fff;font-size:9px;font-weight:800;padding:1px 6px;border-radius:8px}
+.nb.lime{background:var(--lime);color:#000}
+.sb-bottom{padding:12px 16px;border-top:1px solid rgba(255,255,255,.08)}
+.logout-btn{width:100%;padding:8px;background:rgba(255,255,255,.07);color:rgba(255,255,255,.5);border:none;border-radius:8px;font-size:11px;font-weight:600;transition:.15s}
+.logout-btn:hover{background:rgba(248,113,113,.2);color:var(--red)}
+
+/* MAIN */
+.main{margin-left:220px;flex:1;display:flex;flex-direction:column}
+.topbar{background:var(--surf);border-bottom:1px solid var(--border);padding:0 1.5rem;height:52px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:40}
+.tb-title{font-family:'Unbounded',sans-serif;font-size:.85rem;font-weight:700;color:var(--lime)}
+.tb-r{display:flex;gap:8px;align-items:center}
+.tb-btn{background:none;border:1px solid var(--border2);color:var(--muted);padding:5px 14px;border-radius:7px;font-size:11px;font-weight:700;transition:.15s}
+.tb-btn:hover{border-color:var(--lime);color:var(--lime)}
+.content{padding:1.5rem;flex:1}
+
+/* STATS */
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-bottom:1.5rem}
+.stat{background:var(--surf);border:1px solid var(--border);border-radius:var(--rl);padding:1.2rem}
+.stat-label{font-size:10px;text-transform:uppercase;letter-spacing:.8px;color:var(--muted);font-weight:700;margin-bottom:8px}
+.stat-val{font-family:'Unbounded',sans-serif;font-size:1.6rem;font-weight:800;margin-bottom:4px}
+.stat-sub{font-size:11px;color:var(--muted)}
+.c-lime{color:var(--lime)}
+.c-blue{color:var(--blue)}
+.c-amber{color:var(--amber)}
+.c-red{color:var(--red)}
+
+/* TABLE */
+.section{background:var(--surf);border:1px solid var(--border);border-radius:var(--rl);margin-bottom:1.5rem;overflow:hidden}
+.sec-head{padding:1rem 1.2rem;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.sec-title{font-size:13px;font-weight:700}
+.sec-cnt{font-size:11px;color:var(--muted);margin-left:8px}
+.sec-btn{padding:5px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700}
+table{width:100%;border-collapse:collapse}
+th{padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);background:var(--surf2)}
+td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border)}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surf2)}
+.badge{display:inline-block;padding:2px 8px;border-radius:20px;font-size:10px;font-weight:700}
+.badge-green{background:rgba(26,92,56,.1);color:var(--green)}
+.badge-amber{background:var(--amber-dim);color:var(--amber)}
+.badge-red{background:var(--red-dim);color:#dc2626}
+.badge-blue{background:var(--blue-dim);color:var(--blue)}
+.badge-gray{background:var(--surf3);color:var(--muted)}
+.act-btn{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;border:none;cursor:pointer}
+.act-approve{background:rgba(26,92,56,.1);color:var(--green)}
+.act-approve:hover{background:var(--green);color:#fff}
+.act-reject{background:var(--red-dim);color:#dc2626}
+.act-reject:hover{background:var(--red);color:#fff}
+.act-cancel{background:var(--amber-dim);color:var(--amber)}
+
+/* EMPTY */
+.empty{padding:3rem;text-align:center;color:var(--muted);font-size:13px}
+
+/* MODAL */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:100;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:.2s}
+.modal-bg.open{opacity:1;pointer-events:all}
+.modal{background:#fff;border-radius:16px;padding:28px;width:90%;max-width:500px;max-height:80vh;overflow-y:auto}
+.modal h3{font-size:1rem;font-weight:700;margin-bottom:16px}
+.modal-field{margin-bottom:12px}
+.modal-field label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.modal-field input,.modal-field select,.modal-field textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;font-family:inherit;outline:none}
+.modal-field input:focus,.modal-field select:focus{border-color:var(--green)}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.modal-btn{padding:8px 18px;border-radius:8px;font-size:12px;font-weight:700;border:none;cursor:pointer}
+.modal-btn-primary{background:var(--green);color:#fff}
+.modal-btn-cancel{background:var(--surf2);color:var(--muted)}
+.detail-row{display:flex;gap:8px;margin-bottom:8px;font-size:13px}
+.detail-row b{color:var(--muted);font-weight:600;min-width:120px}
+
+/* TABS */
+.tabs{display:flex;gap:4px;padding:0 1.2rem;border-bottom:1px solid var(--border);background:var(--surf2)}
+.tab{padding:10px 14px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
+.tab.on{color:var(--green);border-bottom-color:var(--green)}
+
+/* PAGES */
+.page{display:none}
+.page.on{display:block}
+
+/* LOADING */
+.loading{padding:3rem;text-align:center;color:var(--muted)}
+.spin{display:inline-block;width:20px;height:20px;border:2px solid var(--border);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite;margin-bottom:8px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#0a2814;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;transform:translateY(20px);opacity:0;transition:.3s}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.err{background:#dc2626}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div class="login-wrap" id="loginWrap">
+  <div class="login-box">
+    <div class="login-logo">Заедем<span>.by</span></div>
+    <div class="login-sub">Панель администратора</div>
+    <div class="login-field">
+      <label>Логин</label>
+      <input type="text" id="loginEmail" placeholder="zaedem_admin" autocomplete="username">
+    </div>
+    <div class="login-field">
+      <label>Пароль</label>
+      <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
+    </div>
+    <button class="login-btn" onclick="doLogin()">Войти</button>
+    <div class="login-err" id="loginErr"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none;width:100%;display:none">
+  <!-- SIDEBAR -->
+  <div class="sb">
+    <div class="sb-logo">
+      <div class="sb-logo-main">Заедем<em>.by</em></div>
+      <div class="sb-logo-sub">Панель администратора</div>
+    </div>
+    <div class="sb-admin">
+      <div class="sb-ava">А</div>
+      <div>
+        <div class="sb-admin-name">Администратор</div>
+        <div class="sb-admin-role">Полный доступ</div>
+      </div>
+    </div>
+    <div class="sb-nav">
+      <div class="sb-sec">Главное</div>
+      <div class="ni on" onclick="showPage('dashboard',this)"><span class="ni-ico">📊</span> Дашборд</div>
+      <div class="ni" onclick="showPage('bookings',this)"><span class="ni-ico">📋</span> Все брони <span class="nb" id="nb-bookings">0</span></div>
+      <div class="ni" onclick="showPage('applications',this)"><span class="ni-ico">📨</span> Заявки <span class="nb" id="nb-apps">0</span></div>
+      <div class="sb-sec">Партнёры</div>
+      <div class="ni" onclick="showPage('hotels',this)"><span class="ni-ico">🏨</span> Отели <span class="nb lime" id="nb-hotels">0</span></div>
+      <div class="sb-sec">Пользователи</div>
+      <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Туристы</div>
+    </div>
+    <div class="sb-bottom">
+      <button class="logout-btn" onclick="doLogout()">🚪 Выйти</button>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div class="main">
+    <div class="topbar">
+      <div class="tb-title" id="pageTitle">Дашборд</div>
+      <div class="tb-r">
+        <button class="tb-btn" onclick="loadAll()">↻ Обновить</button>
+      </div>
+    </div>
+    <div class="content">
+
+      <!-- DASHBOARD -->
+      <div class="page on" id="page-dashboard">
+        <div class="stats">
+          <div class="stat">
+            <div class="stat-label">Брони всего</div>
+            <div class="stat-val c-lime" id="s-bookings">—</div>
+            <div class="stat-sub">за всё время</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Заявок новых</div>
+            <div class="stat-val c-amber" id="s-apps">—</div>
+            <div class="stat-sub">ожидают проверки</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Туристов</div>
+            <div class="stat-val c-blue" id="s-tourists">—</div>
+            <div class="stat-sub">зарегистрировано</div>
+          </div>
+          <div class="stat">
+            <div class="stat-label">Выручка</div>
+            <div class="stat-val c-lime" id="s-revenue">—</div>
+            <div class="stat-sub">общая сумма броней</div>
+          </div>
+        </div>
+
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Последние брони</span></div>
+            <button class="sec-btn" onclick="showPage('bookings',document.querySelector('.ni:nth-child(2)'))">Все брони →</button>
+          </div>
+          <div id="dash-bookings"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Новые заявки от отелей</span></div>
+            <button class="sec-btn" onclick="showPage('applications',document.querySelectorAll('.ni')[2])">Все заявки →</button>
+          </div>
+          <div id="dash-apps"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- BOOKINGS -->
+      <div class="page" id="page-bookings">
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Все брони</span> <span class="sec-cnt" id="bookings-cnt"></span></div>
+          </div>
+          <div id="bookings-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- APPLICATIONS -->
+      <div class="page" id="page-applications">
+        <div class="tabs">
+          <div class="tab on" onclick="filterApps('all',this)">Все</div>
+          <div class="tab" onclick="filterApps('new',this)">Новые</div>
+          <div class="tab" onclick="filterApps('approved',this)">Одобренные</div>
+          <div class="tab" onclick="filterApps('rejected',this)">Отклонённые</div>
+        </div>
+        <div class="section" style="border-top:none;border-radius:0 0 var(--rl) var(--rl)">
+          <div id="apps-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- HOTELS -->
+      <div class="page" id="page-hotels">
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Отели</span></div>
+          </div>
+          <div id="hotels-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- TOURISTS -->
+      <div class="page" id="page-tourists">
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Туристы</span></div>
+          </div>
+          <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL -->
+<div class="modal-bg" id="modal">
+  <div class="modal">
+    <h3 id="modal-title">Детали</h3>
+    <div id="modal-body"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="closeModal()">Закрыть</button>
+      <button class="modal-btn modal-btn-primary" id="modal-action" style="display:none">Действие</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'https://api.zaedem.by';
+const ADMIN_LOGIN = 'zaedem_admin';
+const ADMIN_PASS = 'Zd@2026!By#9xKp';
+
+let allBookings = [];
+let allApps = [];
+let allUsers = [];
+let currentAppFilter = 'all';
+
+// ── AUTH ──
+function doLogin() {
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  if (email === ADMIN_LOGIN && pass === ADMIN_PASS) {
+    sessionStorage.setItem('admin_auth', '1');
+    document.getElementById('loginWrap').style.display = 'none';
+    document.getElementById('app').style.display = 'flex';
+    loadAll();
+  } else {
+    document.getElementById('loginErr').textContent = 'Неверный логин или пароль';
+  }
+}
+
+document.getElementById('loginPass').addEventListener('keydown', e => {
+  if (e.key === 'Enter') doLogin();
+});
+
+function doLogout() {
+  sessionStorage.removeItem('admin_auth');
+  location.reload();
+}
+
+// Check auth on load
+if (sessionStorage.getItem('admin_auth')) {
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  loadAll();
+}
+
+// ── NAV ──
+function showPage(name, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
+  document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
+  document.getElementById('page-' + name).classList.add('on');
+  if (el) el.classList.add('on');
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',tourists:'Туристы'};
+  document.getElementById('pageTitle').textContent = titles[name] || name;
+  if (name === 'bookings') renderBookingsTable(allBookings);
+  if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
+  if (name === 'tourists') renderTouristsTable(allUsers);
+}
+
+// ── LOAD ALL ──
+async function loadAll() {
+  await Promise.all([loadBookings(), loadApps(), loadUsers()]);
+  renderDashboard();
+}
+
+async function loadBookings() {
+  try {
+    const r = await fetch(`${API}/api/bookings?limit=100`);
+    const d = await r.json();
+    allBookings = d.bookings || [];
+    document.getElementById('nb-bookings').textContent = allBookings.filter(b => b.status === 'confirmed').length;
+  } catch(e) { allBookings = []; }
+}
+
+async function loadApps() {
+  try {
+    const r = await fetch(`${API}/api/applications`);
+    const d = await r.json();
+    allApps = d.applications || [];
+    const newCount = allApps.filter(a => a.status === 'new').length;
+    document.getElementById('nb-apps').textContent = newCount;
+  } catch(e) { allApps = []; }
+}
+
+async function loadUsers() {
+  try {
+    const r = await fetch(`${API}/api/users`);
+    const d = await r.json();
+    allUsers = d.users || [];
+    document.getElementById('nb-hotels').textContent = allUsers.filter(u => u.role === 'hotelowner').length;
+  } catch(e) { allUsers = []; }
+}
+
+// ── DASHBOARD ──
+function renderDashboard() {
+  document.getElementById('s-bookings').textContent = allBookings.length;
+  document.getElementById('s-apps').textContent = allApps.filter(a => a.status === 'new').length;
+  document.getElementById('s-tourists').textContent = allUsers.filter(u => u.role === 'tourist').length;
+  const rev = allBookings.reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
+  document.getElementById('s-revenue').textContent = '$' + rev.toFixed(0);
+
+  // Last 5 bookings
+  const last5 = allBookings.slice(0, 5);
+  document.getElementById('dash-bookings').innerHTML = last5.length ? `
+    <table>
+      <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Даты</th><th>Сумма</th><th>Статус</th></tr>
+      ${last5.map(b => `
+        <tr onclick="showBooking('${b.id}')" style="cursor:pointer">
+          <td><b>${b.booking_num}</b></td>
+          <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
+          <td>${b.hotel_name||'—'}</td>
+          <td style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
+          <td><b>$${parseFloat(b.total_price||0).toFixed(0)}</b></td>
+          <td>${statusBadge(b.status)}</td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Броней пока нет</div>';
+
+  // New apps
+  const newApps = allApps.filter(a => a.status === 'new').slice(0, 5);
+  document.getElementById('dash-apps').innerHTML = newApps.length ? `
+    <table>
+      <tr><th>Отель</th><th>Город</th><th>Контакт</th><th>Email</th><th>Действие</th></tr>
+      ${newApps.map(a => `
+        <tr>
+          <td><b>${a.hotel_name}</b></td>
+          <td>${a.city||'—'}</td>
+          <td>${a.contact_name||'—'}</td>
+          <td>${a.email}</td>
+          <td>
+            <button class="act-btn act-approve" onclick="approveApp('${a.id}','${a.email}','${a.contact_name||''}','${a.hotel_name}')">✓ Одобрить</button>
+            <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗ Отклонить</button>
+          </td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Новых заявок нет</div>';
+}
+
+// ── BOOKINGS TABLE ──
+function renderBookingsTable(bookings) {
+  document.getElementById('bookings-cnt').textContent = `(${bookings.length})`;
+  document.getElementById('bookings-table').innerHTML = bookings.length ? `
+    <table>
+      <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
+      ${bookings.map(b => `
+        <tr>
+          <td><b>${b.booking_num}</b></td>
+          <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
+          <td>${b.hotel_name||'—'}</td>
+          <td>${fmtDate(b.check_in)}</td>
+          <td>${fmtDate(b.check_out)}</td>
+          <td>${b.nights||1}</td>
+          <td><b>$${parseFloat(b.total_price||0).toFixed(0)}</b></td>
+          <td>${statusBadge(b.status)}</td>
+          <td><button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button></td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Броней пока нет</div>';
+}
+
+// ── APPS TABLE ──
+function filterApps(filter, el) {
+  currentAppFilter = filter;
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('on'));
+  el.classList.add('on');
+  renderAppsTable(allApps, filter);
+}
+
+function renderAppsTable(apps, filter = 'all') {
+  const filtered = filter === 'all' ? apps : apps.filter(a => a.status === filter);
+  document.getElementById('apps-table').innerHTML = filtered.length ? `
+    <table>
+      <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
+      ${filtered.map(a => `
+        <tr>
+          <td><b>${a.hotel_name}</b></td>
+          <td>${a.city||'—'}</td>
+          <td>${a.rooms_count||'—'}</td>
+          <td>${a.contact_name||'—'}</td>
+          <td>${a.email}</td>
+          <td>${a.phone}</td>
+          <td style="font-size:11px">${fmtDate(a.created_at)}</td>
+          <td>${appStatusBadge(a.status)}</td>
+          <td>
+            ${a.status === 'new' ? `
+              <button class="act-btn act-approve" onclick="approveApp('${a.id}','${a.email}','${a.contact_name||''}','${a.hotel_name}')">✓ Одобрить</button>
+              <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗</button>
+            ` : '—'}
+          </td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Заявок нет</div>';
+}
+
+// ── TOURISTS TABLE ──
+function renderTouristsTable(users) {
+  const tourists = users.filter(u => u.role === 'tourist');
+  document.getElementById('tourists-table').innerHTML = tourists.length ? `
+    <table>
+      <tr><th>Имя</th><th>Email</th><th>Телефон</th><th>Дата регистрации</th></tr>
+      ${tourists.map(u => `
+        <tr>
+          <td>${u.name||u.first_name||'—'}</td>
+          <td>${u.email}</td>
+          <td>${u.phone||'—'}</td>
+          <td>${fmtDate(u.created_at)}</td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Туристов пока нет</div>';
+}
+
+// ── APPROVE APP ──
+async function approveApp(id, email, name, hotelName) {
+  const pass = generatePassword();
+  if (!confirm(`Одобрить заявку от ${hotelName}?\n\nОтельер получит письмо с паролем: ${pass}`)) return;
+
+  try {
+    // 1. Создаём аккаунт отельера
+    await fetch(`${API}/api/users/register`, {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ email, name: name || hotelName, password: pass, role: 'hotelowner' })
+    });
+
+    // 2. Одобряем заявку + отправляем письмо с паролем через бэкенд
+    const r = await fetch(`${API}/api/applications/${id}`, {
+      method: 'PATCH',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ status: 'approved', password: pass })
+    });
+
+    if (!r.ok) throw new Error('Ошибка сервера');
+
+    showToast(`✓ Одобрено! Письмо с паролем отправлено на ${email}`);
+    await loadApps();
+    renderAppsTable(allApps, currentAppFilter);
+    renderDashboard();
+  } catch(e) {
+    showToast('Ошибка при одобрении: ' + e.message, true);
+  }
+}
+
+async function rejectApp(id) {
+  if (!confirm('Отклонить заявку?')) return;
+  await fetch(`${API}/api/applications/${id}`, {
+    method: 'PATCH',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({status: 'rejected'})
+  });
+  showToast('Заявка отклонена');
+  await loadApps();
+  renderAppsTable(allApps, currentAppFilter);
+  renderDashboard();
+}
+
+// ── BOOKING DETAIL ──
+function showBooking(id) {
+  const b = allBookings.find(x => x.id === id);
+  if (!b) return;
+  document.getElementById('modal-title').textContent = `Бронь ${b.booking_num}`;
+  document.getElementById('modal-body').innerHTML = `
+    <div class="detail-row"><b>Гость:</b> ${b.guest_name||'—'}</div>
+    <div class="detail-row"><b>Email:</b> ${b.guest_email}</div>
+    <div class="detail-row"><b>Телефон:</b> ${b.guest_phone||'—'}</div>
+    <div class="detail-row"><b>Отель:</b> ${b.hotel_name||'—'}</div>
+    <div class="detail-row"><b>Номер:</b> ${b.room_name||'—'}</div>
+    <div class="detail-row"><b>Заезд:</b> ${fmtDate(b.check_in)}</div>
+    <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
+    <div class="detail-row"><b>Ночей:</b> ${b.nights||1}</div>
+    <div class="detail-row"><b>Гостей:</b> ${b.guests_count||1}</div>
+    <div class="detail-row"><b>Сумма:</b> $${parseFloat(b.total_price||0).toFixed(2)} ${b.currency||'USD'}</div>
+    <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
+    <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
+  `;
+  document.getElementById('modal-action').style.display = 'none';
+  openModal();
+}
+
+// ── HELPERS ──
+function fmtDate(d) {
+  if (!d) return '—';
+  return new Date(d).toLocaleDateString('ru-RU', {day:'numeric',month:'short',year:'numeric'});
+}
+
+function statusBadge(s) {
+  const map = {confirmed:'badge-green',pending:'badge-amber',cancelled:'badge-red',completed:'badge-blue'};
+  const labels = {confirmed:'Подтверждено',pending:'Ожидает',cancelled:'Отменено',completed:'Завершено'};
+  return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
+}
+
+function appStatusBadge(s) {
+  const map = {new:'badge-amber',approved:'badge-green',rejected:'badge-red',contacted:'badge-blue'};
+  const labels = {new:'Новая',approved:'Одобрена',rejected:'Отклонена',contacted:'Связались'};
+  return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
+}
+
+function generatePassword() {
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
+  return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+}
+
+function openModal() { document.getElementById('modal').classList.add('open'); }
+function closeModal() { document.getElementById('modal').classList.remove('open'); }
+document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
+
+function showToast(msg, err=false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show' + (err?' err':'');
+  setTimeout(() => t.className = 'toast', 3000);
+}
+</script>
+</body>
+</html>
