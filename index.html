@@ -306,25 +306,41 @@ tr:hover td{background:var(--surf2)}
 
 <script>
 const API = 'https://api.zaedem.by';
-const ADMIN_LOGIN = 'zaedem_admin';
-const ADMIN_PASS = 'Zd@2026!By#9xKp';
 
 let allBookings = [];
 let allApps = [];
 let allUsers = [];
+let allHotels = [];
 let currentAppFilter = 'all';
+let adminToken = sessionStorage.getItem('admin_token') || '';
+
+function authHeaders() {
+  return {'Content-Type':'application/json', 'Authorization':'Bearer '+adminToken};
+}
 
 // ── AUTH ──
-function doLogin() {
+async function doLogin() {
   const email = document.getElementById('loginEmail').value.trim();
   const pass = document.getElementById('loginPass').value;
-  if (email === ADMIN_LOGIN && pass === ADMIN_PASS) {
+  const errEl = document.getElementById('loginErr');
+  if(!email||!pass){ errEl.textContent='Заполните все поля'; return; }
+  try {
+    const r = await fetch(`${API}/api/users/login`, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({email, password: pass})
+    });
+    const d = await r.json();
+    if(!r.ok||!d.success){ errEl.textContent = d.error||'Неверный логин или пароль'; return; }
+    if(d.user.role !== 'admin'){ errEl.textContent = 'Доступ только для администраторов'; return; }
+    adminToken = d.token || '';
+    sessionStorage.setItem('admin_token', adminToken);
     sessionStorage.setItem('admin_auth', '1');
     document.getElementById('loginWrap').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
     loadAll();
-  } else {
-    document.getElementById('loginErr').textContent = 'Неверный логин или пароль';
+  } catch(e) {
+    errEl.textContent = 'Ошибка соединения';
   }
 }
 
@@ -334,6 +350,8 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
 
 function doLogout() {
   sessionStorage.removeItem('admin_auth');
+  sessionStorage.removeItem('admin_token');
+  adminToken = '';
   location.reload();
 }
 
@@ -355,12 +373,125 @@ function showPage(name, el) {
   if (name === 'bookings') renderBookingsTable(allBookings);
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
   if (name === 'tourists') renderTouristsTable(allUsers);
+  if (name === 'hotels') renderHotelsTable(allHotels);
 }
 
 // ── LOAD ALL ──
 async function loadAll() {
-  await Promise.all([loadBookings(), loadApps(), loadUsers()]);
+  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
   renderDashboard();
+}
+
+let allHotels = [];
+
+async function loadHotels() {
+  try {
+    const r = await fetch(`${API}/api/hotels?limit=200&is_active=all`);
+    const d = await r.json();
+    allHotels = d.hotels || [];
+    const cnt = document.getElementById('nb-hotels');
+    if(cnt) cnt.textContent = allHotels.length;
+    renderHotelsTable(allHotels);
+  } catch(e) { allHotels = []; }
+}
+
+function filterHotels(val) {
+  const filtered = val ? allHotels.filter(h =>
+    (h.name_ru||'').toLowerCase().includes(val.toLowerCase()) ||
+    (h.city_ru||'').toLowerCase().includes(val.toLowerCase())
+  ) : allHotels;
+  renderHotelsTable(filtered);
+}
+
+function renderHotelsTable(hotels) {
+  const cnt = document.getElementById('hotels-cnt');
+  if(cnt) cnt.textContent = '(' + hotels.length + ')';
+  document.getElementById('hotels-table').innerHTML = hotels.length ? `
+    <table>
+      <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Статус</th><th>Действия</th></tr>
+      ${hotels.map(h => `
+        <tr>
+          <td><b>${h.name_ru||'—'}</b></td>
+          <td>${h.city_ru||'—'}</td>
+          <td>${h.category||'—'}</td>
+          <td>${h.stars ? '★'.repeat(h.stars) : '—'}</td>
+          <td>${h.rating||'—'}</td>
+          <td style="font-size:11px;color:var(--muted)">${h.ostrovok_hid||'—'}</td>
+          <td>${h.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-gray">Не активен</span>'}</td>
+          <td style="display:flex;gap:4px;flex-wrap:wrap">
+            <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️ Редактировать</button>
+            <button class="act-btn" onclick="toggleHotel('${h.id}',${!h.is_active})"
+              style="background:${h.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${h.is_active?'var(--red)':'var(--green)'}">
+              ${h.is_active ? '⏸ Скрыть' : '▶ Активировать'}
+            </button>
+          </td>
+        </tr>`).join('')}
+    </table>` : '<div class="empty">Отелей пока нет</div>';
+}
+
+async function toggleHotel(id, activate) {
+  const token = currentUser?.token;
+  const r = await fetch(`${API}/api/hotels/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({is_active: activate})
+  });
+  if(r.ok){ showToast(activate ? '✓ Отель активирован' : '✓ Отель скрыт'); await loadHotels(); }
+  else showToast('Ошибка', true);
+}
+
+function editHotel(id) {
+  const h = allHotels.find(x => x.id === id);
+  if(!h) return;
+  document.getElementById('modal-title').textContent = 'Редактировать отель';
+  document.getElementById('modal-body').innerHTML = `
+    <div style="display:grid;gap:10px">
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Название (RU)</label>
+        <input id="eh-name" value="${h.name_ru||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Адрес</label>
+        <input id="eh-addr" value="${h.address||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Телефон</label>
+        <input id="eh-phone" value="${h.phone||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Email</label>
+        <input id="eh-email" value="${h.email||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Ostrovok HID</label>
+        <input id="eh-hid" value="${h.ostrovok_hid||''}" placeholder="например: 8473727" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Описание</label>
+        <textarea id="eh-desc" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;resize:vertical">${h.description_ru||''}</textarea></div>
+    </div>`;
+  const btn = document.getElementById('modal-action');
+  btn.style.display = 'block';
+  btn.textContent = '💾 Сохранить';
+  btn.onclick = () => saveHotel(id);
+  openModal();
+}
+
+async function saveHotel(id) {
+  const token = currentUser?.token;
+  const body = {
+    name_ru: document.getElementById('eh-name').value,
+    address: document.getElementById('eh-addr').value,
+    phone:   document.getElementById('eh-phone').value,
+    email:   document.getElementById('eh-email').value,
+    description_ru: document.getElementById('eh-desc').value,
+  };
+  const hid = document.getElementById('eh-hid').value.trim();
+
+  const r = await fetch(`${API}/api/hotels/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify(body)
+  });
+  // Обновляем ostrovok_hid отдельно
+  if(hid) {
+    await fetch(`${API}/api/hotels/${id}/ostrovok`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({ostrovok_hid: parseInt(hid)||null})
+    });
+  }
+  if(r.ok){ closeModal(); showToast('✓ Отель сохранён'); await loadHotels(); }
+  else showToast('Ошибка сохранения', true);
 }
 
 async function loadBookings() {
@@ -450,7 +581,10 @@ function renderBookingsTable(bookings) {
           <td>${b.nights||1}</td>
           <td><b>$${parseFloat(b.total_price||0).toFixed(0)}</b></td>
           <td>${statusBadge(b.status)}</td>
-          <td><button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button></td>
+          <td style="display:flex;gap:4px">
+            <button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button>
+            ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${b.booking_num}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
+          </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней пока нет</div>';
 }
@@ -493,13 +627,20 @@ function renderTouristsTable(users) {
   const tourists = users.filter(u => u.role === 'tourist');
   document.getElementById('tourists-table').innerHTML = tourists.length ? `
     <table>
-      <tr><th>Имя</th><th>Email</th><th>Телефон</th><th>Дата регистрации</th></tr>
+      <tr><th>Имя</th><th>Email</th><th>Телефон</th><th>Дата регистрации</th><th>Статус</th><th>Действия</th></tr>
       ${tourists.map(u => `
         <tr>
           <td>${u.name||u.first_name||'—'}</td>
           <td>${u.email}</td>
           <td>${u.phone||'—'}</td>
           <td>${fmtDate(u.created_at)}</td>
+          <td>${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
+          <td>
+            <button class="act-btn" onclick="toggleUser('${u.id}',${!u.is_active})"
+              style="background:${u.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${u.is_active?'var(--red)':'var(--green)'}">
+              ${u.is_active?'🚫 Блок':'✓ Разблок'}
+            </button>
+          </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Туристов пока нет</div>';
 }
@@ -569,6 +710,30 @@ function showBooking(id) {
   `;
   document.getElementById('modal-action').style.display = 'none';
   openModal();
+}
+
+// ── ADMIN ACTIONS ──
+async function adminCancelBooking(num) {
+  if(!confirm('Отменить бронь '+num+'?')) return;
+  const token = currentUser?.token;
+  const r = await fetch(`${API}/api/bookings/${num}/status`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({status:'cancelled'})
+  });
+  if(r.ok){ showToast('Бронь отменена'); await loadBookings(); renderBookingsTable(allBookings); }
+  else showToast('Ошибка', true);
+}
+
+async function toggleUser(id, activate) {
+  const token = currentUser?.token;
+  const r = await fetch(`${API}/api/users/${id}`, {
+    method: 'PATCH',
+    headers: authHeaders(),
+    body: JSON.stringify({is_active: activate})
+  });
+  if(r.ok){ showToast(activate?'Пользователь активирован':'Пользователь заблокирован'); await loadUsers(); renderTouristsTable(allUsers); }
+  else showToast('Ошибка', true);
 }
 
 // ── HELPERS ──
