@@ -270,6 +270,15 @@ tr:hover td{background:var(--surf2)}
               <option value="ostrovok">Островок</option>
               <option value="direct">Прямые</option>
             </select>
+            <div style="display:flex;gap:6px;align-items:center">
+              <span style="font-size:11px;color:var(--muted)">Заезд:</span>
+              <input type="date" id="bk-dfrom" onchange="applyBookingFilters()" title="Заезд с"
+                style="padding:8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit">
+              <span style="font-size:11px;color:var(--muted)">—</span>
+              <input type="date" id="bk-dto" onchange="applyBookingFilters()" title="Заезд по"
+                style="padding:8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit">
+            </div>
+            <button onclick="resetBookingFilters()" style="padding:9px 14px;background:var(--faint);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Сбросить</button>
           </div>
           <div id="bookings-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -598,20 +607,42 @@ function sourceBadge(src) {
   return '<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Прямая</span>';
 }
 
-function applyBookingFilters() {
-  const q = (document.getElementById('bk-search')?.value || '').toLowerCase().trim();
-  const fs = document.getElementById('bk-fstatus')?.value || '';
-  const fsrc = document.getElementById('bk-fsource')?.value || '';
+function getBookingFilters() {
+  return {
+    q: (document.getElementById('bk-search')?.value || '').toLowerCase().trim(),
+    fs: document.getElementById('bk-fstatus')?.value || '',
+    fsrc: document.getElementById('bk-fsource')?.value || '',
+    dfrom: document.getElementById('bk-dfrom')?.value || '',
+    dto: document.getElementById('bk-dto')?.value || '',
+  };
+}
+
+function filterBookingList() {
+  const f = getBookingFilters();
   let list = allBookings;
-  if (fs) list = list.filter(b => b.status === fs);
-  if (fsrc) list = list.filter(b => (b.source || 'direct') === fsrc);
-  if (q) list = list.filter(b =>
-    (b.booking_num || '').toLowerCase().includes(q) ||
-    (b.guest_name || '').toLowerCase().includes(q) ||
-    (b.guest_email || '').toLowerCase().includes(q) ||
-    (b.hotel_name || '').toLowerCase().includes(q)
+  if (f.fs) list = list.filter(b => b.status === f.fs);
+  if (f.fsrc) list = list.filter(b => (b.source || 'direct') === f.fsrc);
+  if (f.dfrom) list = list.filter(b => (b.check_in || '') >= f.dfrom);
+  if (f.dto) list = list.filter(b => (b.check_in || '') <= f.dto);
+  if (f.q) list = list.filter(b =>
+    (b.booking_num || '').toLowerCase().includes(f.q) ||
+    (b.guest_name || '').toLowerCase().includes(f.q) ||
+    (b.guest_email || '').toLowerCase().includes(f.q) ||
+    (b.hotel_name || '').toLowerCase().includes(f.q)
   );
-  renderBookingsTable(list);
+  return list;
+}
+
+function applyBookingFilters() {
+  renderBookingsTable(filterBookingList());
+}
+
+function resetBookingFilters() {
+  ['bk-search','bk-fstatus','bk-fsource','bk-dfrom','bk-dto'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  applyBookingFilters();
 }
 
 function renderBookingsTable(bookings) {
@@ -640,18 +671,7 @@ function renderBookingsTable(bookings) {
 
 // ── ЭКСПОРТ CSV (для бухгалтерии ИП) ──
 function exportBookingsCSV() {
-  const q = (document.getElementById('bk-search')?.value || '').toLowerCase().trim();
-  const fs = document.getElementById('bk-fstatus')?.value || '';
-  const fsrc = document.getElementById('bk-fsource')?.value || '';
-  let list = allBookings;
-  if (fs) list = list.filter(b => b.status === fs);
-  if (fsrc) list = list.filter(b => (b.source || 'direct') === fsrc);
-  if (q) list = list.filter(b =>
-    (b.booking_num||'').toLowerCase().includes(q) ||
-    (b.guest_name||'').toLowerCase().includes(q) ||
-    (b.guest_email||'').toLowerCase().includes(q) ||
-    (b.hotel_name||'').toLowerCase().includes(q));
-
+  const list = filterBookingList();
   const headers = ['Номер брони','Источник','Гость','Email','Телефон','Отель','Номер','Заезд','Выезд','Ночей','Гостей','Сумма BYN','Статус','Создано'];
   const rows = list.map(b => [
     b.booking_num, (b.source==='ostrovok'?'Островок':'Прямая'),
