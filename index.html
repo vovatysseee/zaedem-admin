@@ -224,6 +224,11 @@ tr:hover td{background:var(--surf2)}
             <div class="stat-val c-lime" id="s-revenue">—</div>
             <div class="stat-sub">общая сумма броней</div>
           </div>
+          <div class="stat">
+            <div class="stat-label">Брони Островок</div>
+            <div class="stat-val c-amber" id="s-ostrovok">—</div>
+            <div class="stat-sub">подтверждённых · сумма к расчёту</div>
+          </div>
         </div>
 
         <div class="section">
@@ -248,6 +253,23 @@ tr:hover td{background:var(--surf2)}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Все брони</span> <span class="sec-cnt" id="bookings-cnt"></span></div>
+            <button class="sec-btn" onclick="exportBookingsCSV()">⬇ Экспорт CSV</button>
+          </div>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--faint)">
+            <input id="bk-search" oninput="applyBookingFilters()" placeholder="Поиск: номер ZB, имя, email, отель…"
+              style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
+            <select id="bk-fstatus" onchange="applyBookingFilters()" style="padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
+              <option value="">Все статусы</option>
+              <option value="confirmed">Подтверждённые</option>
+              <option value="pending">В обработке</option>
+              <option value="cancelled">Отменённые</option>
+              <option value="completed">Завершённые</option>
+            </select>
+            <select id="bk-fsource" onchange="applyBookingFilters()" style="padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
+              <option value="">Все источники</option>
+              <option value="ostrovok">Островок</option>
+              <option value="direct">Прямые</option>
+            </select>
           </div>
           <div id="bookings-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -370,7 +392,7 @@ function showPage(name, el) {
   if (el) el.classList.add('on');
   const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',tourists:'Туристы'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
-  if (name === 'bookings') renderBookingsTable(allBookings);
+  if (name === 'bookings') applyBookingFilters();
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
   if (name === 'tourists') renderTouristsTable(allUsers);
   if (name === 'hotels') renderHotelsTable(allHotels);
@@ -527,7 +549,13 @@ function renderDashboard() {
   document.getElementById('s-apps').textContent = allApps.filter(a => a.status === 'new').length;
   document.getElementById('s-tourists').textContent = allUsers.filter(u => u.role === 'tourist').length;
   const rev = allBookings.reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
-  document.getElementById('s-revenue').textContent = '$' + rev.toFixed(0);
+  document.getElementById('s-revenue').textContent = Math.round(rev).toLocaleString('ru') + ' BYN';
+
+  // Сводка по броням Островка (для контроля расчётов / кредитного лимита)
+  const ostBookings = allBookings.filter(b => b.source === 'ostrovok' && b.status === 'confirmed');
+  const ostSum = ostBookings.reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
+  const ostEl = document.getElementById('s-ostrovok');
+  if (ostEl) ostEl.textContent = ostBookings.length + ' · ' + Math.round(ostSum).toLocaleString('ru') + ' BYN';
 
   // Last 5 bookings
   const last5 = allBookings.slice(0, 5);
@@ -540,7 +568,7 @@ function renderDashboard() {
           <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
           <td>${b.hotel_name||'—'}</td>
           <td style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
-          <td><b>$${parseFloat(b.total_price||0).toFixed(0)}</b></td>
+          <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
           <td>${statusBadge(b.status)}</td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней пока нет</div>';
@@ -565,27 +593,84 @@ function renderDashboard() {
 }
 
 // ── BOOKINGS TABLE ──
+function sourceBadge(src) {
+  if (src === 'ostrovok') return '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Островок</span>';
+  return '<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Прямая</span>';
+}
+
+function applyBookingFilters() {
+  const q = (document.getElementById('bk-search')?.value || '').toLowerCase().trim();
+  const fs = document.getElementById('bk-fstatus')?.value || '';
+  const fsrc = document.getElementById('bk-fsource')?.value || '';
+  let list = allBookings;
+  if (fs) list = list.filter(b => b.status === fs);
+  if (fsrc) list = list.filter(b => (b.source || 'direct') === fsrc);
+  if (q) list = list.filter(b =>
+    (b.booking_num || '').toLowerCase().includes(q) ||
+    (b.guest_name || '').toLowerCase().includes(q) ||
+    (b.guest_email || '').toLowerCase().includes(q) ||
+    (b.hotel_name || '').toLowerCase().includes(q)
+  );
+  renderBookingsTable(list);
+}
+
 function renderBookingsTable(bookings) {
   document.getElementById('bookings-cnt').textContent = `(${bookings.length})`;
   document.getElementById('bookings-table').innerHTML = bookings.length ? `
     <table>
-      <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
+      <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
       ${bookings.map(b => `
         <tr>
           <td><b>${b.booking_num}</b></td>
+          <td>${sourceBadge(b.source)}</td>
           <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
           <td>${b.hotel_name||'—'}</td>
           <td>${fmtDate(b.check_in)}</td>
           <td>${fmtDate(b.check_out)}</td>
           <td>${b.nights||1}</td>
-          <td><b>$${parseFloat(b.total_price||0).toFixed(0)}</b></td>
+          <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
           <td>${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button>
             ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${b.booking_num}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Броней пока нет</div>';
+    </table>` : '<div class="empty">Броней не найдено</div>';
+}
+
+// ── ЭКСПОРТ CSV (для бухгалтерии ИП) ──
+function exportBookingsCSV() {
+  const q = (document.getElementById('bk-search')?.value || '').toLowerCase().trim();
+  const fs = document.getElementById('bk-fstatus')?.value || '';
+  const fsrc = document.getElementById('bk-fsource')?.value || '';
+  let list = allBookings;
+  if (fs) list = list.filter(b => b.status === fs);
+  if (fsrc) list = list.filter(b => (b.source || 'direct') === fsrc);
+  if (q) list = list.filter(b =>
+    (b.booking_num||'').toLowerCase().includes(q) ||
+    (b.guest_name||'').toLowerCase().includes(q) ||
+    (b.guest_email||'').toLowerCase().includes(q) ||
+    (b.hotel_name||'').toLowerCase().includes(q));
+
+  const headers = ['Номер брони','Источник','Гость','Email','Телефон','Отель','Номер','Заезд','Выезд','Ночей','Гостей','Сумма BYN','Статус','Создано'];
+  const rows = list.map(b => [
+    b.booking_num, (b.source==='ostrovok'?'Островок':'Прямая'),
+    b.guest_name||'', b.guest_email||'', b.guest_phone||'',
+    b.hotel_name||'', b.room_name||'',
+    b.check_in||'', b.check_out||'', b.nights||'', b.guests_count||'',
+    parseFloat(b.total_price||0).toFixed(2), b.status||'', (b.created_at||'').slice(0,10)
+  ]);
+  const csv = [headers, ...rows].map(r =>
+    r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')
+  ).join('\n');
+  const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'zaedem-bookings-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ Выгружено броней: ' + list.length);
 }
 
 // ── APPS TABLE ──
@@ -703,7 +788,7 @@ function showBooking(id) {
     <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
     <div class="detail-row"><b>Ночей:</b> ${b.nights||1}</div>
     <div class="detail-row"><b>Гостей:</b> ${b.guests_count||1}</div>
-    <div class="detail-row"><b>Сумма:</b> $${parseFloat(b.total_price||0).toFixed(2)} ${b.currency||'USD'}</div>
+    <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${b.currency||'BYN'}</div>
     <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
   `;
@@ -720,7 +805,7 @@ async function adminCancelBooking(num) {
     headers: authHeaders(),
     body: JSON.stringify({status:'cancelled'})
   });
-  if(r.ok){ showToast('Бронь отменена'); await loadBookings(); renderBookingsTable(allBookings); }
+  if(r.ok){ showToast('Бронь отменена'); await loadBookings(); applyBookingFilters(); }
   else showToast('Ошибка', true);
 }
 
