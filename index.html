@@ -471,10 +471,19 @@ async function setHotelStatus(id, status){
     else showToast('Ошибка', true);
   }catch(e){ showToast('Ошибка: '+e.message, true); }
 }
-function adminEditCalendar(id){
-  // Управление объектом внутри админки (без входа в кабинет). Полное управление календарём
-  // по дням — через «войти как владелец» (нужен impersonate-роут в users.js, следующий шаг).
-  editHotel(id);
+async function adminEditCalendar(id){
+  // Админ входит в кабинет объекта КАК ВЛАДЕЛЕЦ (impersonate) — полный доступ, без пароля
+  try{
+    showToast('Входим в кабинет объекта…');
+    const r=await fetch(`${API}/api/users/impersonate/${id}`,{method:'POST',headers:authHeaders()});
+    const d=await r.json();
+    if(r.ok && d.token){
+      window.open('https://hotel.zaedem.by/?token='+encodeURIComponent(d.token),'_blank');
+    } else {
+      showToast(d.error||'Не удалось войти (нет владельца?)', true);
+      editHotel(id); // запасной вариант — правка в админке
+    }
+  }catch(e){ showToast('Ошибка: '+e.message, true); editHotel(id); }
 }
 
 async function toggleHotel(id, activate) {
