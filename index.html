@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Заедем.by — Админ-панель</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230F2D1D'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='36' font-weight='900' fill='%23c9f135' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
@@ -447,16 +448,32 @@ function renderHotelsTable(hotels) {
           <td>${h.stars ? '★'.repeat(h.stars) : '—'}</td>
           <td>${h.rating||'—'}</td>
           <td style="font-size:11px;color:var(--muted)">${h.ostrovok_hid||'—'}</td>
-          <td>${h.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-gray">Не активен</span>'}</td>
-          <td style="display:flex;gap:4px;flex-wrap:wrap">
-            <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️ Редактировать</button>
-            <button class="act-btn" onclick="toggleHotel('${h.id}',${!h.is_active})"
-              style="background:${h.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${h.is_active?'var(--red)':'var(--green)'}">
-              ${h.is_active ? '⏸ Скрыть' : '▶ Активировать'}
-            </button>
+          <td>${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
+          <td style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
+            <select onchange="setHotelStatus('${h.id}',this.value)" style="padding:6px 8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit;background:#fff">
+              ${['application','moderation','approved','active','paused'].map(s=>`<option value="${s}"${(h.status||(h.is_active?'active':'paused'))===s?' selected':''}>${objStatusLabel(s)}</option>`).join('')}
+            </select>
+            <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️</button>
+            <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">📅 Календарь</button>
           </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Отелей пока нет</div>';
+}
+function objStatusLabel(s){ return {application:'Заявка',moderation:'На модерации',approved:'Одобрен',active:'Активен',paused:'На паузе'}[s]||s; }
+function objStatusBadge(s){
+  var c={application:'badge-gray',moderation:'badge-amber',approved:'badge-blue',active:'badge-green',paused:'badge-gray'}[s]||'badge-gray';
+  return '<span class="badge '+c+'">'+objStatusLabel(s)+'</span>';
+}
+async function setHotelStatus(id, status){
+  try{
+    const r=await fetch(`${API}/api/hotels/${id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status:status,is_active:(status==='active')})});
+    if(r.ok){ showToast('✓ Статус: '+objStatusLabel(status)); await loadHotels(); }
+    else showToast('Ошибка', true);
+  }catch(e){ showToast('Ошибка: '+e.message, true); }
+}
+function adminEditCalendar(id){
+  // Открываем объект в кабинете отельера (админ видит его календарь и всё управление)
+  window.open('https://hotel.zaedem.by/?admin_hotel='+encodeURIComponent(id), '_blank');
 }
 
 async function toggleHotel(id, activate) {
