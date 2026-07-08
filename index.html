@@ -167,7 +167,7 @@ tr:hover td{background:var(--surf2)}
   <!-- SIDEBAR -->
   <div class="sb">
     <div class="sb-logo">
-      <div class="sb-logo-main">Заедем<em>.by</em></div>
+      <div class="sb-logo-main"><a href="https://zaedem.by" style="color:inherit;text-decoration:none;cursor:pointer">Заедем<em>.by</em></a></div>
       <div class="sb-logo-sub">Панель администратора</div>
     </div>
     <div class="sb-admin">
@@ -398,10 +398,14 @@ if (sessionStorage.getItem('admin_auth')) {
 function showPage(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
-  document.getElementById('page-' + name).classList.add('on');
+  var pg = document.getElementById('page-' + name);
+  if (!pg) { name='dashboard'; pg=document.getElementById('page-dashboard'); }
+  pg.classList.add('on');
   if (el) el.classList.add('on');
+  else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
   const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',tourists:'Туристы'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
+  try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   if (name === 'bookings') applyBookingFilters();
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
   if (name === 'tourists') renderTouristsTable(allUsers);
@@ -410,6 +414,13 @@ function showPage(name, el) {
 
 // ── LOAD ALL ──
 async function loadAll() {
+  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
+  renderDashboard();
+  // восстановить открытую страницу (F5 не сбрасывает)
+  var sp=(location.hash||'').replace('#','')||sessionStorage.getItem('adm_page')||'dashboard';
+  showPage(sp);
+}
+async function _loadAllOld() {
   await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
   renderDashboard();
 }
