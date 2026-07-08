@@ -454,7 +454,7 @@ function renderHotelsTable(hotels) {
               ${['application','moderation','approved','active','paused'].map(s=>`<option value="${s}"${(h.status||(h.is_active?'active':'paused'))===s?' selected':''}>${objStatusLabel(s)}</option>`).join('')}
             </select>
             <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️</button>
-            <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">📅 Календарь</button>
+            <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">⚙️ Управление</button>
           </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Отелей пока нет</div>';
@@ -472,8 +472,9 @@ async function setHotelStatus(id, status){
   }catch(e){ showToast('Ошибка: '+e.message, true); }
 }
 function adminEditCalendar(id){
-  // Открываем объект в кабинете отельера (админ видит его календарь и всё управление)
-  window.open('https://hotel.zaedem.by/?admin_hotel='+encodeURIComponent(id), '_blank');
+  // Управление объектом внутри админки (без входа в кабинет). Полное управление календарём
+  // по дням — через «войти как владелец» (нужен impersonate-роут в users.js, следующий шаг).
+  editHotel(id);
 }
 
 async function toggleHotel(id, activate) {
