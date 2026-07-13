@@ -302,7 +302,11 @@ tr:hover td{background:var(--surf2)}
       <div class="page" id="page-hotels">
         <div class="section">
           <div class="sec-head">
-            <div><span class="sec-title">Отели</span></div>
+            <div><span class="sec-title">Объекты</span></div>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px">
+            <button id="htab-direct" class="htab htab-on" onclick="switchHotelTab('direct')" style="padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Мои объекты</button>
+            <button id="htab-ostrovok" class="htab" onclick="switchHotelTab('ostrovok')" style="padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Каталог Островка</button>
           </div>
           <div id="hotels-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -426,15 +430,27 @@ async function _loadAllOld() {
 }
 
 
+let currentHotelSource = 'direct';   // по умолчанию — Мои объекты
 async function loadHotels() {
   try {
-    const r = await fetch(`${API}/api/hotels?limit=200&is_active=all`, { headers: authHeaders() });
+    // source=direct → твои объекты; source=ostrovok → справочник (только просмотр)
+    const r = await fetch(`${API}/api/hotels?limit=200&is_active=all&source=${currentHotelSource}`, { headers: authHeaders() });
     const d = await r.json();
     allHotels = d.hotels || [];
     const cnt = document.getElementById('nb-hotels');
     if(cnt) cnt.textContent = allHotels.length;
     renderHotelsTable(allHotels);
   } catch(e) { allHotels = []; }
+}
+function switchHotelTab(src) {
+  currentHotelSource = src;
+  const bd = document.getElementById('htab-direct'), bo = document.getElementById('htab-ostrovok');
+  const on = 'padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer';
+  const off = 'padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer';
+  if(bd) bd.style.cssText = (src==='direct') ? on : off;
+  if(bo) bo.style.cssText = (src==='ostrovok') ? on : off;
+  document.getElementById('hotels-table').innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  loadHotels();
 }
 
 function filterHotels(val) {
@@ -461,11 +477,16 @@ function renderHotelsTable(hotels) {
           <td style="font-size:11px;color:var(--muted)">${h.ostrovok_hid||'—'}</td>
           <td>${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
           <td style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
-            <select onchange="setHotelStatus('${h.id}',this.value)" style="padding:6px 8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit;background:#fff">
-              ${['application','moderation','approved','active','paused'].map(s=>`<option value="${s}"${(h.status||(h.is_active?'active':'paused'))===s?' selected':''}>${objStatusLabel(s)}</option>`).join('')}
-            </select>
-            <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️</button>
-            <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">⚙️ Управление</button>
+            ${currentHotelSource==='ostrovok' ? `
+              <span style="font-size:11px;color:var(--muted)">справочник</span>
+              <button class="act-btn" onclick="setHotelStatus('${h.id}','${h.is_active?'paused':'active'}')" style="background:${h.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${h.is_active?'#dc2626':'var(--green)'}">${h.is_active?'Скрыть из поиска':'Показать'}</button>
+            ` : `
+              <select onchange="setHotelStatus('${h.id}',this.value)" style="padding:6px 8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit;background:#fff">
+                ${['application','moderation','approved','active','paused'].map(s=>`<option value="${s}"${(h.status||(h.is_active?'active':'paused'))===s?' selected':''}>${objStatusLabel(s)}</option>`).join('')}
+              </select>
+              <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️</button>
+              <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">⚙️ Управление</button>
+            `}
           </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Отелей пока нет</div>';
