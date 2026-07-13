@@ -428,7 +428,7 @@ async function _loadAllOld() {
 
 async function loadHotels() {
   try {
-    const r = await fetch(`${API}/api/hotels?limit=200&is_active=all`);
+    const r = await fetch(`${API}/api/hotels?limit=200&is_active=all`, { headers: authHeaders() });
     const d = await r.json();
     allHotels = d.hotels || [];
     const cnt = document.getElementById('nb-hotels');
@@ -564,7 +564,7 @@ async function saveHotel(id) {
 
 async function loadBookings() {
   try {
-    const r = await fetch(`${API}/api/bookings?limit=100`);
+    const r = await fetch(`${API}/api/bookings?limit=100`, { headers: authHeaders() });
     const d = await r.json();
     allBookings = d.bookings || [];
     document.getElementById('nb-bookings').textContent = allBookings.filter(b => b.status === 'confirmed').length;
@@ -573,7 +573,7 @@ async function loadBookings() {
 
 async function loadApps() {
   try {
-    const r = await fetch(`${API}/api/applications`);
+    const r = await fetch(`${API}/api/applications`, { headers: authHeaders() });
     const d = await r.json();
     allApps = d.applications || [];
     const newCount = allApps.filter(a => a.status === 'new').length;
@@ -583,7 +583,7 @@ async function loadApps() {
 
 async function loadUsers() {
   try {
-    const r = await fetch(`${API}/api/users`);
+    const r = await fetch(`${API}/api/users`, { headers: authHeaders() });
     const d = await r.json();
     allUsers = d.users || [];
     document.getElementById('nb-hotels').textContent = allUsers.filter(u => u.role === 'hotelowner').length;
