@@ -184,6 +184,8 @@ tr:hover td{background:var(--surf2)}
       <div class="ni" onclick="showPage('applications',this)"><span class="ni-ico">📨</span> Заявки <span class="nb" id="nb-apps">0</span></div>
       <div class="sb-sec">Партнёры</div>
       <div class="ni" onclick="showPage('hotels',this)"><span class="ni-ico">🏨</span> Отели <span class="nb lime" id="nb-hotels">0</span></div>
+      <div class="ni" onclick="showPage('invite',this)"><span class="ni-ico">➕</span> Пригласить объект</div>
+      <div class="ni" onclick="showPage('moderation',this)"><span class="ni-ico">🕵️</span> На модерации <span class="nb" id="nb-moder">0</span></div>
       <div class="sb-sec">Пользователи</div>
       <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Туристы</div>
     </div>
@@ -312,6 +314,44 @@ tr:hover td{background:var(--surf2)}
         </div>
       </div>
 
+      <!-- INVITE (создание черновика → магическая ссылка) -->
+      <div class="page" id="page-invite">
+        <div class="section">
+          <div class="sec-head"><div><span class="sec-title">Пригласить объект</span></div></div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:18px;line-height:1.6">Создайте черновик объекта (с устного согласия хозяина) → получите ссылку-приглашение. Хозяин откроет её, проверит своё объявление, подтвердит согласие — и объект уйдёт к вам на модерацию.</p>
+          <div style="max-width:560px;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px">
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Название объекта *</label><input id="inv-name" placeholder="Уютная квартира на Немиге" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Адрес</label><input id="inv-addr" placeholder="Минск, ул. Немига, 5" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Тип</label><select id="inv-cat" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;background:#fff"><option value="apart">Апартаменты / квартира</option><option value="guest">Усадьба / дом</option><option value="hotel">Отель / гостиница</option></select></div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Описание</label><textarea id="inv-desc" placeholder="Краткое описание объекта" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:80px;resize:vertical"></textarea></div>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+              <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Телефон хозяина</label><input id="inv-phone" placeholder="+375 __ ___-__-__" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
+              <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Email хозяина</label><input id="inv-email" placeholder="host@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
+            </div>
+            <div class="fg" style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Ссылка на объявление (откуда переносим)</label><input id="inv-url" placeholder="https://... (для истории)" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
+            <button onclick="createInvite()" id="inv-btn" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Создать приглашение</button>
+          </div>
+          <div id="inv-result" style="display:none;max-width:560px;margin-top:16px;background:rgba(26,92,56,.06);border:1.5px solid var(--green);border-radius:14px;padding:20px">
+            <div style="font-weight:700;color:var(--green);margin-bottom:10px">✅ Ссылка-приглашение готова</div>
+            <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Отправьте её хозяину (Viber / Telegram / SMS):</div>
+            <div style="display:flex;gap:8px;align-items:center">
+              <input id="inv-link" readonly style="flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)">
+              <button onclick="copyInvite()" style="background:var(--green);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Копировать</button>
+            </div>
+            <button onclick="document.getElementById('inv-result').style.display='none';document.getElementById('inv-name').value='';document.getElementById('inv-addr').value='';document.getElementById('inv-desc').value='';document.getElementById('inv-phone').value='';document.getElementById('inv-email').value='';document.getElementById('inv-url').value='';" style="margin-top:12px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit">Создать ещё одно</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- MODERATION -->
+      <div class="page" id="page-moderation">
+        <div class="section">
+          <div class="sec-head"><div><span class="sec-title">На модерации</span></div></div>
+          <p style="color:var(--muted);font-size:13px;margin-bottom:18px">Объекты, которые хозяева подтвердили. Проверьте (юр.проверки) и одобрите — тогда объект появится на сайте.</p>
+          <div id="moder-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
       <!-- TOURISTS -->
       <div class="page" id="page-tourists">
         <div class="section">
@@ -407,13 +447,81 @@ function showPage(name, el) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',tourists:'Туристы'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',moderation:'На модерации',tourists:'Туристы'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   if (name === 'bookings') applyBookingFilters();
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
   if (name === 'tourists') renderTouristsTable(allUsers);
   if (name === 'hotels') renderHotelsTable(allHotels);
+  if (name === 'moderation') loadModeration();
+}
+
+// ── ПРИГЛАШЕНИЯ (магическая ссылка) ──
+const CLAIM_BASE = 'https://claim.zaedem.by';
+async function createInvite(){
+  const name=document.getElementById('inv-name').value.trim();
+  if(!name){ alert('Укажите название объекта'); return; }
+  const btn=document.getElementById('inv-btn'); btn.disabled=true; btn.textContent='Создаём…';
+  try{
+    const r=await fetch(`${API}/api/hotels/draft`,{method:'POST',headers:authHeaders(),body:JSON.stringify({
+      name_ru:name,
+      address:document.getElementById('inv-addr').value.trim(),
+      category:document.getElementById('inv-cat').value,
+      description_ru:document.getElementById('inv-desc').value.trim(),
+      phone:document.getElementById('inv-phone').value.trim(),
+      email:document.getElementById('inv-email').value.trim(),
+      source_listing_url:document.getElementById('inv-url').value.trim()
+    })});
+    const d=await r.json();
+    btn.disabled=false; btn.textContent='Создать приглашение';
+    if(d.ok&&d.token){
+      const link=CLAIM_BASE+'/?t='+encodeURIComponent(d.token);
+      document.getElementById('inv-link').value=link;
+      document.getElementById('inv-result').style.display='block';
+    } else { alert(d.error||'Не удалось создать'); }
+  }catch(e){ btn.disabled=false; btn.textContent='Создать приглашение'; alert('Сервис недоступен'); }
+}
+function copyInvite(){
+  const inp=document.getElementById('inv-link');
+  inp.select(); 
+  try{ navigator.clipboard.writeText(inp.value); }catch(e){ document.execCommand('copy'); }
+  event.target.textContent='Скопировано!';
+  setTimeout(()=>{event.target.textContent='Копировать';},1500);
+}
+// ── МОДЕРАЦИЯ (объекты, подтверждённые хозяевами) ──
+let moderList=[];
+async function loadModeration(){
+  const box=document.getElementById('moder-table');
+  try{
+    const r=await fetch(`${API}/api/hotels?limit=200&is_active=all&source=direct`,{headers:authHeaders()});
+    const d=await r.json();
+    moderList=(d.hotels||[]).filter(h=>h.status==='moderation');
+    const nb=document.getElementById('nb-moder'); if(nb)nb.textContent=moderList.length;
+    if(!moderList.length){ box.innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">Нет объектов на модерации</p>'; return; }
+    box.innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted)"><th style="padding:10px">Объект</th><th>Контакты</th><th>Подтверждён</th><th>Действия</th></tr></thead><tbody>'+
+      moderList.map(h=>`<tr style="border-top:1px solid var(--border)">
+        <td style="padding:12px 10px"><b>${(h.name_ru||'').replace(/</g,'&lt;')}</b><br><span style="font-size:12px;color:var(--muted)">${(h.address||'').replace(/</g,'&lt;')}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${(h.phone||'')} ${(h.email||'')}</td>
+        <td style="font-size:12px;color:var(--muted)">${h.claimed_at?new Date(h.claimed_at).toLocaleDateString('ru'):'—'}</td>
+        <td style="white-space:nowrap"><button onclick="approveModeration('${h.id}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${h.id}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
+      </tr>`).join('')+'</tbody></table>';
+  }catch(e){ box.innerHTML='<p style="color:#dc2626;padding:20px">Ошибка загрузки</p>'; }
+}
+async function approveModeration(id){
+  if(!confirm('Одобрить объект? Он появится на сайте.'))return;
+  try{
+    const r=await fetch(`${API}/api/hotels/${id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status:'active',is_active:true})});
+    if(r.ok){ loadModeration(); if(typeof loadHotels==='function')loadHotels(); }
+    else alert('Не удалось одобрить');
+  }catch(e){ alert('Сервис недоступен'); }
+}
+async function rejectModeration(id){
+  if(!confirm('Отклонить объект? Он вернётся в скрытый статус (не на сайте).'))return;
+  try{
+    const r=await fetch(`${API}/api/hotels/${id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status:'paused',is_active:false})});
+    if(r.ok) loadModeration(); else alert('Не удалось');
+  }catch(e){ alert('Сервис недоступен'); }
 }
 
 // ── LOAD ALL ──
