@@ -199,6 +199,13 @@ tr:hover td{background:var(--surf2)}
     <div class="topbar">
       <div class="tb-title" id="pageTitle">Дашборд</div>
       <div class="tb-r">
+        <div style="position:relative;display:inline-block">
+          <button class="tb-btn" onclick="toggleBell()" style="position:relative" title="Уведомления">🔔<span id="bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;padding:0 4px;line-height:16px;text-align:center"></span></button>
+          <div id="bell-drop" style="display:none;position:absolute;right:0;top:42px;width:320px;max-height:420px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.15);z-index:200">
+            <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">Уведомления<span onclick="markBellRead()" style="font-size:11px;color:var(--green);cursor:pointer;font-weight:600">Прочитать все</span></div>
+            <div id="bell-list"></div>
+          </div>
+        </div>
         <button class="tb-btn" onclick="loadAll()">↻ Обновить</button>
       </div>
     </div>
@@ -528,10 +535,75 @@ async function rejectModeration(id){
 async function loadAll() {
   await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
   renderDashboard();
+  try{ bellCollect(); }catch(e){}
   // восстановить открытую страницу (F5 не сбрасывает)
   var sp=(location.hash||'').replace('#','')||sessionStorage.getItem('adm_page')||'dashboard';
   showPage(sp);
 }
+
+// ── КОЛОКОЛЬЧИК: события (брони, отмены, заявки, модерация) ──
+function bellSeenTs(){ return parseInt(localStorage.getItem('adm_bell_seen')||'0',10)||0; }
+function bellCollect(){
+  var ev=[];
+  (allBookings||[]).forEach(function(b){
+    var t=new Date(b.created_at||0).getTime();
+    if(b.status==='cancelled'||b.status==='canceled'){
+      ev.push({t:new Date(b.cancelled_at||b.updated_at||b.created_at||0).getTime(),ic:'❌',txt:'Отмена брони — '+(b.hotel_name||b.hotel_id||''),page:'bookings'});
+    } else {
+      ev.push({t:t,ic:'🆕',txt:'Новая бронь — '+(b.hotel_name||b.hotel_id||''),page:'bookings'});
+    }
+  });
+  (allApps||[]).forEach(function(a){
+    ev.push({t:new Date(a.created_at||0).getTime(),ic:'📩',txt:'Новая заявка — '+(a.hotel_name||''),page:'applications'});
+  });
+  (allHotels||[]).forEach(function(h){
+    if(h.status==='moderation') ev.push({t:new Date(h.claimed_at||h.updated_at||0).getTime(),ic:'🕵️',txt:'На модерацию — '+(h.name_ru||''),page:'moderation'});
+  });
+  ev.sort(function(a,b){return b.t-a.t;});
+  window._bellEvents=ev.slice(0,30);
+  var seen=bellSeenTs();
+  var unread=window._bellEvents.filter(function(e){return e.t>seen;}).length;
+  var badge=document.getElementById('bell-badge');
+  if(badge){ if(unread>0){ badge.style.display='block'; badge.textContent=unread>99?'99+':unread; } else badge.style.display='none'; }
+  var list=document.getElementById('bell-list');
+  if(list){
+    if(!window._bellEvents.length){ list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Пока событий нет</div>'; return; }
+    list.innerHTML=window._bellEvents.map(function(e){
+      var isNew=e.t>seen;
+      var when=e.t?new Date(e.t).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+      return '<div onclick="bellGo(\''+e.page+'\')" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;'+(isNew?'background:rgba(26,92,56,.05)':'')+'">'
+        +'<span style="font-size:16px">'+e.ic+'</span>'
+        +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--ink);line-height:1.4">'+String(e.txt).replace(/</g,'&lt;')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+when+'</div></div>'
+        +(isNew?'<span style="width:7px;height:7px;border-radius:50%;background:#dc2626;flex-shrink:0;margin-top:4px"></span>':'')
+        +'</div>';
+    }).join('');
+  }
+}
+function toggleBell(){
+  var d=document.getElementById('bell-drop');
+  if(!d)return;
+  var show=(d.style.display==='none'||!d.style.display);
+  d.style.display=show?'block':'none';
+  if(show){ bellCollect(); }
+}
+function markBellRead(){
+  var ev=window._bellEvents||[];
+  var maxT=ev.length?Math.max.apply(null,ev.map(function(e){return e.t;})):Date.now();
+  localStorage.setItem('adm_bell_seen',String(maxT));
+  bellCollect();
+}
+function bellGo(page){
+  markBellRead();
+  document.getElementById('bell-drop').style.display='none';
+  showPage(page);
+}
+// закрытие по клику вне
+document.addEventListener('click',function(e){
+  var d=document.getElementById('bell-drop');
+  if(d&&d.style.display==='block'&&!e.target.closest('#bell-drop')&&!e.target.closest('[onclick="toggleBell()"]')){ d.style.display='none'; }
+});
+// автообновление раз в 30 сек — колокол сам ловит новое
+setInterval(function(){ if(document.visibilityState==='visible'){ try{ loadBookings().then(function(){loadApps().then(function(){loadHotels().then(function(){bellCollect();});});}); }catch(e){} } }, 30000);
 async function _loadAllOld() {
   await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
   renderDashboard();
