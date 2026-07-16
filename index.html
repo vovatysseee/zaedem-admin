@@ -719,7 +719,6 @@ async function adminEditCalendar(id){
 }
 
 async function toggleHotel(id, activate) {
-  const token = currentUser?.token;
   const r = await fetch(`${API}/api/hotels/${id}`, {
     method: 'PATCH',
     headers: authHeaders(),
@@ -756,7 +755,6 @@ function editHotel(id) {
 }
 
 async function saveHotel(id) {
-  const token = currentUser?.token;
   const body = {
     name_ru: document.getElementById('eh-name').value,
     address: document.getElementById('eh-addr').value,
@@ -1078,7 +1076,6 @@ function showBooking(id) {
 // ── ADMIN ACTIONS ──
 async function adminCancelBooking(num) {
   if(!confirm('Отменить бронь '+num+'?')) return;
-  const token = currentUser?.token;
   const r = await fetch(`${API}/api/bookings/${num}/status`, {
     method: 'PATCH',
     headers: authHeaders(),
@@ -1089,7 +1086,6 @@ async function adminCancelBooking(num) {
 }
 
 async function toggleUser(id, activate) {
-  const token = currentUser?.token;
   const r = await fetch(`${API}/api/users/${id}`, {
     method: 'PATCH',
     headers: authHeaders(),
