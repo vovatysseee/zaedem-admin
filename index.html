@@ -519,7 +519,7 @@ async function approveModeration(id){
   if(!confirm('Одобрить объект? Он появится на сайте.'))return;
   try{
     const r=await fetch(`${API}/api/hotels/${id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status:'active',is_active:true})});
-    if(r.ok){ loadModeration(); if(typeof loadHotels==='function')loadHotels(); }
+    if(r.ok){ loadModeration(); if(typeof loadHotels==='function')loadHotels(); bellLoadModer().then(function(){try{bellCollect();}catch(e){}}); }
     else alert('Не удалось одобрить');
   }catch(e){ alert('Сервис недоступен'); }
 }
@@ -527,13 +527,13 @@ async function rejectModeration(id){
   if(!confirm('Отклонить объект? Он вернётся в скрытый статус (не на сайте).'))return;
   try{
     const r=await fetch(`${API}/api/hotels/${id}`,{method:'PATCH',headers:authHeaders(),body:JSON.stringify({status:'paused',is_active:false})});
-    if(r.ok) loadModeration(); else alert('Не удалось');
+    if(r.ok){ loadModeration(); bellLoadModer().then(function(){try{bellCollect();}catch(e){}}); } else alert('Не удалось');
   }catch(e){ alert('Сервис недоступен'); }
 }
 
 // ── LOAD ALL ──
 async function loadAll() {
-  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
+  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels(), bellLoadModer()]);
   renderDashboard();
   try{ bellCollect(); }catch(e){}
   // восстановить открытую страницу (F5 не сбрасывает)
@@ -543,6 +543,20 @@ async function loadAll() {
 
 // ── КОЛОКОЛЬЧИК: события (брони, отмены, заявки, модерация) ──
 function bellSeenTs(){ return parseInt(localStorage.getItem('adm_bell_seen')||'0',10)||0; }
+// Источник модерации для колокола — ОТДЕЛЬНЫЙ от вкладки «Отели».
+// allHotels зависит от currentHotelSource: на вкладке «Каталог Островка»
+// в нём нет объектов status='moderation' → колокол их терял. Тянем всегда
+// source=direct и фильтруем moderation, независимо от открытой вкладки.
+// Заодно чиним счётчик nb-moder — теперь он верен с загрузки, а не после захода на страницу.
+let bellModer = [];
+async function bellLoadModer(){
+  try{
+    const r=await fetch(`${API}/api/hotels?limit=200&is_active=all&source=direct`,{headers:authHeaders()});
+    const d=await r.json();
+    bellModer=(d.hotels||[]).filter(function(h){return h.status==='moderation';});
+    var nb=document.getElementById('nb-moder'); if(nb)nb.textContent=bellModer.length;
+  }catch(e){ /* колокол некритичен — молча */ }
+}
 function bellCollect(){
   var ev=[];
   (allBookings||[]).forEach(function(b){
@@ -556,8 +570,8 @@ function bellCollect(){
   (allApps||[]).forEach(function(a){
     ev.push({t:new Date(a.created_at||0).getTime(),ic:'📩',txt:'Новая заявка — '+(a.hotel_name||''),page:'applications'});
   });
-  (allHotels||[]).forEach(function(h){
-    if(h.status==='moderation') ev.push({t:new Date(h.claimed_at||h.updated_at||0).getTime(),ic:'🕵️',txt:'На модерацию — '+(h.name_ru||''),page:'moderation'});
+  (bellModer||[]).forEach(function(h){
+    ev.push({t:new Date(h.claimed_at||h.updated_at||0).getTime(),ic:'🕵️',txt:'На модерацию — '+(h.name_ru||''),page:'moderation'});
   });
   ev.sort(function(a,b){return b.t-a.t;});
   window._bellEvents=ev.slice(0,30);
@@ -603,7 +617,13 @@ document.addEventListener('click',function(e){
   if(d&&d.style.display==='block'&&!e.target.closest('#bell-drop')&&!e.target.closest('[onclick="toggleBell()"]')){ d.style.display='none'; }
 });
 // автообновление раз в 30 сек — колокол сам ловит новое
-setInterval(function(){ if(document.visibilityState==='visible'){ try{ loadBookings().then(function(){loadApps().then(function(){loadHotels().then(function(){bellCollect();});});}); }catch(e){} } }, 30000);
+setInterval(function(){
+  if(document.visibilityState==='visible'){
+    Promise.all([loadBookings(), loadApps(), loadHotels(), bellLoadModer()])
+      .then(function(){ bellCollect(); })
+      .catch(function(){});
+  }
+}, 30000);
 async function _loadAllOld() {
   await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
   renderDashboard();
