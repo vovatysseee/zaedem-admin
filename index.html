@@ -379,6 +379,7 @@ tr:hover td{background:var(--surf2)}
               <div class="fg"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px">Viber</label><input id="no-viber" placeholder="+375…" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none"></div>
             </div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Правила дома</label><textarea id="no-rules" placeholder="Например: заезд с 14:00, тихий час с 23:00, без вечеринок" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:64px;resize:vertical"></textarea></div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Правила отмены <span style="color:var(--muted);font-weight:400">(покажутся гостю при отмене)</span></label><textarea id="no-cancel" placeholder="Например: бесплатная отмена за 3 дня до заезда; позже — удерживается стоимость 1 ночи" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:64px;resize:vertical"></textarea></div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Заезд с</label><input id="no-cin" value="14:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Выезд до</label><input id="no-cout" value="12:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
@@ -557,6 +558,7 @@ async function createObject(){
       contact_wa:document.getElementById('no-wa').value.trim(),
       contact_viber:document.getElementById('no-viber').value.trim(),
       house_rules:document.getElementById('no-rules').value.trim(),
+      cancel_rules:document.getElementById('no-cancel').value.trim(),
       checkin_time:document.getElementById('no-cin').value.trim(),
       checkout_time:document.getElementById('no-cout').value.trim()
     })});
@@ -564,7 +566,7 @@ async function createObject(){
     btn.disabled=false; btn.textContent='Создать и опубликовать';
     if(d.ok){
       showToast('Объект создан');
-      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules'].forEach(id=>{document.getElementById(id).value='';});
+      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules','no-cancel'].forEach(id=>{document.getElementById(id).value='';});
       if(typeof loadHotels==='function') loadHotels();
     } else { alert(d.error||'Не удалось создать'); }
   }catch(e){ btn.disabled=false; btn.textContent='Создать и опубликовать'; alert('Сервис недоступен'); }
