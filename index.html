@@ -441,6 +441,23 @@ let allHotels = [];
 let currentAppFilter = 'all';
 let adminToken = sessionStorage.getItem('admin_token') || '';
 
+// ═ ЗАЩИТА ОТ XSS ═ Данные заявок, броней и пользователей приходят из ПУБЛИЧНЫХ форм.
+// Раньше они вставлялись в innerHTML как есть: заявка с названием вида
+// <img src=x onerror=...> выполняла чужой код прямо в браузере админа и уводила
+// его токен из sessionStorage. Теперь всё пользовательское проходит через esc().
+function esc(v) {
+  if (v === null || v === undefined) return '';
+  return String(v)
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+// Для значений внутри onclick="fn('...')" — там ломает кавычка и обратный слэш
+function escAttr(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+    .replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, ' ');
+}
+
 function authHeaders() {
   return {'Content-Type':'application/json', 'Authorization':'Bearer '+adminToken};
 }
@@ -798,8 +815,8 @@ function renderHotelsTable(hotels) {
       <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Статус</th><th>Действия</th></tr>
       ${hotels.map(h => `
         <tr>
-          <td><b>${h.name_ru||'—'}</b></td>
-          <td>${h.city_ru||'—'}</td>
+          <td><b>${esc(h.name_ru||'—')}</b></td>
+          <td>${esc(h.city_ru||'—')}</td>
           <td>${h.category||'—'}</td>
           <td>${h.stars ? '★'.repeat(h.stars) : '—'}</td>
           <td>${h.rating||'—'}</td>
@@ -864,17 +881,17 @@ function editHotel(id) {
   document.getElementById('modal-body').innerHTML = `
     <div style="display:grid;gap:10px">
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Название (RU)</label>
-        <input id="eh-name" value="${h.name_ru||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+        <input id="eh-name" value="${esc(h.name_ru||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Адрес</label>
-        <input id="eh-addr" value="${h.address||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+        <input id="eh-addr" value="${esc(h.address||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Телефон</label>
-        <input id="eh-phone" value="${h.phone||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+        <input id="eh-phone" value="${esc(h.phone||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Email</label>
-        <input id="eh-email" value="${h.email||''}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+        <input id="eh-email" value="${esc(h.email||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Ostrovok HID</label>
         <input id="eh-hid" value="${h.ostrovok_hid||''}" placeholder="например: 8473727" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Описание</label>
-        <textarea id="eh-desc" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;resize:vertical">${h.description_ru||''}</textarea></div>
+        <textarea id="eh-desc" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;resize:vertical">${esc(h.description_ru||'')}</textarea></div>
     </div>`;
   const btn = document.getElementById('modal-action');
   btn.style.display = 'block';
@@ -934,7 +951,7 @@ async function loadUsers() {
     const r = await fetch(`${API}/api/users`, { headers: authHeaders() });
     const d = await r.json();
     allUsers = d.users || [];
-    document.getElementById('nb-hotels').textContent = allUsers.filter(u => u.role === 'hotelowner').length;
+    document.getElementById('nb-hotels').textContent = allUsers.filter(u => u.role === 'hotelowner' || u.role === 'hotel_owner').length;
   } catch(e) { allUsers = []; }
 }
 
@@ -959,9 +976,9 @@ function renderDashboard() {
       <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Даты</th><th>Сумма</th><th>Статус</th></tr>
       ${last5.map(b => `
         <tr onclick="showBooking('${b.id}')" style="cursor:pointer">
-          <td><b>${b.booking_num}</b></td>
-          <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
-          <td>${b.hotel_name||'—'}</td>
+          <td><b>${esc(b.booking_num)}</b></td>
+          <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
+          <td>${esc(b.hotel_name||'—')}</td>
           <td style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
           <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
           <td>${statusBadge(b.status)}</td>
@@ -975,12 +992,12 @@ function renderDashboard() {
       <tr><th>Отель</th><th>Город</th><th>Контакт</th><th>Email</th><th>Действие</th></tr>
       ${newApps.map(a => `
         <tr>
-          <td><b>${a.hotel_name}</b></td>
-          <td>${a.city||'—'}</td>
-          <td>${a.contact_name||'—'}</td>
-          <td>${a.email}</td>
+          <td><b>${esc(a.hotel_name)}</b></td>
+          <td>${esc(a.city||'—')}</td>
+          <td>${esc(a.contact_name||'—')}</td>
+          <td>${esc(a.email)}</td>
           <td>
-            <button class="act-btn act-approve" onclick="approveApp('${a.id}','${a.email}','${a.contact_name||''}','${a.hotel_name}')">✓ Одобрить</button>
+            <button class="act-btn act-approve" onclick="approveApp('${a.id}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
             <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗ Отклонить</button>
           </td>
         </tr>`).join('')}
@@ -1038,10 +1055,10 @@ function renderBookingsTable(bookings) {
       <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
       ${bookings.map(b => `
         <tr>
-          <td><b>${b.booking_num}</b></td>
+          <td><b>${esc(b.booking_num)}</b></td>
           <td>${sourceBadge(b.source)}</td>
-          <td>${b.guest_name||'—'}<br><span style="color:var(--muted);font-size:10px">${b.guest_email}</span></td>
-          <td>${b.hotel_name||'—'}</td>
+          <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
+          <td>${esc(b.hotel_name||'—')}</td>
           <td>${fmtDate(b.check_in)}</td>
           <td>${fmtDate(b.check_out)}</td>
           <td>${b.nights||1}</td>
@@ -1049,7 +1066,7 @@ function renderBookingsTable(bookings) {
           <td>${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button>
-            ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${b.booking_num}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
+            ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней не найдено</div>';
@@ -1094,17 +1111,17 @@ function renderAppsTable(apps, filter = 'all') {
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
       ${filtered.map(a => `
         <tr>
-          <td><b>${a.hotel_name}</b></td>
-          <td>${a.city||'—'}</td>
+          <td><b>${esc(a.hotel_name)}</b></td>
+          <td>${esc(a.city||'—')}</td>
           <td>${a.rooms_count||'—'}</td>
-          <td>${a.contact_name||'—'}</td>
-          <td>${a.email}</td>
-          <td>${a.phone}</td>
+          <td>${esc(a.contact_name||'—')}</td>
+          <td>${esc(a.email)}</td>
+          <td>${esc(a.phone)}</td>
           <td style="font-size:11px">${fmtDate(a.created_at)}</td>
           <td>${appStatusBadge(a.status)}</td>
           <td>
             ${a.status === 'new' ? `
-              <button class="act-btn act-approve" onclick="approveApp('${a.id}','${a.email}','${a.contact_name||''}','${a.hotel_name}')">✓ Одобрить</button>
+              <button class="act-btn act-approve" onclick="approveApp('${a.id}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
               <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗</button>
             ` : '—'}
           </td>
@@ -1141,14 +1158,14 @@ function renderTouristsTable(users) {
       <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
       ${list.map(u => `
         <tr>
-          <td>${u.name||u.first_name||'—'}</td>
-          <td>${u.email}</td>
+          <td>${esc(u.name||u.first_name||'—')}</td>
+          <td>${esc(u.email)}</td>
           <td>${ROLE_LABEL[u.role] || u.role || '—'}</td>
-          <td>${u.phone||'—'}</td>
+          <td>${esc(u.phone||'—')}</td>
           <td>${fmtDate(u.created_at)}</td>
           <td>${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
           <td style="white-space:nowrap">
-            <button class="act-btn" onclick="resetUserPassword('${u.id}','${(u.email||'').replace(/'/g,"\\'")}')"
+            <button class="act-btn" onclick="resetUserPassword('${u.id}','${escAttr(u.email)}')"
               style="background:var(--blue-dim,#eff6ff);color:var(--blue,#2563eb);margin-right:4px">
               🔑 Пароль
             </button>
@@ -1239,18 +1256,18 @@ async function rejectApp(id) {
 function showBooking(id) {
   const b = allBookings.find(x => x.id === id);
   if (!b) return;
-  document.getElementById('modal-title').textContent = `Бронь ${b.booking_num}`;
+  document.getElementById('modal-title').textContent = `Бронь ${esc(b.booking_num)}`;
   document.getElementById('modal-body').innerHTML = `
-    <div class="detail-row"><b>Гость:</b> ${b.guest_name||'—'}</div>
-    <div class="detail-row"><b>Email:</b> ${b.guest_email}</div>
-    <div class="detail-row"><b>Телефон:</b> ${b.guest_phone||'—'}</div>
-    <div class="detail-row"><b>Отель:</b> ${b.hotel_name||'—'}</div>
-    <div class="detail-row"><b>Номер:</b> ${b.room_name||'—'}</div>
+    <div class="detail-row"><b>Гость:</b> ${esc(b.guest_name||'—')}</div>
+    <div class="detail-row"><b>Email:</b> ${esc(b.guest_email)}</div>
+    <div class="detail-row"><b>Телефон:</b> ${esc(b.guest_phone||'—')}</div>
+    <div class="detail-row"><b>Отель:</b> ${esc(b.hotel_name||'—')}</div>
+    <div class="detail-row"><b>Номер:</b> ${esc(b.room_name||'—')}</div>
     <div class="detail-row"><b>Заезд:</b> ${fmtDate(b.check_in)}</div>
     <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
     <div class="detail-row"><b>Ночей:</b> ${b.nights||1}</div>
     <div class="detail-row"><b>Гостей:</b> ${b.guests_count||1}</div>
-    <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${b.currency||'BYN'}</div>
+    <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
     <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
   `;
