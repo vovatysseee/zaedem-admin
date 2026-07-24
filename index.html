@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self';
+  script-src 'self' 'unsafe-inline';
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' data: https://fonts.gstatic.com;
+  img-src 'self' data:;
+  connect-src 'self' https://api.zaedem.by;
+  object-src 'none';
+  base-uri 'none';
+  form-action 'self';
+">
+<!-- ═ CSP: ВТОРОЙ РУБЕЖ ПРОТИВ XSS ═
+     Панель отдаётся GitHub Pages, поэтому helmet на бэкенде её не защищает.
+     Обработчики здесь inline (onclick=...), поэтому 'unsafe-inline' убрать нельзя —
+     и внедрённый скрипт формально запустится. Но смысл в другом:
+     connect-src разрешает обращаться ТОЛЬКО к нашему API. Украсть токен и отправить
+     его на чужой сервер уже не выйдет — браузер оборвёт запрос.
+     object-src и base-uri закрывают обходные пути через <object> и <base>.
+     img-src здесь жёсткий (без внешних адресов): админка не показывает фото объектов,
+     поэтому канал «утечка через картинку» закрыт полностью — а именно админский
+     токен и есть главная цель. -->
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Заедем.by — Админ-панель</title>
@@ -1210,7 +1231,9 @@ async function approveApp(id, email, name, hotelName) {
     const ur = await fetch(`${API}/api/users/register`, {
       method: 'POST',
       headers: authHeaders(),
-      body: JSON.stringify({ email, name: name || hotelName, password: pass, role: 'hotelowner' })
+      // Роль 'hotel_owner' — единственная, что валидна при обеих схемах базы:
+      // в migrate.js на users висит CHECK (role IN ('tourist','hotel_owner','admin')).
+      body: JSON.stringify({ email, name: name || hotelName, password: pass, role: 'hotel_owner' })
     });
     if (!ur.ok) {
       const ud = await ur.json().catch(() => ({}));
