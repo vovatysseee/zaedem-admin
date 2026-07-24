@@ -188,7 +188,7 @@ tr:hover td{background:var(--surf2)}
       <div class="ni" onclick="showPage('newobj',this)"><span class="ni-ico">🏠</span> Создать объект</div>
       <div class="ni" onclick="showPage('moderation',this)"><span class="ni-ico">🕵️</span> На модерации <span class="nb" id="nb-moder">0</span></div>
       <div class="sb-sec">Пользователи</div>
-      <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Туристы</div>
+      <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Пользователи</div>
     </div>
     <div class="sb-bottom">
       <button class="logout-btn" onclick="doLogout()">🚪 Выйти</button>
@@ -402,7 +402,12 @@ tr:hover td{background:var(--surf2)}
       <div class="page" id="page-tourists">
         <div class="section">
           <div class="sec-head">
-            <div><span class="sec-title">Туристы</span></div>
+            <div><span class="sec-title">Пользователи</span></div>
+            <div style="display:flex;gap:6px">
+              <button class="act-btn urole-chip" data-urole="all"        onclick="setUserFilter('all',this)">Все</button>
+              <button class="act-btn urole-chip" data-urole="hotelowner" onclick="setUserFilter('hotelowner',this)">Партнёры</button>
+              <button class="act-btn urole-chip" data-urole="tourist"    onclick="setUserFilter('tourist',this)">Туристы</button>
+            </div>
           </div>
           <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -493,12 +498,12 @@ function showPage(name, el) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Туристы'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   if (name === 'bookings') applyBookingFilters();
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
-  if (name === 'tourists') renderTouristsTable(allUsers);
+  if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
   if (name === 'hotels') renderHotelsTable(allHotels);
   if (name === 'moderation') loadModeration();
 }
@@ -737,7 +742,7 @@ async function runRecategorize(){
   const btn=document.getElementById('recat-btn'), st=document.getElementById('recat-status');
   try{
     btn.disabled=true; btn.textContent='⚙ Запускаем…';
-    const r=await fetch(API+'/api/ostrovok/recategorize',{method:'POST',headers:hdrs()});
+    const r=await fetch(API+'/api/ostrovok/recategorize',{method:'POST',headers:authHeaders()});
     const d=await r.json();
     if(!d.ok){ st.style.display='block'; st.textContent='Ошибка запуска: '+(d.error||r.status); btn.disabled=false; btn.textContent='⚙ Пересчитать категории/теги'; return; }
     st.style.display='block';
@@ -750,7 +755,7 @@ async function runRecategorize(){
 async function recatPoll(){
   const btn=document.getElementById('recat-btn'), st=document.getElementById('recat-status');
   try{
-    const r=await fetch(API+'/api/ostrovok/recategorize/status',{headers:hdrs()});
+    const r=await fetch(API+'/api/ostrovok/recategorize/status',{headers:authHeaders()});
     const d=await r.json();
     if(!d.ok)return;
     const p=d.progress||{};
@@ -1108,26 +1113,71 @@ function renderAppsTable(apps, filter = 'all') {
 }
 
 // ── TOURISTS TABLE ──
+let currentUserFilter = 'all';
+
+function setUserFilter(role, el) {
+  currentUserFilter = role;
+  document.querySelectorAll('.urole-chip').forEach(c => {
+    const on = c.getAttribute('data-urole') === role;
+    c.style.background = on ? 'var(--lime-dim)' : 'transparent';
+    c.style.color = on ? 'var(--green)' : 'var(--muted)';
+    c.style.border = '1px solid ' + (on ? 'var(--green)' : 'var(--faint)');
+  });
+  renderTouristsTable(allUsers);
+}
+
+const ROLE_LABEL = { hotelowner:'Партнёр', hotel_owner:'Партнёр', tourist:'Турист', admin:'Админ' };
+
+// Раньше таблица показывала ТОЛЬКО туристов — отельеры не отображались нигде,
+// и сбросить им пароль было негде.
 function renderTouristsTable(users) {
-  const tourists = users.filter(u => u.role === 'tourist');
-  document.getElementById('tourists-table').innerHTML = tourists.length ? `
+  const list = (users || []).filter(u => {
+    if (currentUserFilter === 'all') return true;
+    if (currentUserFilter === 'hotelowner') return u.role === 'hotelowner' || u.role === 'hotel_owner';
+    return u.role === currentUserFilter;
+  });
+  document.getElementById('tourists-table').innerHTML = list.length ? `
     <table>
-      <tr><th>Имя</th><th>Email</th><th>Телефон</th><th>Дата регистрации</th><th>Статус</th><th>Действия</th></tr>
-      ${tourists.map(u => `
+      <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
+      ${list.map(u => `
         <tr>
           <td>${u.name||u.first_name||'—'}</td>
           <td>${u.email}</td>
+          <td>${ROLE_LABEL[u.role] || u.role || '—'}</td>
           <td>${u.phone||'—'}</td>
           <td>${fmtDate(u.created_at)}</td>
           <td>${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
-          <td>
+          <td style="white-space:nowrap">
+            <button class="act-btn" onclick="resetUserPassword('${u.id}','${(u.email||'').replace(/'/g,"\\'")}')"
+              style="background:var(--blue-dim,#eff6ff);color:var(--blue,#2563eb);margin-right:4px">
+              🔑 Пароль
+            </button>
             <button class="act-btn" onclick="toggleUser('${u.id}',${!u.is_active})"
               style="background:${u.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${u.is_active?'var(--red)':'var(--green)'}">
               ${u.is_active?'🚫 Блок':'✓ Разблок'}
             </button>
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Туристов пока нет</div>';
+    </table>` : '<div class="empty">Никого не найдено</div>';
+}
+
+// Сброс пароля пользователю. Роль НЕ меняется — отдельная ручка именно для этого.
+async function resetUserPassword(id, email) {
+  const pass = generatePassword();
+  if (!confirm(`Сбросить пароль для ${email}?\n\nНовый пароль: ${pass}\n\nПередайте его лично — письмо НЕ отправляется.\nВсе текущие сессии этого пользователя завершатся.`)) return;
+  try {
+    const r = await fetch(`${API}/api/users/${id}/reset-password`, {
+      method: 'POST',
+      headers: authHeaders(),
+      body: JSON.stringify({ password: pass })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok || !d.success) { showToast(d.error || 'Ошибка сброса пароля', true); return; }
+    prompt('Пароль изменён. Скопируйте и передайте пользователю:', pass);
+    showToast('✓ Пароль сброшен');
+  } catch(e) {
+    showToast('Ошибка соединения', true);
+  }
 }
 
 // ── APPROVE APP ──
@@ -1137,16 +1187,25 @@ async function approveApp(id, email, name, hotelName) {
 
   try {
     // 1. Создаём аккаунт отельера
-    await fetch(`${API}/api/users/register`, {
+    // ═ ИСПРАВЛЕНО ═ Запрос шёл БЕЗ админского токена. Бэкенд разрешает задавать роль
+    // только админу, поэтому role:'hotelowner' молча отбрасывался и аккаунт создавался
+    // ТУРИСТОМ — отельер не мог войти в кабинет.
+    const ur = await fetch(`${API}/api/users/register`, {
       method: 'POST',
-      headers: {'Content-Type':'application/json'},
+      headers: authHeaders(),
       body: JSON.stringify({ email, name: name || hotelName, password: pass, role: 'hotelowner' })
     });
+    if (!ur.ok) {
+      const ud = await ur.json().catch(() => ({}));
+      throw new Error(ud.error || 'не удалось создать аккаунт отельера');
+    }
 
     // 2. Одобряем заявку + отправляем письмо с паролем через бэкенд
+    // ═ ИСПРАВЛЕНО ═ Тоже шёл без токена → бэкенд отвечал 403, статус не менялся
+    // и письмо с паролем не уходило.
     const r = await fetch(`${API}/api/applications/${id}`, {
       method: 'PATCH',
-      headers: {'Content-Type':'application/json'},
+      headers: authHeaders(),
       body: JSON.stringify({ status: 'approved', password: pass })
     });
 
@@ -1163,11 +1222,13 @@ async function approveApp(id, email, name, hotelName) {
 
 async function rejectApp(id) {
   if (!confirm('Отклонить заявку?')) return;
-  await fetch(`${API}/api/applications/${id}`, {
+  // ═ ИСПРАВЛЕНО ═ Шёл без админского токена → 403, заявка не отклонялась.
+  const rr = await fetch(`${API}/api/applications/${id}`, {
     method: 'PATCH',
-    headers: {'Content-Type':'application/json'},
+    headers: authHeaders(),
     body: JSON.stringify({status: 'rejected'})
   });
+  if (!rr.ok) { showToast('Ошибка при отклонении заявки', true); return; }
   showToast('Заявка отклонена');
   await loadApps();
   renderAppsTable(allApps, currentAppFilter);
