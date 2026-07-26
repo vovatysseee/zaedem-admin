@@ -1300,14 +1300,22 @@ function showBooking(id) {
 
 // ── ADMIN ACTIONS ──
 async function adminCancelBooking(num) {
-  if(!confirm('Отменить бронь '+num+'?')) return;
-  const r = await fetch(`${API}/api/bookings/${num}/status`, {
-    method: 'PATCH',
-    headers: authHeaders(),
-    body: JSON.stringify({status:'cancelled'})
-  });
-  if(r.ok){ showToast('Бронь отменена'); await loadBookings(); applyBookingFilters(); }
-  else showToast('Ошибка', true);
+  if(!confirm('Отменить бронь '+num+'?\n\nЕсли бронь через Островок — сначала отменим у них.\nОткажут (невозвратный тариф или истёк срок) — бронь останется активной.')) return;
+  try {
+    const r = await fetch(`${API}/api/bookings/${num}/status`, {
+      method: 'PATCH',
+      headers: authHeaders(),
+      body: JSON.stringify({status:'cancelled'})
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { showToast('Бронь отменена'); await loadBookings(); applyBookingFilters(); return; }
+    // Отказ Островка — не «Ошибка», а важная информация: бронь ЖИВА,
+    // отель ждёт гостя. Показываем полный текст, а не общую заглушку.
+    alert(d.error || 'Не удалось отменить бронь');
+    showToast('Бронь НЕ отменена', true);
+  } catch(e) {
+    showToast('Сервис недоступен', true);
+  }
 }
 
 async function toggleUser(id, activate) {
