@@ -41,6 +41,12 @@
   --amber:#f59e0b;--amber-dim:rgba(245,158,11,0.12);
   --red:#f87171;--red-dim:rgba(248,113,113,0.12);
   --purple:#a78bfa;--purple-dim:rgba(167,139,250,0.12);
+  /* Использовались по всей разметке, но НИГДЕ не были объявлены.
+     Из-за этого браузер отбрасывал всё правило целиком: рамки фильтров
+     рисовались цветом текста вместо серого, а у кнопки «Сбросить»
+     фон пропадал совсем — она выглядела нерабочей.
+     --faint = светлая граница (как --border), --ink = основной текст. */
+  --faint:#e8e3d8;--ink:#0f0f0f;
   --r:10px;--rl:16px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
@@ -163,6 +169,14 @@ tr:hover td{background:var(--surf2)}
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:#0a2814;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;transform:translateY(20px);opacity:0;transition:.3s}
 .toast.show{transform:translateY(0);opacity:1}
+/* FILTER BAR — общий для всех страниц со списками */
+.fbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;padding:12px 1.2rem;border-bottom:1px solid var(--border);background:var(--surf2)}
+.fbar input[type=search],.fbar input[type=text],.fbar select,.fbar input[type=date]{padding:9px 12px;border:1.5px solid var(--border2);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff;transition:.15s}
+.fbar input:focus,.fbar select:focus{border-color:var(--green)}
+.fbar .grow{flex:1;min-width:200px}
+.fbar-reset{padding:9px 14px;background:var(--surf3);border:none;border-radius:8px;font-size:12px;font-weight:700;color:var(--muted);cursor:pointer;font-family:inherit;transition:.15s}
+.fbar-reset:hover{background:var(--border2);color:var(--text)}
+
 /* CHART */
 .chart-ctl{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:12px 1.2rem;border-bottom:1px solid var(--border);background:var(--surf2)}
 .seg{display:inline-flex;background:var(--surf);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
@@ -259,7 +273,7 @@ tr:hover td{background:var(--surf2)}
             <div id="bell-list"></div>
           </div>
         </div>
-        <button class="tb-btn" onclick="loadAll()">↻ Обновить</button>
+        <button class="tb-btn" id="btn-refresh" onclick="refreshAll(this)">↻ Обновить</button>
       </div>
     </div>
     <div class="content">
@@ -347,30 +361,29 @@ tr:hover td{background:var(--surf2)}
             <div><span class="sec-title">Все брони</span> <span class="sec-cnt" id="bookings-cnt"></span></div>
             <button class="sec-btn" onclick="exportBookingsCSV()">⬇ Экспорт CSV</button>
           </div>
-          <div style="display:flex;gap:10px;flex-wrap:wrap;padding:14px 16px;border-bottom:1px solid var(--faint)">
-            <input id="bk-search" oninput="applyBookingFilters()" placeholder="Поиск: номер ZB, имя, email, отель…"
-              style="flex:1;min-width:200px;padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
-            <select id="bk-fstatus" onchange="applyBookingFilters()" style="padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
+          <div class="fbar">
+            <input type="search" id="bk-search" class="grow" oninput="applyBookingFilters()"
+              placeholder="Поиск: номер ZB, имя, email, телефон, отель, номер…">
+            <select id="bk-fstatus" onchange="applyBookingFilters()">
               <option value="">Все статусы</option>
               <option value="confirmed">Подтверждённые</option>
               <option value="pending">В обработке</option>
               <option value="cancelled">Отменённые</option>
               <option value="completed">Завершённые</option>
             </select>
-            <select id="bk-fsource" onchange="applyBookingFilters()" style="padding:9px 12px;border:1.5px solid var(--faint);border-radius:8px;font-size:13px;font-family:inherit">
+            <select id="bk-fsource" onchange="applyBookingFilters()">
               <option value="">Все источники</option>
               <option value="ostrovok">Островок</option>
               <option value="direct">Прямые</option>
             </select>
-            <div style="display:flex;gap:6px;align-items:center">
-              <span style="font-size:11px;color:var(--muted)">Заезд:</span>
-              <input type="date" id="bk-dfrom" onchange="applyBookingFilters()" title="Заезд с"
-                style="padding:8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit">
-              <span style="font-size:11px;color:var(--muted)">—</span>
-              <input type="date" id="bk-dto" onchange="applyBookingFilters()" title="Заезд по"
-                style="padding:8px;border:1.5px solid var(--faint);border-radius:8px;font-size:12px;font-family:inherit">
-            </div>
-            <button onclick="resetBookingFilters()" style="padding:9px 14px;background:var(--faint);border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">Сбросить</button>
+            <select id="bk-dfield" onchange="applyBookingFilters()" title="По какой дате фильтровать">
+              <option value="check_in">по дате заезда</option>
+              <option value="created_at">по дате создания</option>
+            </select>
+            <input type="date" id="bk-dfrom" onchange="applyBookingFilters()" title="с">
+            <span style="font-size:11px;color:var(--muted)">—</span>
+            <input type="date" id="bk-dto" onchange="applyBookingFilters()" title="по">
+            <button class="fbar-reset" onclick="resetBookingFilters()">Сбросить</button>
           </div>
           <div id="bookings-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -385,6 +398,14 @@ tr:hover td{background:var(--surf2)}
           <div class="tab" onclick="filterApps('rejected',this)">Отклонённые</div>
         </div>
         <div class="section" style="border-top:none;border-radius:0 0 var(--rl) var(--rl)">
+          <div class="sec-head">
+            <div><span class="sec-title">Заявки от объектов</span> <span class="sec-cnt" id="apps-cnt"></span></div>
+          </div>
+          <div class="fbar">
+            <input type="search" id="ap-search" class="grow" oninput="renderAppsTable(allApps, currentAppFilter)"
+                   placeholder="Поиск: объект, город, контакт, email, телефон…">
+            <button class="fbar-reset" onclick="resetAppFilters()">Сбросить</button>
+          </div>
           <div id="apps-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
       </div>
@@ -393,9 +414,22 @@ tr:hover td{background:var(--surf2)}
       <div class="page" id="page-hotels">
         <div class="section">
           <div class="sec-head">
-            <div><span class="sec-title">Объекты</span></div>
+            <div><span class="sec-title">Объекты</span> <span class="sec-cnt" id="hotels-cnt"></span></div>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:16px">
+          <div class="fbar">
+            <input type="search" id="ht-search" class="grow" oninput="applyHotelFilters()"
+                   placeholder="Поиск: название, город, адрес, HID Островка, ID…">
+            <select id="ht-fstatus" onchange="applyHotelFilters()">
+              <option value="">Все статусы</option>
+              <option value="application">Заявка</option>
+              <option value="moderation">На модерации</option>
+              <option value="approved">Одобрен</option>
+              <option value="active">Активен</option>
+              <option value="paused">На паузе</option>
+            </select>
+            <button class="fbar-reset" onclick="resetHotelFilters()">Сбросить</button>
+          </div>
+          <div style="display:flex;gap:8px;margin-bottom:16px;padding:14px 1.2rem 0">
             <button id="htab-direct" class="htab htab-on" onclick="switchHotelTab('direct')" style="padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Мои объекты</button>
             <button id="htab-ostrovok" class="htab" onclick="switchHotelTab('ostrovok')" style="padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Каталог Островка</button>
             <button id="recat-btn" onclick="runRecategorize()" title="Перечитывает тип каждого отеля у Островка и обновляет категории, теги удобств и ближайшее метро" style="margin-left:auto;padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">⚙ Пересчитать категории/теги</button>
@@ -483,12 +517,22 @@ tr:hover td{background:var(--surf2)}
       <div class="page" id="page-tourists">
         <div class="section">
           <div class="sec-head">
-            <div><span class="sec-title">Пользователи</span></div>
+            <div><span class="sec-title">Пользователи</span> <span class="sec-cnt" id="tourists-cnt"></span></div>
             <div style="display:flex;gap:6px">
               <button class="act-btn urole-chip" data-urole="all"        onclick="setUserFilter('all',this)">Все</button>
               <button class="act-btn urole-chip" data-urole="hotelowner" onclick="setUserFilter('hotelowner',this)">Партнёры</button>
               <button class="act-btn urole-chip" data-urole="tourist"    onclick="setUserFilter('tourist',this)">Туристы</button>
             </div>
+          </div>
+          <div class="fbar">
+            <input type="search" id="us-search" class="grow" oninput="renderTouristsTable(allUsers)"
+                   placeholder="Поиск: имя, email, телефон…">
+            <select id="us-factive" onchange="renderTouristsTable(allUsers)">
+              <option value="">Все</option>
+              <option value="1">Только активные</option>
+              <option value="0">Только заблокированные</option>
+            </select>
+            <button class="fbar-reset" onclick="resetUserFilters()">Сбросить</button>
           </div>
           <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -563,7 +607,7 @@ async function doLogin() {
     sessionStorage.setItem('admin_auth', '1');
     document.getElementById('loginWrap').style.display = 'none';
     document.getElementById('app').style.display = 'flex';
-    loadAll();
+    loadAll({silent:true});
   } catch(e) {
     errEl.textContent = 'Ошибка соединения';
   }
@@ -584,7 +628,7 @@ function doLogout() {
 if (sessionStorage.getItem('admin_auth')) {
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  loadAll();
+  loadAll({silent:true});
 }
 
 // ── NAV ──
@@ -602,7 +646,7 @@ function showPage(name, el) {
   if (name === 'bookings') applyBookingFilters();
   if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
   if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
-  if (name === 'hotels') renderHotelsTable(allHotels);
+  if (name === 'hotels') applyHotelFilters();
   if (name === 'moderation') loadModeration();
 }
 
@@ -723,8 +767,27 @@ async function rejectModeration(id){
 }
 
 // ── LOAD ALL ──
-async function loadAll() {
-  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels(), bellLoadModer()]);
+// ══════════════════════════════════════════════════════
+// ЗАГРУЗКА / ОБНОВЛЕНИЕ ДАННЫХ
+// ══════════════════════════════════════════════════════
+// allSettled, а НЕ all: раньше падение любого одного запроса
+// (например, /api/users вернул 500) обрывало всю цепочку — таблицы
+// не перерисовывались, ошибка не показывалась. Кнопка «Обновить»
+// выглядела сломанной, хотя запросы уходили.
+// Теперь каждый блок обновляется независимо, а о сбоях сообщаем.
+async function loadAll(opts) {
+  const silent = opts && opts.silent;
+  const jobs = [
+    ['брони',        loadBookings],
+    ['заявки',       loadApps],
+    ['пользователи', loadUsers],
+    ['объекты',      loadHotels],
+    ['модерация',    bellLoadModer],
+  ];
+  const res = await Promise.allSettled(jobs.map(j => j[1]()));
+  const failed = jobs.filter((j, i) => res[i].status === 'rejected').map(j => j[0]);
+  if (failed.length) console.warn('Не обновилось:', failed.join(', '));
+
   loadCities();
   renderDashboard();
   // График грузим отдельно и НЕ ждём: он тянет свой запрос к БД,
@@ -734,6 +797,32 @@ async function loadAll() {
   // восстановить открытую страницу (F5 не сбрасывает)
   var sp=(location.hash||'').replace('#','')||sessionStorage.getItem('adm_page')||'dashboard';
   showPage(sp);
+
+  if (!silent) {
+    if (failed.length) showToast('Обновлено частично. Не удалось: ' + failed.join(', '), true);
+    else showToast('✓ Данные обновлены');
+  }
+  return failed;
+}
+
+// Кнопка «Обновить» в шапке. Отдельная обёртка, чтобы дать видимый отклик:
+// блокируем кнопку на время запроса, иначе непонятно, идёт ли что-то вообще,
+// и легко нащёлкать десяток параллельных обновлений.
+let _refreshing = false;
+async function refreshAll(btn) {
+  if (_refreshing) return;
+  _refreshing = true;
+  const el = btn || document.getElementById('btn-refresh');
+  const txt = el ? el.textContent : '';
+  if (el) { el.disabled = true; el.style.opacity = '.6'; el.textContent = '↻ Обновляю…'; }
+  try {
+    await loadAll();
+  } catch (e) {
+    showToast('Не удалось обновить', true);
+  } finally {
+    if (el) { el.disabled = false; el.style.opacity = ''; el.textContent = txt || '↻ Обновить'; }
+    _refreshing = false;
+  }
 }
 
 // ── КОЛОКОЛЬЧИК: события (брони, отмены, заявки, модерация) ──
@@ -819,10 +908,9 @@ setInterval(function(){
       .catch(function(){});
   }
 }, 30000);
-async function _loadAllOld() {
-  await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels()]);
-  renderDashboard();
-}
+// (здесь была _loadAllOld — устаревшая копия loadAll на Promise.all.
+//  Удалена: не вызывалась ниоткуда, но при случайном вызове воспроизвела бы
+//  ровно ту ошибку, из-за которой кнопка «Обновить» падала от одного сбоя.)
 
 
 let currentHotelSource = 'direct';   // по умолчанию — Мои объекты
@@ -834,7 +922,9 @@ async function loadHotels() {
     allHotels = d.hotels || [];
     const cnt = document.getElementById('nb-hotels');
     if(cnt) cnt.textContent = allHotels.length;
-    renderHotelsTable(allHotels);
+    // Через фильтры, а не напрямую: иначе после «Обновить» или смены
+    // вкладки набранный поиск визуально сбрасывался бы, хотя поле не пустое.
+    applyHotelFilters();
   } catch(e) { allHotels = []; }
 }
 // Пересчёт категорий/тегов каталога Островка (фон на сервере, тут — прогресс)
@@ -883,12 +973,38 @@ function switchHotelTab(src) {
   loadHotels();
 }
 
+// ── ФИЛЬТРЫ ОБЪЕКТОВ ──
+// Раньше здесь была filterHotels(), которую ниоткуда не вызывали:
+// поля поиска на странице просто не существовало. Теперь фильтр
+// работает поверх allHotels, то есть внутри текущей вкладки
+// (Мои объекты / Каталог Островка) — переключение вкладки перезагружает
+// список с сервера и фильтры применяются к нему заново.
+function filterHotelList() {
+  const q  = (document.getElementById('ht-search')?.value || '').toLowerCase().trim();
+  const st = document.getElementById('ht-fstatus')?.value || '';
+  let list = allHotels || [];
+  if (st) list = list.filter(h => (h.status || (h.is_active ? 'active' : 'paused')) === st);
+  if (q) list = list.filter(h =>
+    (h.name_ru||'').toLowerCase().includes(q) ||
+    (h.name||'').toLowerCase().includes(q) ||
+    (h.city_ru||'').toLowerCase().includes(q) ||
+    (h.city||'').toLowerCase().includes(q) ||
+    (h.address||'').toLowerCase().includes(q) ||
+    String(h.ostrovok_hid||'').toLowerCase().includes(q) ||
+    String(h.id||'').toLowerCase().includes(q)
+  );
+  return list;
+}
+function applyHotelFilters() { renderHotelsTable(filterHotelList()); }
+function resetHotelFilters() {
+  ['ht-search','ht-fstatus'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  applyHotelFilters();
+}
+// Совместимость: старое имя могло использоваться из закладок/консоли.
 function filterHotels(val) {
-  const filtered = val ? allHotels.filter(h =>
-    (h.name_ru||'').toLowerCase().includes(val.toLowerCase()) ||
-    (h.city_ru||'').toLowerCase().includes(val.toLowerCase())
-  ) : allHotels;
-  renderHotelsTable(filtered);
+  const e = document.getElementById('ht-search');
+  if (e) e.value = val || '';
+  applyHotelFilters();
 }
 
 function renderHotelsTable(hotels) {
@@ -1386,6 +1502,7 @@ function getBookingFilters() {
     q: (document.getElementById('bk-search')?.value || '').toLowerCase().trim(),
     fs: document.getElementById('bk-fstatus')?.value || '',
     fsrc: document.getElementById('bk-fsource')?.value || '',
+    dfield: document.getElementById('bk-dfield')?.value || 'check_in',
     dfrom: document.getElementById('bk-dfrom')?.value || '',
     dto: document.getElementById('bk-dto')?.value || '',
   };
@@ -1393,16 +1510,23 @@ function getBookingFilters() {
 
 function filterBookingList() {
   const f = getBookingFilters();
-  let list = allBookings;
+  let list = allBookings || [];
   if (f.fs) list = list.filter(b => b.status === f.fs);
   if (f.fsrc) list = list.filter(b => (b.source || 'direct') === f.fsrc);
-  if (f.dfrom) list = list.filter(b => (b.check_in || '') >= f.dfrom);
-  if (f.dto) list = list.filter(b => (b.check_in || '') <= f.dto);
+  // Дата приводится к YYYY-MM-DD: check_in обычно уже такой, а created_at —
+  // полная метка времени. Сравнение строк без обрезки давало осечку:
+  // «2026-08-27T09:15:00Z» > «2026-08-27», и бронь, созданная в этот день,
+  // не попадала в диапазон, заканчивающийся этим же днём.
+  const day = v => String(v || '').slice(0, 10);
+  if (f.dfrom) list = list.filter(b => day(b[f.dfield]) >= f.dfrom);
+  if (f.dto)   list = list.filter(b => day(b[f.dfield]) <= f.dto);
   if (f.q) list = list.filter(b =>
     (b.booking_num || '').toLowerCase().includes(f.q) ||
     (b.guest_name || '').toLowerCase().includes(f.q) ||
     (b.guest_email || '').toLowerCase().includes(f.q) ||
-    (b.hotel_name || '').toLowerCase().includes(f.q)
+    (b.guest_phone || '').toLowerCase().includes(f.q) ||
+    (b.hotel_name || '').toLowerCase().includes(f.q) ||
+    (b.room_name || '').toLowerCase().includes(f.q)
   );
   return list;
 }
@@ -1416,6 +1540,7 @@ function resetBookingFilters() {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const df = document.getElementById('bk-dfield'); if (df) df.value = 'check_in';
   applyBookingFilters();
 }
 
@@ -1476,8 +1601,25 @@ function filterApps(filter, el) {
   renderAppsTable(allApps, filter);
 }
 
+function resetAppFilters() {
+  const e = document.getElementById('ap-search'); if (e) e.value = '';
+  renderAppsTable(allApps, currentAppFilter);
+}
+
 function renderAppsTable(apps, filter = 'all') {
-  const filtered = filter === 'all' ? apps : apps.filter(a => a.status === filter);
+  let filtered = filter === 'all' ? (apps || []) : (apps || []).filter(a => a.status === filter);
+  // Текстовый поиск поверх фильтра по статусу: вкладки сужают по статусу,
+  // строка — по содержимому. Раньше поиска здесь не было вовсе.
+  const q = (document.getElementById('ap-search')?.value || '').toLowerCase().trim();
+  if (q) filtered = filtered.filter(a =>
+    (a.hotel_name||'').toLowerCase().includes(q) ||
+    (a.city||'').toLowerCase().includes(q) ||
+    (a.contact_name||'').toLowerCase().includes(q) ||
+    (a.email||'').toLowerCase().includes(q) ||
+    (a.phone||'').toLowerCase().includes(q)
+  );
+  const _c = document.getElementById('apps-cnt');
+  if (_c) _c.textContent = `(${filtered.length})`;
   document.getElementById('apps-table').innerHTML = filtered.length ? `
     <table>
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
@@ -1519,12 +1661,31 @@ const ROLE_LABEL = { hotelowner:'Партнёр', hotel_owner:'Партнёр', 
 
 // Раньше таблица показывала ТОЛЬКО туристов — отельеры не отображались нигде,
 // и сбросить им пароль было негде.
+function resetUserFilters() {
+  ['us-search','us-factive'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
+  renderTouristsTable(allUsers);
+}
+
 function renderTouristsTable(users) {
-  const list = (users || []).filter(u => {
+  let list = (users || []).filter(u => {
     if (currentUserFilter === 'all') return true;
     if (currentUserFilter === 'hotelowner') return u.role === 'hotelowner' || u.role === 'hotel_owner';
     return u.role === currentUserFilter;
   });
+  // Поиск и фильтр активности поверх выбранной роли. Раньше на странице
+  // были только чипы ролей — найти человека по email было нечем.
+  const q  = (document.getElementById('us-search')?.value || '').toLowerCase().trim();
+  const fa = document.getElementById('us-factive')?.value || '';
+  if (fa !== '') list = list.filter(u => (u.is_active ? '1' : '0') === fa);
+  if (q) list = list.filter(u =>
+    (u.name||'').toLowerCase().includes(q) ||
+    (u.first_name||'').toLowerCase().includes(q) ||
+    (u.last_name||'').toLowerCase().includes(q) ||
+    (u.email||'').toLowerCase().includes(q) ||
+    (u.phone||'').toLowerCase().includes(q)
+  );
+  const _c = document.getElementById('tourists-cnt');
+  if (_c) _c.textContent = `(${list.length})`;
   document.getElementById('tourists-table').innerHTML = list.length ? `
     <table>
       <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
