@@ -163,7 +163,35 @@ tr:hover td{background:var(--surf2)}
 /* TOAST */
 .toast{position:fixed;bottom:24px;right:24px;background:#0a2814;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:200;transform:translateY(20px);opacity:0;transition:.3s}
 .toast.show{transform:translateY(0);opacity:1}
-.toast.err{background:#dc2626}
+/* CHART */
+.chart-ctl{display:flex;gap:16px;flex-wrap:wrap;align-items:center;padding:12px 1.2rem;border-bottom:1px solid var(--border);background:var(--surf2)}
+.seg{display:inline-flex;background:var(--surf);border:1px solid var(--border2);border-radius:8px;overflow:hidden}
+.seg button{padding:6px 12px;border:none;background:none;font-size:11px;font-weight:700;color:var(--muted);font-family:inherit;transition:.15s;border-right:1px solid var(--border)}
+.seg button:last-child{border-right:none}
+.seg button:hover{background:var(--surf2);color:var(--text)}
+.seg button.on{background:var(--green);color:#fff}
+.seg-lbl{font-size:10px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-right:2px}
+.chart-sum{display:flex;gap:22px;flex-wrap:wrap;padding:14px 1.2rem;border-bottom:1px solid var(--border)}
+.cs-i{min-width:96px}
+.cs-l{font-size:9px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:3px}
+.cs-v{font-family:'Unbounded',sans-serif;font-size:1.05rem;font-weight:800}
+.chart-wrap{padding:14px 1.2rem 6px;overflow-x:auto}
+.chart-legend{display:flex;gap:16px;padding:0 1.2rem 14px;font-size:11px;color:var(--muted)}
+.lg-d{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+.bar-hit{cursor:pointer}
+.bar-hit:hover rect.bar{opacity:.75}
+
+/* JOURNAL */
+.modal.wide{max-width:760px}
+.jr-sec{margin-bottom:18px}
+.jr-h{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:700;margin-bottom:8px;padding-bottom:5px;border-bottom:1px solid var(--border)}
+.jr-t{width:100%;border-collapse:collapse}
+.jr-t th{padding:6px 8px;font-size:9px;background:var(--surf2)}
+.jr-t td{padding:6px 8px;font-size:11px;vertical-align:top}
+.jr-mono{font-family:ui-monospace,'SFMono-Regular',Menlo,monospace;font-size:10px;color:var(--muted)}
+.jr-none{padding:14px;text-align:center;color:var(--hint);font-size:12px;background:var(--surf2);border-radius:8px}
+.jr-warn{padding:10px 12px;background:var(--amber-dim);color:#92400e;border-radius:8px;font-size:11px;margin-bottom:14px;line-height:1.5}
+.jr-json{background:var(--surf2);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow:auto}
 </style>
 </head>
 <body>
@@ -264,6 +292,35 @@ tr:hover td{background:var(--surf2)}
             <div class="stat-val c-amber" id="s-ostrovok">—</div>
             <div class="stat-sub">подтверждённых · сумма к расчёту</div>
           </div>
+        </div>
+
+        <!-- ── ГРАФИК БРОНЕЙ ── -->
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Динамика броней</span> <span class="sec-cnt" id="chart-range"></span></div>
+            <button class="tb-btn" onclick="loadStats()">↻ Обновить</button>
+          </div>
+          <div class="chart-ctl">
+            <span class="seg-lbl">Период</span>
+            <div class="seg" id="seg-period">
+              <button class="on" data-v="day"      onclick="setStatsPeriod('day',this)">Сутки</button>
+              <button           data-v="week"     onclick="setStatsPeriod('week',this)">Неделя</button>
+              <button           data-v="month"    onclick="setStatsPeriod('month',this)">Месяц</button>
+              <button           data-v="halfyear" onclick="setStatsPeriod('halfyear',this)">Полгода</button>
+              <button           data-v="year"     onclick="setStatsPeriod('year',this)">Год</button>
+            </div>
+            <span class="seg-lbl">Источник</span>
+            <div class="seg" id="seg-source">
+              <button class="on" data-v="all"      onclick="setStatsSource('all',this)">Все</button>
+              <button           data-v="direct"   onclick="setStatsSource('direct',this)">Наши</button>
+              <button           data-v="ostrovok" onclick="setStatsSource('ostrovok',this)">Островок</button>
+            </div>
+          </div>
+          <div class="chart-sum" id="chart-sum"></div>
+          <div class="chart-wrap" id="chart-wrap">
+            <div class="loading"><div class="spin"></div><br>Загрузка...</div>
+          </div>
+          <div class="chart-legend" id="chart-legend"></div>
         </div>
 
         <div class="section">
@@ -670,6 +727,9 @@ async function loadAll() {
   await Promise.all([loadBookings(), loadApps(), loadUsers(), loadHotels(), bellLoadModer()]);
   loadCities();
   renderDashboard();
+  // График грузим отдельно и НЕ ждём: он тянет свой запрос к БД,
+  // и если статистика подтормозит, дашборд не должен из-за неё стоять.
+  loadStats();
   try{ bellCollect(); }catch(e){}
   // восстановить открытую страницу (F5 не сбрасывает)
   var sp=(location.hash||'').replace('#','')||sessionStorage.getItem('adm_page')||'dashboard';
@@ -1029,9 +1089,296 @@ function renderDashboard() {
 }
 
 // ── BOOKINGS TABLE ──
+// ══════════════════════════════════════════════════════
+// ГРАФИК БРОНЕЙ
+// ══════════════════════════════════════════════════════
+// Рисуем инлайновым SVG, без внешних библиотек: в админке их нет,
+// а тянуть CDN ради одного графика — лишняя точка отказа и лишний
+// внешний домен на странице, где показываются перс.данные гостей.
+//
+// Данные берём с /api/bookings/stats — там уже посчитано на стороне БД
+// и, главное, пустые интервалы приходят нулями. Считать по allBookings
+// на клиенте нельзя: там только последняя страница (limit), и график
+// за год врал бы, показывая обрыв там, где просто кончилась выборка.
+let statsPeriod = 'day';
+let statsSource = 'all';
+let statsData   = null;
+
+const PERIOD_TITLE = { day:'за сутки', week:'за неделю', month:'за месяц', halfyear:'за полгода', year:'за год' };
+
+function setStatsPeriod(v, el) {
+  statsPeriod = v;
+  document.querySelectorAll('#seg-period button').forEach(b => b.classList.remove('on'));
+  if (el) el.classList.add('on');
+  loadStats();
+}
+function setStatsSource(v, el) {
+  statsSource = v;
+  document.querySelectorAll('#seg-source button').forEach(b => b.classList.remove('on'));
+  if (el) el.classList.add('on');
+  loadStats();
+}
+
+async function loadStats() {
+  const wrap = document.getElementById('chart-wrap');
+  if (!wrap) return;
+  wrap.innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  try {
+    const r = await fetch(`${API}/api/bookings/stats?period=${encodeURIComponent(statsPeriod)}&source=${encodeURIComponent(statsSource)}`, { headers: authHeaders() });
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    statsData = await r.json();
+    renderChart();
+  } catch (e) {
+    // Не роняем дашборд: остальные блоки продолжают работать.
+    wrap.innerHTML = '<div class="empty">Не удалось загрузить статистику</div>';
+    document.getElementById('chart-sum').innerHTML = '';
+    document.getElementById('chart-legend').innerHTML = '';
+  }
+}
+
+function renderChart() {
+  const d = statsData;
+  if (!d || !d.buckets) return;
+  const rng = document.getElementById('chart-range');
+  if (rng) rng.textContent = PERIOD_TITLE[d.period] || '';
+
+  const t = d.totals || {};
+  const money = n => (Math.round(Number(n||0))).toLocaleString('ru-RU');
+  document.getElementById('chart-sum').innerHTML = `
+    <div class="cs-i"><div class="cs-l">Броней</div><div class="cs-v">${t.total||0}</div></div>
+    <div class="cs-i"><div class="cs-l">Наши</div><div class="cs-v" style="color:var(--green)">${t.direct||0}</div></div>
+    <div class="cs-i"><div class="cs-l">Островок</div><div class="cs-v" style="color:var(--amber)">${t.ostrovok||0}</div></div>
+    <div class="cs-i"><div class="cs-l">Отменены</div><div class="cs-v" style="color:var(--red)">${t.cancelled||0}</div></div>
+    <div class="cs-i"><div class="cs-l">Оборот</div><div class="cs-v">${money(t.revenue)} <span style="font-size:11px;font-weight:600;color:var(--muted)">BYN</span></div></div>
+    <div class="cs-i"><div class="cs-l">Наша часть</div><div class="cs-v" style="color:var(--green)">${money(t.commission)} <span style="font-size:11px;font-weight:600;color:var(--muted)">BYN</span></div></div>
+  `;
+
+  // Легенда зависит от режима: в «Все» столбец делится на два цвета,
+  // в остальных делить нечего и двухцветная легенда только путала бы.
+  document.getElementById('chart-legend').innerHTML = (d.source === 'all')
+    ? `<span><i class="lg-d" style="background:var(--green)"></i>Наши объекты</span>
+       <span><i class="lg-d" style="background:var(--amber)"></i>Островок</span>
+       <span style="color:var(--hint)">Оборот считается без отменённых броней</span>`
+    : `<span><i class="lg-d" style="background:${d.source==='ostrovok'?'var(--amber)':'var(--green)'}"></i>${d.source==='ostrovok'?'Островок':'Наши объекты'}</span>
+       <span style="color:var(--hint)">Оборот считается без отменённых броней</span>`;
+
+  document.getElementById('chart-wrap').innerHTML = buildChartSVG(d);
+}
+
+function buildChartSVG(d) {
+  const b = d.buckets || [];
+  if (!b.length) return '<div class="empty">Нет данных за период</div>';
+
+  const max = Math.max(1, ...b.map(x => x.total));
+  // Ширина столбца подстраивается под их количество: 24 часа и 12 месяцев
+  // не должны рисоваться одинаково узко.
+  const bw   = b.length > 26 ? 22 : (b.length > 12 ? 34 : 54);
+  const gap  = 8;
+  const padL = 34, padR = 10, padT = 14, padB = 34;
+  const H    = 190;
+  const plotH = H - padT - padB;
+  const W    = padL + padR + b.length * bw + (b.length - 1) * gap;
+
+  // Горизонтальные линии сетки — 4 штуки, по «круглым» значениям.
+  const step = niceStep(max);
+  const grid = [];
+  for (let v = 0; v <= max; v += step) {
+    const y = padT + plotH - (v / max) * plotH;
+    grid.push(`<line x1="${padL}" y1="${y.toFixed(1)}" x2="${W-padR}" y2="${y.toFixed(1)}" stroke="var(--border)" stroke-width="1"/>
+               <text x="${padL-6}" y="${(y+3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--muted)">${v}</text>`);
+  }
+
+  const bars = b.map((x, i) => {
+    const bx = padL + i * (bw + gap);
+    const h  = (x.total / max) * plotH;
+    const by = padT + plotH - h;
+    // В режиме «Все» столбец делим: снизу наши, сверху Островок.
+    // Так видно и общий объём, и структуру — без второго графика.
+    let inner;
+    if (d.source === 'all' && x.total > 0) {
+      const hd = (x.direct / x.total) * h;
+      const ho = h - hd;
+      inner = `
+        <rect class="bar" x="${bx}" y="${(by+ho).toFixed(1)}" width="${bw}" height="${hd.toFixed(1)}" fill="var(--green)" rx="0"/>
+        <rect class="bar" x="${bx}" y="${by.toFixed(1)}" width="${bw}" height="${ho.toFixed(1)}" fill="var(--amber)" rx="3"/>`;
+    } else {
+      const col = d.source === 'ostrovok' ? 'var(--amber)' : 'var(--green)';
+      inner = `<rect class="bar" x="${bx}" y="${by.toFixed(1)}" width="${bw}" height="${h.toFixed(1)}" fill="${col}" rx="3"/>`;
+    }
+    const tip = `${x.label}: ${x.total} брон.` +
+                (d.source === 'all' ? ` (наши ${x.direct}, Островок ${x.ostrovok})` : '') +
+                (x.cancelled ? `, отменено ${x.cancelled}` : '') +
+                `, оборот ${Math.round(x.revenue)} BYN`;
+    // Подпись числа над столбцом — только если он не нулевой,
+    // иначе ряд нулей загромождает ось.
+    const cap = x.total > 0
+      ? `<text x="${bx+bw/2}" y="${(by-4).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="var(--text)">${x.total}</text>`
+      : '';
+    // Каждый N-й ярлык при большом числе столбцов, иначе подписи слипнутся.
+    const everyN = b.length > 26 ? 3 : (b.length > 12 ? 2 : 1);
+    const lbl = (i % everyN === 0)
+      ? `<text x="${bx+bw/2}" y="${H-14}" text-anchor="middle" font-size="9" fill="var(--muted)">${escSvg(x.label)}</text>`
+      : '';
+    return `<g class="bar-hit"><title>${escSvg(tip)}</title>
+      <rect x="${bx}" y="${padT}" width="${bw}" height="${plotH}" fill="none" pointer-events="all"/>
+      ${inner}${cap}</g>${lbl}`;
+  }).join('');
+
+  return `<svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" style="min-width:100%" role="img" aria-label="График броней">
+    ${grid.join('')}
+    <line x1="${padL}" y1="${padT+plotH}" x2="${W-padR}" y2="${padT+plotH}" stroke="var(--border2)" stroke-width="1"/>
+    ${bars}
+  </svg>`;
+}
+
+// Шаг сетки: подбираем «круглое» число, чтобы на оси были 1,2,5,10,20…
+function niceStep(max) {
+  const raw = max / 4;
+  const pow = Math.pow(10, Math.floor(Math.log10(Math.max(raw, 1))));
+  const n = raw / pow;
+  const mult = n <= 1 ? 1 : n <= 2 ? 2 : n <= 5 ? 5 : 10;
+  return Math.max(1, mult * pow);
+}
+
+// Экранирование внутри SVG-текста. Отдельно от esc(): там могут быть
+// сущности, ломающие разбор SVG, а данные сюда приходят с сервера.
+function escSvg(v) {
+  return String(v == null ? '' : v)
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
 function sourceBadge(src) {
   if (src === 'ostrovok') return '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Островок</span>';
   return '<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Прямая</span>';
+}
+
+// ══════════════════════════════════════════════════════
+// ЖУРНАЛ БРОНИ — доказательная база
+// ══════════════════════════════════════════════════════
+// Открывается в момент спора: что человек принял, когда, с какого адреса,
+// когда хозяин узнал о госте, что ответил Островок при отмене.
+// Всё в одном окне, чтобы не лезть в SQL, когда некогда.
+const CONSENT_LBL = {
+  offer:        'Оферта и политика',
+  pdn:          'Обработка перс. данных',
+  cross_border: 'Трансграничная передача',
+  marketing:    'Рассылки',
+};
+const EVENT_LBL = {
+  guest_submit:  'Гость оформил бронь',
+  sent_supplier: 'Данные переданы поставщику',
+  sent_owner:    'Данные переданы объекту',
+  host_opened:   'Хозяин открыл карточку',
+  cancelled:     'Отмена брони',
+};
+
+function fmtTs(v) {
+  if (!v) return '—';
+  const d = new Date(v);
+  if (isNaN(d)) return '—';
+  return d.toLocaleString('ru-RU', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+}
+
+async function showJournal(num) {
+  const modal = document.querySelector('#modal .modal');
+  document.getElementById('modal-title').textContent = 'Журнал брони ' + num;
+  document.getElementById('modal-body').innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  document.getElementById('modal-action').style.display = 'none';
+  if (modal) modal.classList.add('wide');
+  openModal();
+  try {
+    const r = await fetch(`${API}/api/bookings/${encodeURIComponent(num)}/journal`, { headers: authHeaders() });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) { document.getElementById('modal-body').innerHTML = `<div class="jr-none">${esc(d.error||'Не удалось загрузить журнал')}</div>`; return; }
+    document.getElementById('modal-body').innerHTML = renderJournal(d);
+  } catch (e) {
+    document.getElementById('modal-body').innerHTML = '<div class="jr-none">Сервис недоступен</div>';
+  }
+}
+
+function renderJournal(d) {
+  const b = d.booking || {};
+  const cons = d.consents || [];
+  const tr   = d.transfers || [];
+
+  // Брони, оформленные до внедрения журнала, будут пустыми — это не сбой.
+  // Прямо говорим об этом, иначе пустое окно читается как поломка.
+  const legacy = (!cons.length && !tr.length && !b.offer_version)
+    ? '<div class="jr-warn">По этой брони записей нет. Скорее всего, она оформлена до включения журнала — тогда это ожидаемо. Если бронь свежая, проверьте, что фронт передаёт согласия при оформлении.</div>'
+    : '';
+
+  const money = (v, c) => (v == null || v === '') ? '—' : (parseFloat(v).toFixed(2) + ' ' + esc(c || 'BYN'));
+
+  const head = `
+    <div class="jr-sec">
+      <div class="jr-h">Бронь</div>
+      <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
+      <div class="detail-row"><b>Источник:</b> ${sourceBadge(b.source)}</div>
+      <div class="detail-row"><b>Создана:</b> ${fmtTs(b.created_at)}</div>
+      <div class="detail-row"><b>Версия оферты:</b> ${b.offer_version ? esc(b.offer_version) : '<span style="color:var(--hint)">не записана</span>'}</div>
+      <div class="detail-row"><b>Акцепт оферты:</b> ${fmtTs(b.offer_accepted_at)}</div>
+      <div class="detail-row"><b>Прибытие гостя:</b> ${b.guest_arrival_time ? esc(b.guest_arrival_time) : '<span style="color:var(--hint)">не указано</span>'}</div>
+      <div class="detail-row"><b>Хозяин открыл:</b> ${b.host_opened_at ? fmtTs(b.host_opened_at) : '<span style="color:var(--hint)">ещё не открывал</span>'}</div>
+    </div>
+    <div class="jr-sec">
+      <div class="jr-h">Деньги</div>
+      <div class="detail-row"><b>Заплатил гость:</b> ${money(b.total_price, b.currency)}</div>
+      <div class="detail-row"><b>Поставщику / хозяину:</b> ${money(b.supplier_amount, b.supplier_currency)}</div>
+      <div class="detail-row"><b>Наша часть:</b> ${money(b.commission_amount, b.currency)}</div>
+    </div>`;
+
+  const consHtml = cons.length ? `
+    <table class="jr-t">
+      <tr><th>Согласие</th><th>Время</th><th>Версия</th><th>IP</th><th>Отозвано</th></tr>
+      ${cons.map(c => `<tr>
+        <td><b>${esc(CONSENT_LBL[c.kind] || c.kind)}</b></td>
+        <td>${fmtTs(c.accepted_at)}</td>
+        <td class="jr-mono">${esc(c.doc_version||'—')}</td>
+        <td class="jr-mono">${esc(c.ip||'—')}</td>
+        <td>${c.revoked_at ? '<span class="badge badge-red">'+fmtTs(c.revoked_at)+'</span>' : '<span style="color:var(--hint)">—</span>'}</td>
+      </tr>`).join('')}
+    </table>` : '<div class="jr-none">Согласий не записано</div>';
+
+  const trHtml = tr.length ? `
+    <table class="jr-t">
+      <tr><th>Событие</th><th>Время</th><th>Кому</th><th>Ответ</th><th>IP</th></tr>
+      ${tr.map(e => `<tr>
+        <td><b>${esc(EVENT_LBL[e.event] || e.event)}</b>${e.note?`<br><span style="color:var(--muted);font-size:10px">${esc(e.note)}</span>`:''}</td>
+        <td>${fmtTs(e.event_at)}</td>
+        <td class="jr-mono">${esc(e.recipient||'—')}</td>
+        <td>${e.status_code==null?'—':(e.status_code>=200&&e.status_code<300?'<span class="badge badge-green">'+e.status_code+'</span>':'<span class="badge badge-red">'+e.status_code+'</span>')}</td>
+        <td class="jr-mono">${esc(e.ip||'—')}</td>
+      </tr>`).join('')}
+    </table>` : '<div class="jr-none">Событий не записано</div>';
+
+  // Ответы поставщика при отмене — накапливаются массивом.
+  let cancelHtml = '';
+  if (b.cancel_response) {
+    let arr = b.cancel_response;
+    if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch(e) { arr = null; } }
+    if (Array.isArray(arr) && arr.length) {
+      cancelHtml = `<div class="jr-sec"><div class="jr-h">Ответы поставщика при отмене (${arr.length})</div>
+        ${arr.map(x => `<div class="jr-json">${esc(JSON.stringify(x, null, 2))}</div>`).join('')}</div>`;
+    }
+  }
+
+  let policyHtml = '';
+  if (b.cancel_policy) {
+    let p = b.cancel_policy;
+    if (typeof p === 'string') { try { p = JSON.parse(p); } catch(e) { p = null; } }
+    if (p) policyHtml = `<div class="jr-sec"><div class="jr-h">Правила отмены на момент брони</div>
+      <div class="jr-json">${esc(JSON.stringify(p, null, 2))}</div></div>`;
+  }
+
+  const rulesHtml = b.cancel_rules
+    ? `<div class="jr-sec"><div class="jr-h">Текст правил, показанный гостю</div>
+       <div style="font-size:12px;line-height:1.6;background:var(--surf2);border-radius:8px;padding:10px">${esc(b.cancel_rules)}</div></div>`
+    : '';
+
+  return legacy + head +
+    `<div class="jr-sec"><div class="jr-h">Согласия (${cons.length})</div>${consHtml}</div>` +
+    `<div class="jr-sec"><div class="jr-h">Журнал передачи данных (${tr.length})</div>${trHtml}</div>` +
+    rulesHtml + policyHtml + cancelHtml;
 }
 
 function getBookingFilters() {
@@ -1090,6 +1437,7 @@ function renderBookingsTable(bookings) {
           <td>${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${b.id}')">Детали</button>
+            <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>
             ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
@@ -1282,6 +1630,9 @@ async function rejectApp(id) {
 function showBooking(id) {
   const b = allBookings.find(x => x.id === id);
   if (!b) return;
+  // Снимаем широкий режим: окно общее с журналом, иначе детали
+  // остались бы растянутыми после просмотра журнала.
+  const _m = document.querySelector('#modal .modal'); if (_m) _m.classList.remove('wide');
   document.getElementById('modal-title').textContent = `Бронь ${esc(b.booking_num)}`;
   document.getElementById('modal-body').innerHTML = `
     <div class="detail-row"><b>Гость:</b> ${esc(b.guest_name||'—')}</div>
@@ -1296,6 +1647,9 @@ function showBooking(id) {
     <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
     <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
+    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+      <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue);padding:6px 14px">Открыть журнал брони →</button>
+    </div>
   `;
   document.getElementById('modal-action').style.display = 'none';
   openModal();
