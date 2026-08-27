@@ -363,7 +363,7 @@ tr:hover td{background:var(--surf2)}
           </div>
           <div class="fbar">
             <input type="search" id="bk-search" class="grow" oninput="applyBookingFilters()"
-              placeholder="Поиск: номер ZB, имя, email, телефон, отель, номер…">
+              placeholder="Поиск: номер ZB, имя, email, телефон, отель, номер…" title="Поиск идёт сразу, по мере набора">
             <select id="bk-fstatus" onchange="applyBookingFilters()">
               <option value="">Все статусы</option>
               <option value="confirmed">Подтверждённые</option>
@@ -383,7 +383,7 @@ tr:hover td{background:var(--surf2)}
             <input type="date" id="bk-dfrom" onchange="applyBookingFilters()" title="с">
             <span style="font-size:11px;color:var(--muted)">—</span>
             <input type="date" id="bk-dto" onchange="applyBookingFilters()" title="по">
-            <button class="fbar-reset" onclick="resetBookingFilters()">Сбросить</button>
+            <button class="fbar-reset" id="bk-reset" onclick="resetBookingFilters()">Сбросить</button>
           </div>
           <div id="bookings-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -404,7 +404,7 @@ tr:hover td{background:var(--surf2)}
           <div class="fbar">
             <input type="search" id="ap-search" class="grow" oninput="renderAppsTable(allApps, currentAppFilter)"
                    placeholder="Поиск: объект, город, контакт, email, телефон…">
-            <button class="fbar-reset" onclick="resetAppFilters()">Сбросить</button>
+            <button class="fbar-reset" id="ap-reset" onclick="resetAppFilters()">Сбросить</button>
           </div>
           <div id="apps-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -427,7 +427,7 @@ tr:hover td{background:var(--surf2)}
               <option value="active">Активен</option>
               <option value="paused">На паузе</option>
             </select>
-            <button class="fbar-reset" onclick="resetHotelFilters()">Сбросить</button>
+            <button class="fbar-reset" id="ht-reset" onclick="resetHotelFilters()">Сбросить</button>
           </div>
           <div style="display:flex;gap:8px;margin-bottom:16px;padding:14px 1.2rem 0">
             <button id="htab-direct" class="htab htab-on" onclick="switchHotelTab('direct')" style="padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Мои объекты</button>
@@ -532,7 +532,7 @@ tr:hover td{background:var(--surf2)}
               <option value="1">Только активные</option>
               <option value="0">Только заблокированные</option>
             </select>
-            <button class="fbar-reset" onclick="resetUserFilters()">Сбросить</button>
+            <button class="fbar-reset" id="us-reset" onclick="resetUserFilters()">Сбросить</button>
           </div>
           <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
@@ -1008,8 +1008,8 @@ function filterHotels(val) {
 }
 
 function renderHotelsTable(hotels) {
-  const cnt = document.getElementById('hotels-cnt');
-  if(cnt) cnt.textContent = '(' + hotels.length + ')';
+  syncFilterBar(['ht-search','ht-fstatus'], 'ht-reset', 'hotels-cnt',
+                hotels.length, (allHotels||[]).length);
   document.getElementById('hotels-table').innerHTML = hotels.length ? `
     <table>
       <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Статус</th><th>Действия</th></tr>
@@ -1035,7 +1035,7 @@ function renderHotelsTable(hotels) {
             `}
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Отелей пока нет</div>';
+    </table>` : emptyBox((allHotels||[]).length, 'resetHotelFilters()', 'Объектов пока нет');
 }
 function objStatusLabel(s){ return {application:'Заявка',moderation:'На модерации',approved:'Одобрен',active:'Активен',paused:'На паузе'}[s]||s; }
 function objStatusBadge(s){
@@ -1363,6 +1363,51 @@ function escSvg(v) {
     .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+// ══════════════════════════════════════════════════════
+// СОСТОЯНИЕ ФИЛЬТРОВ — общее для всех страниц со списками
+// ══════════════════════════════════════════════════════
+// Поиск живой: список сужается по мере набора, кнопки «Найти» нет.
+// Именно поэтому нужна обратная связь — иначе при пустом результате
+// невозможно отличить «ничего не нашлось» от «поиск не работает».
+//
+// Кнопка «Сбросить» гаснет, когда сбрасывать нечего: так видно,
+// применён ли хоть один фильтр.
+// Заглушка пустого списка. Разводим два случая, которые выглядели одинаково:
+// «данных нет вообще» и «данные есть, но под фильтры не попали».
+// Во втором даём кнопку сброса прямо здесь — не нужно искать её глазами.
+function emptyBox(total, resetFn, noneText) {
+  if (!total) return `<div class="empty">${noneText}</div>`;
+  return `<div class="empty">
+    Под текущие фильтры ничего не подошло.<br>
+    <span style="font-size:12px;color:var(--hint)">Всего записей: ${total}</span><br>
+    <button class="act-btn act-approve" style="margin-top:12px;padding:7px 16px" onclick="${resetFn}">Сбросить фильтры</button>
+  </div>`;
+}
+
+function syncFilterBar(fieldIds, resetBtnId, cntId, shown, total) {
+  let active = 0;
+  fieldIds.forEach(id => {
+    const e = document.getElementById(id);
+    if (e && String(e.value || '').trim() !== '') active++;
+  });
+  const btn = document.getElementById(resetBtnId);
+  if (btn) {
+    btn.disabled = !active;
+    btn.style.opacity = active ? '1' : '.45';
+    btn.style.cursor = active ? 'pointer' : 'default';
+    btn.textContent = active ? `Сбросить (${active})` : 'Сбросить';
+  }
+  const c = document.getElementById(cntId);
+  if (c) {
+    // Пока фильтров нет — просто количество. Как только применён хотя бы один,
+    // показываем «найдено X из Y», чтобы работа поиска была очевидна.
+    c.textContent = active ? `найдено ${shown} из ${total}` : `(${total})`;
+    c.style.color = active ? 'var(--green)' : '';
+    c.style.fontWeight = active ? '700' : '';
+  }
+  return active;
+}
+
 function sourceBadge(src) {
   if (src === 'ostrovok') return '<span style="background:#fef3c7;color:#92400e;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Островок</span>';
   return '<span style="background:#dbeafe;color:#1e40af;font-size:10px;font-weight:700;padding:2px 7px;border-radius:5px">Прямая</span>';
@@ -1545,7 +1590,8 @@ function resetBookingFilters() {
 }
 
 function renderBookingsTable(bookings) {
-  document.getElementById('bookings-cnt').textContent = `(${bookings.length})`;
+  syncFilterBar(['bk-search','bk-fstatus','bk-fsource','bk-dfrom','bk-dto'],
+                'bk-reset', 'bookings-cnt', bookings.length, (allBookings||[]).length);
   document.getElementById('bookings-table').innerHTML = bookings.length ? `
     <table>
       <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
@@ -1566,7 +1612,7 @@ function renderBookingsTable(bookings) {
             ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Броней не найдено</div>';
+    </table>` : emptyBox((allBookings||[]).length, 'resetBookingFilters()', 'Броней пока нет');
 }
 
 // ── ЭКСПОРТ CSV (для бухгалтерии ИП) ──
@@ -1618,8 +1664,8 @@ function renderAppsTable(apps, filter = 'all') {
     (a.email||'').toLowerCase().includes(q) ||
     (a.phone||'').toLowerCase().includes(q)
   );
-  const _c = document.getElementById('apps-cnt');
-  if (_c) _c.textContent = `(${filtered.length})`;
+  syncFilterBar(['ap-search'], 'ap-reset', 'apps-cnt',
+                filtered.length, (apps||[]).length);
   document.getElementById('apps-table').innerHTML = filtered.length ? `
     <table>
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
@@ -1640,7 +1686,7 @@ function renderAppsTable(apps, filter = 'all') {
             ` : '—'}
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Заявок нет</div>';
+    </table>` : emptyBox((apps||[]).length, 'resetAppFilters()', 'Заявок пока нет');
 }
 
 // ── TOURISTS TABLE ──
@@ -1684,8 +1730,8 @@ function renderTouristsTable(users) {
     (u.email||'').toLowerCase().includes(q) ||
     (u.phone||'').toLowerCase().includes(q)
   );
-  const _c = document.getElementById('tourists-cnt');
-  if (_c) _c.textContent = `(${list.length})`;
+  syncFilterBar(['us-search','us-factive'], 'us-reset', 'tourists-cnt',
+                list.length, (users||[]).length);
   document.getElementById('tourists-table').innerHTML = list.length ? `
     <table>
       <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
@@ -1708,7 +1754,7 @@ function renderTouristsTable(users) {
             </button>
           </td>
         </tr>`).join('')}
-    </table>` : '<div class="empty">Никого не найдено</div>';
+    </table>` : emptyBox((users||[]).length, 'resetUserFilters()', 'Пользователей пока нет');
 }
 
 // Сброс пароля пользователю. Роль НЕ меняется — отдельная ручка именно для этого.
