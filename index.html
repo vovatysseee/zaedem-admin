@@ -1232,7 +1232,14 @@ function renderDashboard() {
   document.getElementById('s-bookings').textContent = allBookings.length;
   document.getElementById('s-apps').textContent = allApps.filter(a => a.status === 'new').length;
   document.getElementById('s-tourists').textContent = allUsers.filter(u => u.role === 'tourist').length;
-  const rev = allBookings.reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
+  // ═ БЕЗ ОТМЕНЁННЫХ ═ Раньше суммировались ВСЕ брони, включая отменённые,
+  // а блок статистики ниже берёт число с сервера, где стоит фильтр
+  // WHERE b.status <> 'cancelled'. Две цифры на одном экране, обе названы
+  // оборотом, считаются по-разному. Пока отмен нет — совпадают; после первой
+  // расходятся, и непонятно, какой верить. Приводим к серверному правилу.
+  const isCancelled = b => b.status === 'cancelled' || b.status === 'canceled';
+  const rev = allBookings.filter(b => !isCancelled(b))
+                         .reduce((s, b) => s + parseFloat(b.total_price || 0), 0);
   document.getElementById('s-revenue').textContent = Math.round(rev).toLocaleString('ru') + ' BYN';
 
   // Сводка по броням Островка (для контроля расчётов / кредитного лимита)
@@ -1252,7 +1259,7 @@ function renderDashboard() {
           <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
           <td>${esc(b.hotel_name||'—')}</td>
           <td style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
-          <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
+          <td><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
           <td>${statusBadge(b.status)}</td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней пока нет</div>';
@@ -1737,7 +1744,7 @@ function renderBookingsTable(bookings) {
           <td>${fmtDate(b.check_in)}</td>
           <td>${fmtDate(b.check_out)}</td>
           <td>${esc(b.nights||1)}</td>
-          <td><b>${parseFloat(b.total_price||0).toFixed(0)} BYN</b></td>
+          <td><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
           <td>${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${escAttr(b.id)}')">Детали</button>
@@ -1980,6 +1987,50 @@ async function rejectApp(id) {
   renderDashboard();
 }
 
+// ══════════════════════════════════════════════════════
+// РАЗБИВКА ДЕНЕГ ПО БРОНИ
+// ══════════════════════════════════════════════════════
+// Раньше в карточке была только сумма с гостя. А при сверке с Агентикой нужны
+// три числа сразу: сколько взяли, сколько ушло поставщику, сколько осталось нам.
+// За ними приходилось лезть в базу — ровно тогда, когда некогда.
+//
+// Пустая комиссия показывается ЯВНО, а не прочерком: она считается только когда
+// поставщик выставил счёт в долларах (ostrovok.js, order/finish). После перехода
+// Агентики на белорусские рубли комиссия начнёт записываться пустой, и отчёт
+// молча покажет меньше, чем есть. Пусть это будет видно в первой же броне,
+// а не при сведении за месяц.
+function moneySplitHTML(b) {
+  const cur  = esc(b.currency || 'BYN');
+  const sup  = (b.supplier_amount   != null && b.supplier_amount   !== '') ? parseFloat(b.supplier_amount)   : null;
+  const com  = (b.commission_amount != null && b.commission_amount !== '') ? parseFloat(b.commission_amount) : null;
+  const supC = esc(b.supplier_currency || '');
+
+  const supRow = Number.isFinite(sup)
+    ? `<div class="detail-row"><b>Поставщику:</b> ${sup.toFixed(2)} ${supC || cur}</div>`
+    : `<div class="detail-row"><b>Поставщику:</b> <span style="color:var(--muted)">не записано</span></div>`;
+
+  const comRow = Number.isFinite(com)
+    ? `<div class="detail-row"><b>Наша часть:</b> <span style="color:var(--green);font-weight:700">${com.toFixed(2)} ${cur}</span></div>`
+    : `<div class="detail-row"><b>Наша часть:</b> <span style="color:var(--amber);font-weight:700">не посчитана</span>
+         <div style="font-size:11px;color:var(--muted);margin-top:3px;line-height:1.5">
+           Комиссия записывается только когда поставщик выставил счёт в долларах.
+           Проверьте валюту в ответе Островка и расчёт в order/finish.
+         </div></div>`;
+
+  // Сходятся ли числа: сумма с гостя = нетто поставщика + наша часть.
+  // Сверяем только когда обе известны И валюта поставщика совпадает с валютой
+  // брони — иначе сравнивали бы доллары с рублями и пугали бы на пустом месте.
+  let checkRow = '';
+  if (Number.isFinite(sup) && Number.isFinite(com) && supC && supC === (b.currency || 'BYN')) {
+    const diff = Math.abs(parseFloat(b.total_price || 0) - (sup + com));
+    if (diff > 0.02) {
+      checkRow = `<div class="detail-row" style="color:var(--red)"><b>⚠ Не сходится:</b>
+        поставщик + наша часть = ${(sup + com).toFixed(2)} ${cur}, а с гостя ${parseFloat(b.total_price||0).toFixed(2)} ${cur}</div>`;
+    }
+  }
+  return supRow + comRow + checkRow;
+}
+
 // ── BOOKING DETAIL ──
 function showBooking(id) {
   const b = allBookings.find(x => x.id === id);
@@ -1998,7 +2049,8 @@ function showBooking(id) {
     <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
     <div class="detail-row"><b>Ночей:</b> ${esc(b.nights||1)}</div>
     <div class="detail-row"><b>Гостей:</b> ${esc(b.guests_count||1)}</div>
-    <div class="detail-row"><b>Сумма:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
+    <div class="detail-row"><b>Сумма с гостя:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
+    ${moneySplitHTML(b)}
     <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
