@@ -522,6 +522,11 @@ tr:hover td{background:var(--surf2)}
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Заезд с</label><input id="no-cin" value="14:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Выезд до</label><input id="no-cout" value="12:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
+            <div class="fg" style="margin-bottom:16px;background:#f6faf7;border:1.5px solid var(--border2);border-radius:11px;padding:12px 13px">
+              <label style="display:block;font-size:12px;font-weight:700;color:var(--green);margin-bottom:5px">Почта партнёра — владельца объекта</label>
+              <input id="no-owner" placeholder="partner@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none">
+              <div style="font-size:11.5px;color:var(--muted);line-height:1.55;margin-top:6px">Без этого объект будет «ничей»: он появится на сайте, но партнёр не увидит его в своём кабинете и не сможет вести цены и календарь. Аккаунт партнёра должен быть создан заранее — в разделе «Пользователи».</div>
+            </div>
             <button onclick="createObject()" id="no-btn" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Создать и опубликовать</button>
           </div>
         </div>
@@ -770,13 +775,17 @@ async function createObject(){
       house_rules:document.getElementById('no-rules').value.trim(),
       cancel_rules:document.getElementById('no-cancel').value.trim(),
       checkin_time:document.getElementById('no-cin').value.trim(),
-      checkout_time:document.getElementById('no-cout').value.trim()
+      checkout_time:document.getElementById('no-cout').value.trim(),
+      // Владелец объекта. Раньше объект создавался вообще без владельца —
+      // партнёр входил в кабинет и видел «У вас нет привязанных отелей».
+      owner_email:(document.getElementById('no-owner')||{}).value ? document.getElementById('no-owner').value.trim() : ''
     })});
     const d=await r.json();
     btn.disabled=false; btn.textContent='Создать и опубликовать';
     if(d.ok){
       showToast('Объект создан');
-      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules','no-cancel'].forEach(id=>{document.getElementById(id).value='';});
+      if(!d.owner_id) showToast('Объект создан, но БЕЗ владельца — партнёр его в кабинете не увидит', true);
+      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules','no-cancel','no-owner'].forEach(id=>{var el=document.getElementById(id); if(el)el.value='';});
       if(typeof loadHotels==='function') loadHotels();
     } else { alert(d.error||'Не удалось создать'); }
   }catch(e){ btn.disabled=false; btn.textContent='Создать и опубликовать'; alert('Сервис недоступен'); }
@@ -1080,7 +1089,7 @@ function renderHotelsTable(hotels) {
                 hotels.length, (allHotels||[]).length);
   document.getElementById('hotels-table').innerHTML = hotels.length ? `
     <table>
-      <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Статус</th><th>Действия</th></tr>
+      <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Владелец</th><th>Статус</th><th>Действия</th></tr>
       ${hotels.map(h => `
         <tr>
           <td><b>${esc(h.name_ru||'—')}</b></td>
@@ -1089,6 +1098,9 @@ function renderHotelsTable(hotels) {
           <td>${h.stars ? '★'.repeat(Math.min(Number(h.stars)||0, 5)) : '—'}</td>
           <td>${esc(h.rating||'—')}</td>
           <td style="font-size:11px;color:var(--muted)">${esc(h.ostrovok_hid||'—')}</td>
+          <td>${h.source==='ostrovok' ? '<span style="font-size:11px;color:var(--muted)">—</span>' : (h.has_owner
+              ? '<span style="font-size:11px;color:#1a5c38;font-weight:700">есть</span>'
+              : '<span style="font-size:11px;color:#c00;font-weight:700" title="Партнёр не видит этот объект в кабинете">НЕТ</span>')}</td>
           <td>${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
           <td style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
             ${currentHotelSource==='ostrovok' ? `
@@ -1160,6 +1172,8 @@ function editHotel(id) {
         <input id="eh-phone" value="${esc(h.phone||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Email</label>
         <input id="eh-email" value="${esc(h.email||'')}" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
+      <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Почта партнёра — владельца</label>
+        <input id="eh-owner" value="" placeholder="${h.has_owner ? 'владелец назначен — введите почту, чтобы сменить' : 'владельца нет — объект не виден партнёру'}" style="width:100%;padding:8px 10px;border:1.5px solid ${h.has_owner?'var(--border)':'#f0b0b0'};border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Ostrovok HID</label>
         <input id="eh-hid" value="${esc(h.ostrovok_hid||'')}" placeholder="например: 8473727" style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:13px;outline:none"></div>
       <div><label style="font-size:11px;font-weight:700;color:var(--muted);display:block;margin-bottom:4px">Описание</label>
@@ -1180,6 +1194,11 @@ async function saveHotel(id) {
     email:   document.getElementById('eh-email').value,
     description_ru: document.getElementById('eh-desc').value,
   };
+  // Почту владельца отправляем ТОЛЬКО если её вписали: пустое поле означает
+  // «не трогать», а не «отвязать» — иначе каждое сохранение карточки снимало бы
+  // владельца, и объект тихо пропадал бы из кабинета партнёра.
+  const own = (document.getElementById('eh-owner')||{}).value || '';
+  if (own.trim()) body.owner_email = own.trim();
   const hid = document.getElementById('eh-hid').value.trim();
 
   const r = await fetch(`${API}/api/hotels/${id}`, {
@@ -1949,7 +1968,15 @@ async function approveApp(id, email, name, hotelName) {
     });
     if (!ur.ok) {
       const ud = await ur.json().catch(() => ({}));
-      throw new Error(ud.error || 'не удалось создать аккаунт отельера');
+      const msg = String(ud.error || '');
+      // Аккаунт с такой почтой уже есть — это НЕ повод обрывать одобрение.
+      // Раньше обрывало: заявка оставалась «новой», письмо не уходило, а второй
+      // раз одобрить было нельзя — почта-то уже занята. Заявка зависала навсегда.
+      if (/уже|занят|exists|duplicate/i.test(msg)) {
+        if (!confirm('Аккаунт с почтой ' + email + ' уже существует.\n\nОдобрить заявку без создания нового аккаунта?\n(пароль в письме будет НЕ актуален — партнёр входит со своим)')) return;
+      } else {
+        throw new Error(msg || 'не удалось создать аккаунт отельера');
+      }
     }
 
     // 2. Одобряем заявку + отправляем письмо с паролем через бэкенд
@@ -1967,6 +1994,16 @@ async function approveApp(id, email, name, hotelName) {
     await loadApps();
     renderAppsTable(allApps, currentAppFilter);
     renderDashboard();
+    // ── ВТОРОЙ ШАГ, КОТОРОГО НЕ БЫЛО ──
+    // Одобрение создаёт только АККАУНТ. Объекта у партнёра после этого нет:
+    // он входит в кабинет и видит «У вас нет привязанных отелей». Раньше об этом
+    // нигде не говорилось, и шаг просто забывался. Теперь ведём за руку и
+    // подставляем почту владельца в форму создания объекта.
+    if (confirm('Аккаунт готов.\n\nТеперь нужно создать сам объект — без него партнёр увидит пустой кабинет.\n\nПерейти к созданию объекта?')) {
+      showPage('newobj');
+      var on=document.getElementById('no-owner'); if(on) on.value=email;
+      var nn=document.getElementById('no-name');  if(nn){ nn.value=hotelName||''; nn.focus(); }
+    }
   } catch(e) {
     showToast('Ошибка при одобрении: ' + e.message, true);
   }
