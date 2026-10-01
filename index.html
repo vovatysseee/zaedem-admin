@@ -424,7 +424,7 @@ tr:hover td{background:var(--surf2)}
           </div>
           <div class="fbar">
             <input type="search" id="ap-search" class="grow" oninput="renderAppsTable(allApps, currentAppFilter)"
-                   placeholder="Поиск: объект, город, контакт, email, телефон…">
+                   placeholder="Поиск: объект, город, контакт, email, телефон, УНП…">
             <button class="fbar-reset" id="ap-reset" onclick="resetAppFilters()">Сбросить</button>
           </div>
           <div id="apps-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
@@ -1835,7 +1835,9 @@ function renderAppsTable(apps, filter = 'all') {
     (a.city||'').toLowerCase().includes(q) ||
     (a.contact_name||'').toLowerCase().includes(q) ||
     (a.email||'').toLowerCase().includes(q) ||
-    (a.phone||'').toLowerCase().includes(q)
+    (a.phone||'').toLowerCase().includes(q) ||
+    (a.unp||'').includes(q) ||
+    (a.legal_name||'').toLowerCase().includes(q)
   );
   syncFilterBar(['ap-search'], 'ap-reset', 'apps-cnt',
                 filtered.length, (apps||[]).length);
@@ -1844,7 +1846,7 @@ function renderAppsTable(apps, filter = 'all') {
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
       ${filtered.map(a => `
         <tr>
-          <td><b>${esc(a.hotel_name)}</b></td>
+          <td><b>${esc(a.hotel_name)}</b>${appLegalHTML(a)}</td>
           <td>${esc(a.city||'—')}</td>
           <td>${esc(a.rooms_count||'—')}</td>
           <td>${esc(a.contact_name||'—')}</td>
@@ -1860,6 +1862,19 @@ function renderAppsTable(apps, filter = 'all') {
           </td>
         </tr>`).join('')}
     </table>` : emptyBox((apps||[]).length, 'resetAppFilters()', 'Заявок пока нет');
+}
+
+// УНП из заявки. Наименование и статус записывает СЕРВЕР по реестру МНС:
+// «не сверено» — реестр в момент заявки не ответил, проверить вручную.
+function appLegalHTML(a) {
+  if (!a || !a.unp) return '';
+  const act = /^действующ/i.test(a.legal_status || '');
+  return '<div style="font-size:11px;line-height:1.45;margin-top:3px;color:var(--muted)">УНП ' + esc(a.unp)
+    + (a.legal_name ? ' · ' + esc(a.legal_name) : '')
+    + (a.legal_verified
+        ? (a.legal_status ? ' · <span style="color:' + (act ? 'var(--green)' : '#dc2626') + ';font-weight:700">' + esc(a.legal_status) + '</span>' : '')
+        : ' · <span style="color:var(--amber);font-weight:700">не сверено с реестром</span>')
+    + '</div>';
 }
 
 // ── TOURISTS TABLE ──
