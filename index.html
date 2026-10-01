@@ -157,6 +157,18 @@ tr:hover td{background:var(--surf2)}
 .tab{padding:10px 14px;font-size:12px;font-weight:600;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:.15s}
 .tab.on{color:var(--green);border-bottom-color:var(--green)}
 
+/* АГЕНТИКА */
+.ag-note{font-size:12px;color:var(--muted);line-height:1.5;padding:10px 1.2rem;border-bottom:1px solid var(--border);margin:0}
+.ag-hint{font-size:11px;color:var(--muted);flex:1;min-width:220px;line-height:1.4}
+.ag-tbl td{vertical-align:top}
+.ag-due{font-weight:700;white-space:nowrap}
+.ag-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
+.ag-row-overdue td{background:var(--red-dim)}
+.ag-row-urgent td{background:var(--amber-dim)}
+.ag-num{font-family:monospace;font-size:11.5px}
+.bn-tbl td,.bn-tbl th{white-space:nowrap}
+.tw-x{overflow-x:auto}
+
 /* PAGES */
 .page{display:none}
 .page.on{display:block}
@@ -268,6 +280,8 @@ tr:hover td{background:var(--surf2)}
       <div class="ni" onclick="showPage('moderation',this)"><span class="ni-ico">🕵️</span> На модерации <span class="nb" id="nb-moder">0</span></div>
       <div class="sb-sec">Пользователи</div>
       <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Пользователи</div>
+      <div class="sb-sec">Островок</div>
+      <div class="ni" onclick="showPage('agentika',this)"><span class="ni-ico">💸</span> Агентика <span class="nb" id="nb-agentika" style="display:none">0</span></div>
     </div>
     <div class="sb-bottom">
       <button class="logout-btn" onclick="doLogout()">🚪 Выйти</button>
@@ -564,6 +578,46 @@ tr:hover td{background:var(--surf2)}
         </div>
       </div>
 
+      <!-- АГЕНТИКА (01.10): оплата броней Островка, отчёт за месяц, замер выдачи -->
+      <div class="page" id="page-agentika">
+        <div class="stats" id="ag-stats"></div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Оплатить Агентике</span> <span class="sec-cnt" id="ag-cnt"></span></div>
+            <button class="sec-btn" onclick="loadAgentika()">↻ Обновить</button>
+          </div>
+          <p class="ag-note">Бронь Островка надо оплатить переводом со счёта до срока, иначе она не сохранится (п. 3.8 договора B2B-397211, п. 3.3 Правил).
+          Возвратный тариф — не позже чем за 40 минут до конца бесплатной отмены; в колонке «Оплатить до» уже вычтен запас <b id="ag-buf">60</b> мин.
+          Оплатили — нажмите «Оплачено». Утром и за 3 часа до срока приходит сигнал в Telegram (без данных гостей).</p>
+          <div id="ag-unpaid"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+        <div class="section">
+          <div class="sec-head"><div><span class="sec-title">Оплачено за 45 дней</span></div></div>
+          <div id="ag-paid"></div>
+        </div>
+        <div class="section">
+          <div class="sec-head"><div><span class="sec-title">Отчёт за месяц для бухгалтера</span></div></div>
+          <div class="fbar">
+            <input type="month" id="ag-month">
+            <button class="sec-btn" onclick="agReport()">⬇ Скачать CSV</button>
+            <span class="ag-hint">Брони по дате выезда (п. 3.6). Цена системы, цена гостю, вознаграждение. Отчёт Агентике — до 6-го рабочего дня месяца (п. 3.12). Открывается в Excel.</span>
+          </div>
+        </div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Замер выдачи Островка</span> <span class="sec-cnt">эталон до и после смены ключа</span></div>
+          </div>
+          <div class="fbar">
+            <input type="text" id="bn-cities" value="Минск,Брест,Гродно" style="width:200px" title="Города через запятую, до 5">
+            <span class="dbox"><input type="date" id="bn-in" value="2026-11-10"><span class="dsep">→</span><input type="date" id="bn-out" value="2026-11-13"></span>
+            <input type="text" id="bn-limit" placeholder="предел" style="width:90px" title="hotels_limit; пусто — как на сайте">
+            <button class="sec-btn" id="bn-btn" onclick="agBench()">📏 Запустить замер</button>
+            <span class="ag-hint">Условия как решили 25.09: те же города и даты на старом и новом ключе. Город — 4 запроса к Островку, ~10–20 с.</span>
+          </div>
+          <div id="bn-out-box"></div>
+        </div>
+      </div>
+
     </div>
   </div>
 </div>
@@ -706,7 +760,7 @@ function showPage(name, el) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   if (name === 'bookings') applyBookingFilters();
@@ -714,6 +768,138 @@ function showPage(name, el) {
   if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
   if (name === 'hotels') applyHotelFilters();
   if (name === 'moderation') loadModeration();
+  if (name === 'agentika') loadAgentika();
+}
+
+// ══ АГЕНТИКА (01.10): оплата броней Островка, отчёт, замер выдачи ══
+function agPl(n,a,b,c){ n=Math.abs(n)%100; var m=n%10; if(n>10&&n<20)return c; if(m>1&&m<5)return b; if(m===1)return a; return c; }
+function agMoney(n, cur){ if(n===null||n===undefined||isNaN(n))return '—'; return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+(cur?' '+cur:''); }
+function agLeft(min){
+  if(min<0){ const h=Math.floor(-min/60); return 'просрочено на '+(h?h+' ч ':'')+(-min%60)+' мин'; }
+  if(min<60) return 'через '+min+' мин';
+  if(min<48*60) return 'через '+Math.floor(min/60)+' ч '+(min%60)+' мин';
+  return 'через '+Math.floor(min/1440)+' дн';
+}
+function agRowHTML(x, paidList){
+  const cls = paidList ? '' : (x.urgency==='overdue' ? 'ag-row-overdue' : (x.urgency==='urgent' ? 'ag-row-urgent' : ''));
+  const badge = x.urgency==='overdue' ? '<span class="badge badge-red">просрочено</span>'
+    : x.urgency==='urgent' ? '<span class="badge badge-amber">срочно</span>'
+    : x.urgency==='today' ? '<span class="badge badge-blue">сегодня-завтра</span>' : '';
+  const tariff = x.kind==='refundable'
+    ? 'возвратный<div class="ag-sub">бесплатная отмена до '+esc(x.free_until_minsk)+'</div><div class="ag-sub">по договору — до '+esc(x.contract_deadline_minsk)+'</div>'
+    : '<span style="color:#b45309">невозвратный</span><div class="ag-sub">платить сразу, срок — п. 3.8</div>';
+  const due = paidList
+    ? '<div class="ag-due">✓ '+esc(new Date(x.supplier_paid_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(x.supplier_paid_note?'<div class="ag-sub">'+esc(x.supplier_paid_note)+'</div>':'')
+    : '<div class="ag-due">'+esc(x.pay_by_minsk)+'</div><div class="ag-sub">'+esc(agLeft(x.minutes_left))+'</div>'+badge;
+  const st = x.status==='pending' ? '<div class="ag-sub">ждёт подтверждения Островка</div>' : '';
+  const act = paidList
+    ? '<button class="act-btn act-cancel" onclick="agMarkPaid(\''+escAttr(x.booking_num)+'\',false)">Снять отметку</button>'
+    : '<button class="act-btn act-approve" onclick="agMarkPaid(\''+escAttr(x.booking_num)+'\',true)">✓ Оплачено</button>';
+  return '<tr class="'+cls+'"><td>'+due+'</td>'
+    +'<td><span class="ag-num">'+esc(x.booking_num)+'</span>'+st+'</td>'
+    +'<td>'+esc(x.hotel_name||'—')+'<div class="ag-sub">'+esc(x.check_in||'')+' → '+esc(x.check_out||'')+'</div></td>'
+    +'<td><b>'+agMoney(x.supplier_amount, x.supplier_currency||'')+'</b>'+(x.supplier_currency && x.supplier_currency!=='BYN' && x.net_byn!=null ? '<div class="ag-sub">≈ '+agMoney(x.net_byn,'BYN')+'</div>' : '')+'</td>'
+    +'<td>'+agMoney(x.guest_price_byn,'BYN')+'<div class="ag-sub">вознагр. '+agMoney(x.commission_byn,'BYN')+'</div></td>'
+    +'<td>'+(x.guest_paid?'<span class="badge badge-green">оплатил</span>':'<span class="badge badge-gray">нет оплаты</span>')+'</td>'
+    +'<td>'+tariff+'</td><td>'+act+'</td></tr>';
+}
+function agTable(list, paidList){
+  if(!list.length) return '<div class="empty">'+(paidList?'Пока нет оплаченных за 45 дней':'Неоплаченных броней Островка нет 👍')+'</div>';
+  return '<div class="tw-x"><table class="ag-tbl"><tr><th>'+(paidList?'Оплачено':'Оплатить до (Минск)')+'</th><th>№ заказа</th><th>Объект и даты</th><th>Сумма Агентике</th><th>Цена гостю</th><th>Гость</th><th>Тариф</th><th></th></tr>'
+    +list.map(function(x){ return agRowHTML(x, paidList); }).join('')+'</table></div>';
+}
+async function loadAgentika(){
+  const mi=document.getElementById('ag-month');
+  if(mi && !mi.value){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); mi.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  agBenchHistory();
+  const box=document.getElementById('ag-unpaid');
+  try{
+    const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    document.getElementById('ag-buf').textContent=d.buffer_min;
+    document.getElementById('ag-cnt').textContent=d.unpaid.length?('· '+d.unpaid.length):'';
+    const nb=document.getElementById('nb-agentika'); if(nb){ nb.textContent=d.unpaid.length; nb.style.display=d.unpaid.length?'':'none'; }
+    const sums=Object.keys(d.totals||{}).map(function(c){ return agMoney(d.totals[c],c); }).join(' + ')||'—';
+    const first=d.unpaid[0];
+    document.getElementById('ag-stats').innerHTML=
+      '<div class="stat"><div class="stat-label">К оплате</div><div class="stat-val">'+d.unpaid.length+'</div><div class="stat-sub">'+agPl(d.unpaid.length,'бронь','брони','броней')+' Островка</div></div>'
+     +'<div class="stat"><div class="stat-label">Сумма</div><div class="stat-val" style="font-size:1.1rem">'+esc(sums)+'</div><div class="stat-sub">цена системы</div></div>'
+     +'<div class="stat"><div class="stat-label">Ближайший срок</div><div class="stat-val" style="font-size:1.1rem">'+(first?esc(first.pay_by_minsk):'—')+'</div><div class="stat-sub">'+(first?esc(agLeft(first.minutes_left)):'нет')+'</div></div>'
+     +'<div class="stat"><div class="stat-label">Просрочено / срочно</div><div class="stat-val '+(d.overdue?'c-red':(d.urgent?'c-amber':''))+'">'+d.overdue+' / '+d.urgent+'</div><div class="stat-sub">срочно — меньше 3 часов</div></div>';
+    box.innerHTML=agTable(d.unpaid,false);
+    document.getElementById('ag-paid').innerHTML=agTable(d.paid||[],true);
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+}
+async function agMarkPaid(num, paid){
+  let note='';
+  if(paid){
+    note=prompt('Бронь '+num+': отметить как оплаченную Агентике?\nМожно вписать номер платёжного поручения (необязательно):','');
+    if(note===null) return;
+  } else if(!confirm('Снять отметку «оплачено» с брони '+num+'?')) return;
+  try{
+    const r=await fetch(API+'/api/agentika/payables/'+encodeURIComponent(num)+'/paid',{method:'POST',headers:authHeaders(),body:JSON.stringify({paid:paid,note:note})});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ showToast(d.error||('Ошибка '+r.status),true); return; }
+    showToast(paid?'Отмечено: оплачено Агентике':'Отметка снята');
+    loadAgentika();
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+}
+async function agReport(){
+  const m=document.getElementById('ag-month').value;
+  if(!/^\d{4}-\d{2}$/.test(m)){ showToast('Выберите месяц',true); return; }
+  try{
+    const r=await fetch(API+'/api/agentika/report?month='+encodeURIComponent(m),{headers:authHeaders()});
+    if(!r.ok){ let e=''; try{ e=(await r.json()).error; }catch(_){} showToast(e||('Ошибка '+r.status),true); return; }
+    const blob=await r.blob();
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='agentika_otchet_'+m+'.csv';
+    document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+}
+function bnRowsHTML(run){
+  const p=run.params||{};
+  return (run.results||[]).map(function(x){
+    const k=x.kinds||{};
+    const cur=x.contract_currency?Object.keys(x.contract_currency).join('/'):'—';
+    const pr=x.night_price_byn?(x.night_price_byn.min+' / '+x.night_price_byn.median+' / '+x.night_price_byn.max):'—';
+    return '<tr><td>'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</td>'
+      +'<td>'+esc(run.key_id||'—')+'</td><td>'+esc(x.city)+'</td>'
+      +'<td>'+esc((p.checkin||'')+' → '+(p.checkout||''))+'</td>'
+      +'<td><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b>'+(x.hit_limit?' <span class="badge badge-amber">упёрлись в предел '+esc(p.limit)+'</span>':'')+'</td>'
+      +'<td>'+(x.total_hotels!=null?x.total_hotels:'—')+'</td>'
+      +'<td>'+(k.hotels!=null?esc(k.hotels):'—')+'</td><td>'+(k.apart!=null?esc(k.apart):'—')+'</td><td>'+(k.country!=null?esc(k.country):'—')+'</td>'
+      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ</div>':'')+'</td>'
+      +'<td>'+esc(cur)+'</td><td>'+esc(pr)+'</td>'
+      +'<td>'+(x.error?'<span style="color:#dc2626">'+esc(x.error)+'</span>':'')+'</td></tr>';
+  }).join('');
+}
+function bnTable(runs){
+  if(!runs.length) return '<div class="empty">Замеров ещё не было</div>';
+  return '<div class="tw-x"><table class="bn-tbl"><tr><th>Когда</th><th>Договор (ID)</th><th>Город</th><th>Даты</th><th>Пришло</th><th>Всего у Островка</th><th>Отели</th><th>Квартиры</th><th>Загородные</th><th>Ответ</th><th>Валюта договора</th><th>Цена за ночь, BYN: мин / медиана / макс</th><th></th></tr>'
+    +runs.map(bnRowsHTML).join('')+'</table></div>';
+}
+async function agBenchHistory(){
+  const box=document.getElementById('bn-out-box');
+  try{
+    const r=await fetch(API+'/api/ostrovok/bench/history',{headers:authHeaders()});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    box.innerHTML=bnTable(d.runs||[]);
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+}
+async function agBench(){
+  const btn=document.getElementById('bn-btn');
+  const body={ cities:document.getElementById('bn-cities').value, checkin:document.getElementById('bn-in').value, checkout:document.getElementById('bn-out').value };
+  const lim=document.getElementById('bn-limit').value.trim(); if(lim) body.limit=parseInt(lim,10);
+  btn.disabled=true; btn.textContent='📏 Идёт замер…';
+  try{
+    const r=await fetch(API+'/api/ostrovok/bench',{method:'POST',headers:authHeaders(),body:JSON.stringify(body)});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ showToast(d.error||('Ошибка '+r.status),true); return; }
+    showToast('Замер сохранён');
+    agBenchHistory();
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+  finally{ btn.disabled=false; btn.textContent='📏 Запустить замер'; }
 }
 
 // ── ПРИГЛАШЕНИЯ (магическая ссылка) ──
