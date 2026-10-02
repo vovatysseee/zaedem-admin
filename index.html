@@ -28,6 +28,12 @@
      откроет), но убирает самый лёгкий способ её найти: поиск по типовым словам. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Заедем.by — Админ-панель</title>
+<script>
+// 02.10: обновление страницы (F5) — сразу на нужном разделе, без мелькания входа и дашборда.
+// Пока скрипт не выбрал раздел, страница не показывается (доли секунды).
+try{ if(sessionStorage.getItem('admin_auth')) document.documentElement.className+=' adm-boot'; }catch(e){}
+</script>
+<style>html.adm-boot body{visibility:hidden}</style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230F2D1D'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='36' font-weight='900' fill='%23c9f135' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
 <link href="https://fonts.googleapis.com/css2?family=Unbounded:wght@400;600;800&family=Golos+Text:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 <style>
@@ -169,7 +175,14 @@ div.ag-note b{color:var(--text)}
 .ag-row-overdue td{background:var(--red-dim)}
 .ag-row-urgent td{background:var(--amber-dim)}
 .ag-num{font-family:monospace;font-size:11.5px}
-.bn-tbl td,.bn-tbl th{white-space:nowrap}
+.bn-tbl td{vertical-align:top}
+.bn-tbl .bn-num{font-variant-numeric:tabular-nums;white-space:nowrap}
+/* 02.10: Агентика без прокрутки вбок — таблицы переносят текст, а не растягивают страницу */
+.main{min-width:0}
+.content{min-width:0}
+#page-agentika table th{white-space:normal;line-height:1.3}
+#page-agentika .ag-tbl td,#page-agentika .bn-tbl td{word-break:normal;overflow-wrap:break-word}
+#page-agentika .ag-tbl .badge,#page-agentika .ag-tbl button{white-space:nowrap}
 .tw-x{overflow-x:auto}
 
 /* PAGES */
@@ -698,7 +711,7 @@ div.ag-note b{color:var(--text)}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Лимиты Островка по нашему ключу</span> <span class="sec-cnt" id="lim-at"></span></div>
-            <button class="sec-btn" onclick="agLimits(true)">↻ Спросить у Островка</button>
+            <button class="sec-btn" onclick="agLimits(true,this)">↻ Спросить у Островка</button>
           </div>
           <div class="ag-note" id="lim-note">Островок сам сообщает, сколько запросов в какой метод разрешено (метод overview). Прогрев поиска берёт не больше 20% лимита поиска.</div>
           <div id="lim-box"><div class="empty">Загрузка…</div></div>
@@ -1149,15 +1162,24 @@ function resetIdleTimer() {
 });
 
 // Check auth on load
-if (sessionStorage.getItem('admin_auth')) {
+// 02.10: после загрузки всех скриптов — сразу открыть нужный раздел (из адреса или прошлого
+// захода), а данные догрузить следом. Раньше показывались вход → дашборд → раздел.
+function admBoot() {
+  if (!sessionStorage.getItem('admin_auth')) { document.documentElement.classList.remove('adm-boot'); return; }
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
   resetIdleTimer();
-  loadAll({silent:true});
+  var bp = (location.hash || '').replace('#', '') || sessionStorage.getItem('adm_page') || 'dashboard';
+  try { showPage(bp, null, true); } catch (e) { console.error('boot page:', e.message); }
+  document.documentElement.classList.remove('adm-boot');
+  loadAll({silent:true, boot:true});
 }
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', admBoot); else admBoot();
+// Страховка: что бы ни случилось, через 3 с страница видна
+setTimeout(function(){ document.documentElement.classList.remove('adm-boot'); }, 3000);
 
 // ── NAV ──
-function showPage(name, el) {
+function showPage(name, el, boot) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
   var pg = document.getElementById('page-' + name);
@@ -1168,12 +1190,29 @@ function showPage(name, el) {
   const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
-  if (name === 'bookings') applyBookingFilters();
-  if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
-  if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
-  if (name === 'hotels') applyHotelFilters();
+  // При старте данные ещё не загружены: таблицы нарисует loadAll (refreshCurrentPage),
+  // а разделы со своими загрузчиками (модерация, Агентика) начинают грузиться сразу.
+  if (!boot) {
+    if (name === 'bookings') applyBookingFilters();
+    if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
+    if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
+    if (name === 'hotels') applyHotelFilters();
+  }
   if (name === 'moderation') loadModeration();
   if (name === 'agentika') loadAgentika();
+}
+// Текущий раздел — перерисовать данными, НЕ переключая страницу (кнопка «Обновить», старт)
+function curAdmPage() { var on = document.querySelector('.page.on'); return on ? on.id.replace('page-', '') : 'dashboard'; }
+function refreshCurrentPage(boot) {
+  var name = curAdmPage();
+  try {
+    if (name === 'bookings') applyBookingFilters();
+    if (name === 'applications') renderAppsTable(allApps, currentAppFilter);
+    if (name === 'tourists') { setUserFilter(currentUserFilter, null); }
+    if (name === 'hotels') applyHotelFilters();
+    if (!boot && name === 'moderation') loadModeration();
+    if (!boot && name === 'agentika') loadAgentika();
+  } catch (e) { console.error('refresh page:', e.message); }
 }
 
 // ══ КАЛЕНДАРИ (01.10): свои вместо системных — см. zdp в начале скрипта ══
@@ -1293,21 +1332,24 @@ function bnRowsHTML(run){
     const k=x.kinds||{};
     const cur=x.contract_currency?Object.keys(x.contract_currency).join('/'):'—';
     const pr=x.night_price_byn?(x.night_price_byn.min+' / '+x.night_price_byn.median+' / '+x.night_price_byn.max):'—';
-    return '<tr><td>'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</td>'
-      +'<td>'+esc(run.key_id||'—')+'</td><td>'+esc(x.city)+'</td>'
-      +'<td>'+esc((p.checkin||'')+' → '+(p.checkout||''))+(resTxt?'<div class="ag-sub">'+esc(resTxt.slice(3))+'</div>':'')+'</td>'
-      +'<td><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b>'+(x.hit_limit?' <span class="badge badge-amber">упёрлись в предел '+esc(p.limit)+'</span>':'')+'</td>'
-      +'<td>'+(x.total_hotels!=null?x.total_hotels:'—')+'</td>'
-      +'<td>'+(x.not_in_db!=null?(x.not_in_db?'<b style="color:#b45309">'+x.not_in_db+'</b>':'0'):'—')+'</td>'
-      +'<td>'+(k.hotels!=null?esc(k.hotels):'—')+'</td><td>'+(k.apart!=null?esc(k.apart):'—')+'</td><td>'+(k.country!=null?esc(k.country):'—')+'</td>'
-      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ'+(x.wire_kb!=null&&x.wire_kb<x.kb?' · по сети '+x.wire_kb+' КБ':'')+'</div>':'')+(p.limit?'<div class="ag-sub">предел '+esc(p.limit)+'</div>':'')+'</td>'
-      +'<td>'+esc(cur)+'</td><td>'+esc(pr)+'</td>'
-      +'<td>'+(x.error?'<span style="color:#dc2626">'+esc(x.error)+'</span>':'')+'</td></tr>';
+    // 02.10: 8 колонок вместо 14 — таблица помещается без прокрутки вбок
+    const d2=function(v){ return String(v||'').slice(5).split('-').reverse().join('.'); };
+    const kk=function(v){ return v!=null?esc(v):'—'; };
+    return '<tr><td>'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))
+      +'<div class="ag-sub">ключ '+esc(run.key_id||'—')+(resTxt?' · '+esc(resTxt.slice(3)):'')+'</div></td>'
+      +'<td><b>'+esc(x.city)+'</b><div class="ag-sub">'+esc(d2(p.checkin)+' → '+d2(p.checkout))+'</div>'
+      +(x.error?'<div style="color:#dc2626;font-size:11px">'+esc(x.error)+'</div>':'')+'</td>'
+      +'<td class="bn-num"><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b> / '+(x.total_hotels!=null?x.total_hotels:'—')
+      +(x.hit_limit?'<div><span class="badge badge-amber">упёрлись в предел '+esc(p.limit)+'</span></div>':'')+'</td>'
+      +'<td class="bn-num">'+(x.not_in_db!=null?(x.not_in_db?'<b style="color:#b45309">'+x.not_in_db+'</b>':'0'):'—')+'</td>'
+      +'<td class="bn-num">'+kk(k.hotels)+' · '+kk(k.apart)+' · '+kk(k.country)+'</td>'
+      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ'+(x.wire_kb!=null&&x.wire_kb<x.kb?' → по сети '+x.wire_kb+' КБ':'')+(p.limit?' · предел '+esc(p.limit):'')+'</div>':'')+'</td>'
+      +'<td>'+esc(cur)+'</td><td class="bn-num">'+esc(pr)+'</td></tr>';
   }).join('');
 }
 function bnTable(runs){
   if(!runs.length) return '<div class="empty">Замеров ещё не было</div>';
-  return '<div class="tw-x"><table class="bn-tbl"><tr><th>Когда</th><th>Договор (ID)</th><th>Город</th><th>Даты</th><th>Пришло</th><th>Всего у Островка</th><th title="Объекты, которых ещё нет в нашей базе: без названия и фото, пока их не дозагрузит фон или дамп">Нет в базе</th><th>Отели</th><th>Квартиры</th><th>Загородные</th><th>Ответ</th><th>Валюта договора</th><th>Цена за ночь, BYN: мин / медиана / макс</th><th></th></tr>'
+  return '<div class="tw-x"><table class="bn-tbl"><tr><th>Замер</th><th>Город и даты</th><th>Пришло / всего у Островка</th><th title="Объекты, которых ещё нет в нашей базе: без названия и фото, пока их не дозагрузит фон или дамп">Нет в базе</th><th>Отели · квартиры · загородные</th><th>Ответ Островка</th><th>Валюта договора</th><th>За ночь, BYN: мин / медиана / макс</th></tr>'
     +runs.map(bnRowsHTML).join('')+'</table></div>';
 }
 async function agBenchHistory(){
@@ -1330,12 +1372,20 @@ async function agBenchHistory(){
     }
   }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
 }
-async function agLimits(refresh){
+async function agLimits(refresh, btn){
   const box=document.getElementById('lim-box');
+  // 02.10: кнопка показывает, что запрос идёт, и чем он закончился — раньше нажатие
+  // выглядело так, будто ничего не произошло
+  const bt=btn?btn.textContent:'';
+  if(btn){ btn.disabled=true; btn.textContent='Спрашиваем Островок…'; }
   try{
     const r=await fetch(API+'/api/ostrovok/limits'+(refresh?'?refresh=1':''),{headers:authHeaders()});
     const d=await r.json();
-    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; if(refresh)showToast('Не получилось: '+(d.error||('ошибка '+r.status)),true); return; }
+    if(refresh){
+      if(d.error) showToast('Островок не ответил: '+d.error+(d.rows&&d.rows.length?' — показаны прошлые данные':''),true);
+      else showToast('Островок ответил: '+(d.rows||[]).length+' '+agPl((d.rows||[]).length,'метод','метода','методов')+', лимиты обновлены');
+    }
     document.getElementById('lim-at').textContent=d.at?('· '+new Date(d.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'';
     const pw=d.prewarm||{};
     document.getElementById('lim-note').innerHTML='Островок сам сообщает, сколько запросов в какой метод разрешено. Наш общий предел на поиск: <b>'+esc(d.global_used_15min)+' из '+esc(d.global_max_15min)+'</b> за 15 минут. '
@@ -1349,7 +1399,8 @@ async function agLimits(refresh){
       +show.map(x=>'<tr class="'+(x.key?'lim-key':'')+'"><td>'+esc(x.endpoint)+'</td><td>'+esc(per(x))+'</td><td>'+(x.limited&&x.seconds?Math.round(x.requests*60/x.seconds*10)/10:'—')+'</td><td>'
         +(x.active?'<span class="badge badge-green">работает</span>':'<span class="badge badge-red">закрыт</span>')+(x.debug?' <span class="badge badge-amber">отладка</span>':'')+'</td></tr>').join('')
       +'</table></div><div style="padding:8px 1.2rem"><button class="act-btn" onclick="window._limAll=!window._limAll;agLimits(false)">'+(window._limAll?'Только основные':'Показать все ('+rows.length+')')+'</button></div>';
-  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; if(refresh)showToast('Ошибка сети: '+e.message,true); }
+  finally{ if(btn){ btn.disabled=false; btn.textContent=bt||'↻ Спросить у Островка'; } }
 }
 async function agBench(){
   const btn=document.getElementById('bn-btn');
@@ -1550,9 +1601,9 @@ async function loadAll(opts) {
   // и если статистика подтормозит, дашборд не должен из-за неё стоять.
   loadStats();
   try{ bellCollect(); }catch(e){}
-  // восстановить открытую страницу (F5 не сбрасывает)
-  var sp=(location.hash||'').replace('#','')||sessionStorage.getItem('adm_page')||'dashboard';
-  showPage(sp);
+  // 02.10: открытый раздел перерисовываем на месте — без переключения страниц
+  // (раньше здесь был showPage: при F5 и «Обновить» экран прыгал через дашборд)
+  refreshCurrentPage(opts && opts.boot);
 
   if (!silent) {
     if (failed.length) showToast('Обновлено частично. Не удалось: ' + failed.join(', '), true);
