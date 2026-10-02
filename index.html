@@ -160,6 +160,9 @@ tr:hover td{background:var(--surf2)}
 /* АГЕНТИКА */
 .ag-note{font-size:12px;color:var(--muted);line-height:1.5;padding:10px 1.2rem;border-bottom:1px solid var(--border);margin:0}
 .ag-hint{font-size:11px;color:var(--muted);flex:1;min-width:220px;line-height:1.4}
+.ag-rules{margin:6px 0 6px 18px;padding:0;display:grid;gap:3px}
+div.ag-note{font-size:12px;color:var(--muted);line-height:1.5;padding:10px 1.2rem;border-bottom:1px solid var(--border)}
+div.ag-note b{color:var(--text)}
 .ag-tbl td{vertical-align:top}
 .ag-due{font-weight:700;white-space:nowrap}
 .ag-sub{font-size:10.5px;color:var(--muted);margin-top:2px}
@@ -231,6 +234,70 @@ tr:hover td{background:var(--surf2)}
 .jr-none{padding:14px;text-align:center;color:var(--hint);font-size:12px;background:var(--surf2);border-radius:8px}
 .jr-warn{padding:10px 12px;background:var(--amber-dim);color:#92400e;border-radius:8px;font-size:11px;margin-bottom:14px;line-height:1.5}
 .jr-json{background:var(--surf2);border-radius:8px;padding:10px;font-family:ui-monospace,monospace;font-size:10px;white-space:pre-wrap;word-break:break-all;max-height:180px;overflow:auto}
+
+/* ═══ КАЛЕНДАРЬ ZDP (01.10.2026) — см. скрипт zdp ═══ */
+.zdp-trig{display:inline-flex;align-items:center;gap:8px;min-height:38px;padding:7px 12px;border:1.5px solid var(--zdp-line,#ddd7cb);border-radius:9px;background:#fff;font:inherit;font-size:13px;color:var(--zdp-ink,#1b1b1b);cursor:pointer;text-align:left;white-space:nowrap;line-height:1.2;transition:border-color .15s,box-shadow .15s;max-width:100%}
+.zdp-trig.full{display:flex;width:100%}
+.zdp-trig:hover{border-color:var(--zdp-acc,#1a5c38)}
+.zdp-trig.on,.zdp-trig:focus-visible{border-color:var(--zdp-acc,#1a5c38);box-shadow:0 0 0 3px rgba(26,92,56,.12);outline:none}
+.zdp-trig svg{flex-shrink:0;color:var(--zdp-acc,#1a5c38);opacity:.75}
+.zdp-trig .zdp-v{overflow:hidden;text-overflow:ellipsis;font-variant-numeric:tabular-nums}
+.zdp-trig .zdp-ph{color:#9b968c}
+.zdp-x{margin-left:auto;flex-shrink:0;width:18px;height:18px;border-radius:50%;display:inline-flex;align-items:center;justify-content:center;font-size:10px;color:#7a756b;background:#efebe3}
+.zdp-x:hover{background:#e2ddd2;color:#1b1b1b}
+.zdp-back{position:fixed;inset:0;background:rgba(15,20,17,.38);z-index:1999}
+.zdp-pop{position:absolute;z-index:2000;background:#fff;color:#1b1b1b;border:1px solid rgba(0,0,0,.07);border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,.18);padding:14px 14px 12px;font-size:13px;user-select:none;-webkit-user-select:none;font-family:inherit}
+.zdp-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:10px}
+.zdp-ttl{font-weight:700;font-size:13.5px}
+.zdp-hint{font-size:12px;color:#6b665c;margin-top:2px;min-height:15px;font-variant-numeric:tabular-nums}
+.zdp-close{width:28px;height:28px;border:none;border-radius:8px;background:#f3f0ea;color:#555;cursor:pointer;font-size:12px;flex-shrink:0}
+.zdp-close:hover{background:#e8e3d9}
+.zdp-months{display:flex;gap:22px}
+.zdp-m{width:252px}
+.zdp-nav-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.zdp-mt{font-weight:700;text-align:center;flex:1;font-size:13px}
+.zdp-m .zdp-mt::first-letter{text-transform:uppercase}
+.zdp-nav,.zdp-nav-sp{width:30px;height:30px;flex-shrink:0}
+.zdp-nav{border:1px solid #e6e1d7;border-radius:8px;background:#fff;cursor:pointer;font-size:17px;line-height:1;color:#333}
+.zdp-nav:hover:not(:disabled){border-color:var(--zdp-acc,#1a5c38);color:var(--zdp-acc,#1a5c38)}
+.zdp-nav:disabled{opacity:.3;cursor:default}
+.zdp-g{display:grid;grid-template-columns:repeat(7,36px);row-gap:2px}
+.zdp-wd{font-size:10.5px;color:#9b968c;text-align:center;padding:4px 0 6px;font-weight:600;letter-spacing:.3px}
+.zdp-wd.we{color:#c2603a}
+.zdp-d{height:34px;border:none;background:none;font:inherit;font-size:13px;color:inherit;cursor:pointer;border-radius:8px;font-variant-numeric:tabular-nums;padding:0}
+.zdp-d.we{color:#b4532a}
+.zdp-d:hover:not(:disabled){background:#e9f2ec}
+.zdp-d.t{box-shadow:inset 0 0 0 1.5px var(--zdp-acc,#1a5c38);font-weight:700}
+.zdp-d.in,.zdp-d.hv{background:#e3efe7;border-radius:0;color:#1b1b1b}
+.zdp-d.a,.zdp-d.b{background:var(--zdp-acc,#1a5c38)!important;color:#fff!important;font-weight:700;box-shadow:none}
+.zdp-d.a{border-radius:8px 0 0 8px}
+.zdp-d.b{border-radius:0 8px 8px 0}
+.zdp-d.solo,.zdp-d.a.b{border-radius:8px}
+.zdp-d.dis{color:#cdc8be!important;cursor:default;background:none!important;box-shadow:none;font-weight:400}
+.zdp-d:focus-visible,.zdp-mo:focus-visible,.zdp-btn:focus-visible{outline:2px solid var(--zdp-acc,#1a5c38);outline-offset:1px}
+.zdp-mg{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;width:252px;margin-top:4px}
+.zdp-mo{height:40px;border:1px solid #ebe6dc;border-radius:9px;background:#fff;font:inherit;font-size:13px;color:inherit;cursor:pointer}
+.zdp-mo:hover:not(:disabled){border-color:var(--zdp-acc,#1a5c38)}
+.zdp-mo.t{border-color:var(--zdp-acc,#1a5c38);font-weight:700}
+.zdp-mo.a{background:var(--zdp-acc,#1a5c38);border-color:var(--zdp-acc,#1a5c38);color:#fff;font-weight:700}
+.zdp-mo:disabled{color:#cdc8be;cursor:default;border-color:#f1eee8}
+.zdp-foot{display:flex;align-items:center;justify-content:flex-end;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid #f0ece5;flex-wrap:wrap}
+.zdp-note{font-size:11.5px;color:#7a756b;margin-right:auto;max-width:300px;line-height:1.35}
+.zdp-btn{border:none;background:#eef4f0;color:var(--zdp-acc,#1a5c38);font:inherit;font-size:12.5px;font-weight:700;padding:7px 12px;border-radius:8px;cursor:pointer}
+.zdp-btn:hover{background:#e0ece4}
+.zdp-btn.ghost{background:none;color:#6b665c}
+.zdp-btn.ghost:hover{background:#f3f0ea;color:#1b1b1b}
+.zdp-pop.sheet{position:fixed;left:0;right:0;bottom:0;top:auto!important;border-radius:16px 16px 0 0;padding:16px 16px calc(14px + env(safe-area-inset-bottom,0px));max-height:88vh;overflow:auto}
+.zdp-pop.sheet .zdp-m,.zdp-pop.sheet .zdp-mg{width:100%}
+.zdp-pop.sheet .zdp-g{grid-template-columns:repeat(7,1fr)}
+.zdp-pop.sheet .zdp-d{height:42px;font-size:15px}
+@media (prefers-reduced-motion:no-preference){.zdp-pop:not([hidden]){animation:zdpIn .14s ease-out}@keyframes zdpIn{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}}
+
+.zdp-trig{--zdp-line:var(--border2);font-size:12.5px}
+.unp-info{font-size:12px;line-height:1.45;margin-top:6px;min-height:0}
+.unp-info.ok{color:var(--green)} .unp-info.bad{color:#dc2626} .unp-info.wait{color:var(--muted)}
+.lim-tbl td,.lim-tbl th{white-space:nowrap}
+.lim-key td:first-child{font-weight:700}
 </style>
 </head>
 <body>
@@ -467,7 +534,7 @@ tr:hover td{background:var(--surf2)}
           <div style="display:flex;gap:8px;margin-bottom:16px;padding:14px 1.2rem 0">
             <button id="htab-direct" class="htab htab-on" onclick="switchHotelTab('direct')" style="padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Мои объекты</button>
             <button id="htab-ostrovok" class="htab" onclick="switchHotelTab('ostrovok')" style="padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Каталог Островка</button>
-            <button id="recat-btn" onclick="runRecategorize()" title="Перечитывает тип каждого отеля у Островка и обновляет категории, теги удобств и ближайшее метро" style="margin-left:auto;padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">⚙ Пересчитать категории/теги</button>
+            <button id="recat-btn" onclick="runRecategorize()" title="Пересчитывает категории, теги удобств и ближайшее метро по данным в нашей базе (Островок не запрашивает)" style="margin-left:auto;padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">⚙ Пересчитать категории/теги</button>
           </div>
           <div id="recat-status" style="display:none;margin-bottom:12px;padding:10px 14px;background:var(--surf2,#f6f6f2);border-radius:9px;font-size:12px;color:var(--muted)"></div>
           <div id="hotels-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
@@ -488,6 +555,7 @@ tr:hover td{background:var(--surf2)}
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Телефон хозяина</label><input id="inv-phone" placeholder="+375 __ ___-__-__" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Email хозяина</label><input id="inv-email" placeholder="host@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">УНП хозяина <span style="color:var(--muted);font-weight:400">(необязательно — подставим наименование из реестра МНС)</span></label><input id="inv-unp" inputmode="numeric" maxlength="11" placeholder="9 цифр" oninput="admUnpInput(this)" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;font-variant-numeric:tabular-nums"><div class="unp-info" id="inv-unp-info"></div></div>
             <div class="fg" style="margin-bottom:16px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Ссылка на объявление (откуда переносим)</label><input id="inv-url" placeholder="https://... (для истории)" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             <button onclick="createInvite()" id="inv-btn" style="width:100%;background:var(--green);color:#fff;border:none;border-radius:11px;padding:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer">Создать приглашение</button>
           </div>
@@ -498,7 +566,7 @@ tr:hover td{background:var(--surf2)}
               <input id="inv-link" readonly style="flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)">
               <button onclick="copyInvite()" style="background:var(--green);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Копировать</button>
             </div>
-            <button onclick="document.getElementById('inv-result').style.display='none';document.getElementById('inv-name').value='';document.getElementById('inv-addr').value='';document.getElementById('inv-desc').value='';document.getElementById('inv-phone').value='';document.getElementById('inv-email').value='';document.getElementById('inv-url').value='';" style="margin-top:12px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit">Создать ещё одно</button>
+            <button onclick="document.getElementById('inv-result').style.display='none';document.getElementById('inv-name').value='';document.getElementById('inv-addr').value='';document.getElementById('inv-desc').value='';document.getElementById('inv-phone').value='';document.getElementById('inv-email').value='';document.getElementById('inv-url').value='';document.getElementById('inv-unp').value='';document.getElementById('inv-unp-info').textContent='';" style="margin-top:12px;background:none;border:none;color:var(--muted);font-size:12px;cursor:pointer;text-decoration:underline;font-family:inherit">Создать ещё одно</button>
           </div>
         </div>
       </div>
@@ -536,6 +604,7 @@ tr:hover td{background:var(--surf2)}
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Заезд с</label><input id="no-cin" value="14:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Выезд до</label><input id="no-cout" value="12:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
+            <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">УНП хозяина <span style="color:var(--muted);font-weight:400">(необязательно — подставим наименование из реестра МНС)</span></label><input id="no-unp" inputmode="numeric" maxlength="11" placeholder="9 цифр" oninput="admUnpInput(this)" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;font-variant-numeric:tabular-nums"><div class="unp-info" id="no-unp-info"></div></div>
             <div class="fg" style="margin-bottom:16px;background:#f6faf7;border:1.5px solid var(--border2);border-radius:11px;padding:12px 13px">
               <label style="display:block;font-size:12px;font-weight:700;color:var(--green);margin-bottom:5px">Почта партнёра — владельца объекта</label>
               <input id="no-owner" placeholder="partner@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none">
@@ -586,9 +655,15 @@ tr:hover td{background:var(--surf2)}
             <div><span class="sec-title">Оплатить Агентике</span> <span class="sec-cnt" id="ag-cnt"></span></div>
             <button class="sec-btn" onclick="loadAgentika()">↻ Обновить</button>
           </div>
-          <p class="ag-note">Бронь Островка надо оплатить переводом со счёта до срока, иначе она не сохранится (п. 3.8 договора B2B-397211, п. 3.3 Правил).
-          Возвратный тариф — не позже чем за 40 минут до конца бесплатной отмены; в колонке «Оплатить до» уже вычтен запас <b id="ag-buf">60</b> мин.
-          Оплатили — нажмите «Оплачено». Утром и за 3 часа до срока приходит сигнал в Telegram (без данных гостей).</p>
+          <div class="ag-note">
+            <b>Сроки оплаты Агентике</b> (сверено с офертой B2B-397211 и Правилами бронирования). Оплачено — когда деньги <b>зачислены</b> на счёт Агентики (п. 3.9), поэтому платим в банковские часы.
+            <ul class="ag-rules">
+              <li><b>Невозвратный тариф</b> — в течение 3 рабочих дней с даты брони (п. 3.8). «Оплатить до» = <span id="ag-nrh">12:00</span> третьего рабочего дня после брони.</li>
+              <li><b>Возвратный тариф</b> — деньги должны поступить не позднее 40 минут до конца бесплатной отмены (п. 3.3 Правил). «Оплатить до» = конец бесплатной отмены − 40 мин − запас <b id="ag-buf">60</b> мин; если это ночь или выходной — последний банковский час раньше (пн–пт до <span id="ag-bank">16:00</span>).</li>
+              <li>Если банк уже не успевает (бронь в выходной со сроком до понедельника) — строка красная: платить картой в системе Островка или договориться о лимите (п. 4.1).</li>
+            </ul>
+            Telegram (без данных гостей): сразу о новой брони с её сроком, утром — сводка «возвратных N, невозвратных M», за 3 часа до срока и после него — срочный сигнал каждые 2 часа. Оплатили — нажмите «Оплачено».
+          </div>
           <div id="ag-unpaid"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
         <div class="section">
@@ -610,11 +685,23 @@ tr:hover td{background:var(--surf2)}
           <div class="fbar">
             <input type="text" id="bn-cities" value="Минск,Брест,Гродно" style="width:200px" title="Города через запятую, до 5">
             <span class="dbox"><input type="date" id="bn-in" value="2026-11-10"><span class="dsep">→</span><input type="date" id="bn-out" value="2026-11-13"></span>
-            <input type="text" id="bn-limit" placeholder="предел" style="width:90px" title="hotels_limit; пусто — как на сайте">
+            <select id="bn-res" title="Гражданство гостя для Островка. Сайт всегда ищет как «Беларусь»">
+              <option value="by">гости: Беларусь (как на сайте)</option>
+              <option value="ru">гости: Россия (для сравнения)</option>
+            </select>
+            <input type="text" id="bn-limit" placeholder="предел" style="width:90px" title="hotels_limit; пусто — как на сайте (1000). Поставьте 60, чтобы сравнить время ответа">
             <button class="sec-btn" id="bn-btn" onclick="agBench()">📏 Запустить замер</button>
-            <span class="ag-hint">Условия как решили 25.09: те же города и даты на старом и новом ключе. Город — 4 запроса к Островку, ~10–20 с.</span>
+            <span class="ag-hint">Для сравнения старого и нового ключа — те же города и даты, что в первом замере (подставляются сами). Город — 4 запроса к Островку, ~10–20 с.</span>
           </div>
           <div id="bn-out-box"></div>
+        </div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Лимиты Островка по нашему ключу</span> <span class="sec-cnt" id="lim-at"></span></div>
+            <button class="sec-btn" onclick="agLimits(true)">↻ Спросить у Островка</button>
+          </div>
+          <div class="ag-note" id="lim-note">Островок сам сообщает, сколько запросов в какой метод разрешено (метод overview). Прогрев поиска берёт не больше 20% лимита поиска.</div>
+          <div id="lim-box"><div class="empty">Загрузка…</div></div>
         </div>
       </div>
 
@@ -636,6 +723,324 @@ tr:hover td{background:var(--surf2)}
 
 <div class="toast" id="toast"></div>
 
+<script>
+/* ═══ КАЛЕНДАРЬ ZDP (01.10.2026) ═══
+   Свой календарь вместо системного <input type="date">: по-русски на любом компьютере,
+   в стиле панели и с правилами дат:
+   • период «с — по» всегда идёт вперёд: выбрал конец раньше начала — это новое начало;
+   • где прошлое не имеет смысла (замер, цены) — прошедшие дни недоступны;
+   • в отчётах и фильтрах — любые даты; месяц отчёта — не позже текущего.
+   Исходные поля остаются на месте (скрыты) и хранят значение в прежнем виде
+   (ГГГГ-ММ-ДД / ГГГГ-ММ), поэтому весь остальной код читает их как раньше.
+   Если код сам меняет .value (пресеты «7 дн», «Сбросить») — надпись обновляется. */
+(function () {
+  var MN = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+  var MS = ['янв','фев','мар','апр','мая','июн','июл','авг','сен','окт','ноя','дек'];
+  var MO = ['Янв','Фев','Мар','Апр','Май','Июн','Июл','Авг','Сен','Окт','Ноя','Дек'];
+  var WD = ['Пн','Вт','Ср','Чт','Пт','Сб','Вс'];
+  function p2(n) { return (n < 10 ? '0' : '') + n; }
+  function ymd(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1) + '-' + p2(d.getDate()); }
+  function ym(d) { return d.getFullYear() + '-' + p2(d.getMonth() + 1); }
+  function parse(s) {
+    var m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(String(s || ''));
+    if (!m) return null;
+    var d = new Date(+m[1], +m[2] - 1, +m[3]);
+    return (d.getMonth() === +m[2] - 1) ? d : null;
+  }
+  function parseYm(s) { var m = /^(\d{4})-(\d{2})$/.exec(String(s || '')); return m ? new Date(+m[1], +m[2] - 1, 1) : null; }
+  function addD(d, n) { var x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() + n); return x; }
+  function today() { var t = new Date(); return new Date(t.getFullYear(), t.getMonth(), t.getDate()); }
+  function diff(a, b) { return Math.round((b - a) / 86400000); }
+  function val(v) {
+    if (typeof v === 'function') v = v();
+    if (v === 'today') return today();
+    if (v instanceof Date) return v;
+    return parse(v);
+  }
+  function human(d, year) { return d ? (d.getDate() + ' ' + MS[d.getMonth()] + (year ? ' ' + d.getFullYear() : '')) : ''; }
+  function nightsW(n) { var a = n % 10, b = n % 100; return n + ' ' + ((a === 1 && b !== 11) ? 'ночь' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'ночи' : 'ночей'); }
+  function daysW(n) { var a = n % 10, b = n % 100; return n + ' ' + ((a === 1 && b !== 11) ? 'день' : (a >= 2 && a <= 4 && (b < 12 || b > 14)) ? 'дня' : 'дней'); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  var ICON = '<svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><rect x="3" y="4.5" width="18" height="17" rx="2.5"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>';
+
+  // Native setter, чтобы следить за изменением .value из чужого кода
+  var VDESC = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value');
+  function watch(inp, cb) {
+    try {
+      Object.defineProperty(inp, 'value', {
+        configurable: true,
+        get: function () { return VDESC.get.call(this); },
+        set: function (v) { VDESC.set.call(this, v); try { cb(); } catch (e) {} }
+      });
+    } catch (e) {}
+  }
+  function setVal(inp, v) {
+    VDESC.set.call(inp, v);
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+    inp.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  var pop = null, back = null, cur = null;
+  function sheet() { return window.innerWidth < 560; }
+  function ensure() {
+    if (pop) return;
+    pop = document.createElement('div'); pop.className = 'zdp-pop'; pop.hidden = true;
+    pop.setAttribute('role', 'dialog');
+    back = document.createElement('div'); back.className = 'zdp-back'; back.hidden = true;
+    document.body.appendChild(back); document.body.appendChild(pop);
+    back.addEventListener('click', close);
+    document.addEventListener('mousedown', function (e) {
+      if (!cur || sheet()) return;
+      if (pop.contains(e.target)) return;
+      for (var i = 0; i < cur.trigs.length; i++) if (cur.trigs[i].contains(e.target)) return;
+      close();
+    }, true);
+    document.addEventListener('keydown', function (e) { if (cur && e.key === 'Escape') { close(); } });
+    window.addEventListener('resize', function () { if (cur) { render(); place(); } });
+    window.addEventListener('scroll', function () { if (cur && !sheet()) place(); }, true);
+    pop.addEventListener('mouseover', function (e) {
+      if (!cur || cur.mode !== 'range' || !cur.a || cur.b) return;
+      var b = e.target.closest && e.target.closest('[data-d]');
+      var h = b && !b.disabled ? b.getAttribute('data-d') : null;
+      if (h !== cur.hover) { cur.hover = h; paintHover(); }
+    });
+    pop.addEventListener('click', onClick);
+  }
+  function place() {
+    if (!cur) return;
+    if (sheet()) { pop.classList.add('sheet'); pop.style.left = pop.style.top = ''; back.hidden = false; return; }
+    pop.classList.remove('sheet'); back.hidden = true;
+    var r = cur.anchor.getBoundingClientRect();
+    var w = pop.offsetWidth, h = pop.offsetHeight;
+    var left = r.left + window.scrollX;
+    var maxL = window.scrollX + document.documentElement.clientWidth - w - 8;
+    if (left > maxL) left = Math.max(window.scrollX + 8, maxL);
+    var top = r.bottom + window.scrollY + 6;
+    if (r.bottom + h + 12 > window.innerHeight && r.top - h - 6 > 0) top = r.top + window.scrollY - h - 6;
+    pop.style.left = left + 'px'; pop.style.top = top + 'px';
+  }
+  function open(pk, anchor, phase) {
+    ensure();
+    if (cur && cur !== pk) close();
+    cur = pk; pk.anchor = anchor || pk.trigs[0];
+    if (pk.mode === 'month') {
+      var v = parseYm(pk.ins[0].value) || today();
+      pk.year = v.getFullYear();
+    } else {
+      pk.a = parse(pk.ins[0].value); pk.b = pk.mode === 'range' ? parse(pk.ins[1].value) : null;
+      pk.phase = (phase === 'end' && pk.a) ? 'end' : 'start';
+      if (pk.phase === 'end') pk.b = null;
+      var base = (pk.phase === 'end' ? pk.a : pk.a) || val(pk.o.min) || today();
+      var mx = val(pk.o.max);
+      if (mx && base > mx) base = mx;
+      pk.view = new Date(base.getFullYear(), base.getMonth(), 1);
+      pk.hover = null;
+    }
+    pk.trigs.forEach(function (t) { t.classList.add('on'); t.setAttribute('aria-expanded', 'true'); });
+    pop.hidden = false;
+    render(); place();
+  }
+  function close() {
+    if (!cur) return;
+    cur.trigs.forEach(function (t) { t.classList.remove('on'); t.setAttribute('aria-expanded', 'false'); });
+    var pk = cur; cur = null;
+    pop.hidden = true; back.hidden = true;
+    // Начали период и бросили — откатываем, чтобы в поле не остался «полупериод»
+    pk.a = pk.b = null;
+    show(pk);
+  }
+  function months() { return (cur.mode === 'range' && !sheet() && window.innerWidth >= 640 && cur.o.months !== 1) ? 2 : 1; }
+  function dayState(d) {
+    var pk = cur, o = pk.o, mn = val(o.min), mx = val(o.max), s = { dis: false };
+    if ((mn && d < mn) || (mx && d > mx)) s.dis = true;
+    if (pk.mode === 'range' && pk.a && !pk.b && pk.phase === 'end' && !s.dis && d >= pk.a) {
+      var n = diff(pk.a, d);
+      if (o.maxNights != null && n > o.maxNights) s.dis = true;
+      if (o.minNights && n > 0 && n < o.minNights) s.dis = true;
+    }
+    return s;
+  }
+  function render() {
+    var pk = cur, o = pk.o, html = '';
+    html += '<div class="zdp-top"><div><div class="zdp-ttl">' + esc(o.title || 'Даты') + '</div><div class="zdp-hint">' + esc(hint()) + '</div></div>'
+      + '<button type="button" class="zdp-close" data-act="close" aria-label="Закрыть">✕</button></div>';
+    if (pk.mode === 'month') {
+      var mx = o.max ? (o.max === 'now' ? new Date(today().getFullYear(), today().getMonth(), 1) : parseYm(o.max)) : null;
+      var mn = o.min ? parseYm(o.min) : null;
+      html += '<div class="zdp-nav-row"><button type="button" class="zdp-nav" data-act="py"' + ((mn && pk.year <= mn.getFullYear()) ? ' disabled' : '') + ' aria-label="Предыдущий год">‹</button>'
+        + '<div class="zdp-mt">' + pk.year + '</div>'
+        + '<button type="button" class="zdp-nav" data-act="ny"' + ((mx && pk.year >= mx.getFullYear()) ? ' disabled' : '') + ' aria-label="Следующий год">›</button></div><div class="zdp-mg">';
+      var sel = parseYm(pk.ins[0].value), nowM = new Date(today().getFullYear(), today().getMonth(), 1);
+      for (var i = 0; i < 12; i++) {
+        var md = new Date(pk.year, i, 1);
+        var dis = (mx && md > mx) || (mn && md < mn);
+        var cls = 'zdp-mo' + (sel && +sel === +md ? ' a' : '') + (+md === +nowM ? ' t' : '');
+        html += '<button type="button" class="' + cls + '" data-m="' + ym(md) + '"' + (dis ? ' disabled' : '') + '>' + MO[i] + '</button>';
+      }
+      html += '</div>';
+    } else {
+      var n = months(), v = pk.view, mn2 = val(o.min), mx2 = val(o.max);
+      var prevDis = mn2 && new Date(v.getFullYear(), v.getMonth(), 0) < mn2;
+      var lastShown = new Date(v.getFullYear(), v.getMonth() + n, 1);
+      var nextDis = mx2 && lastShown > mx2;
+      html += '<div class="zdp-months">';
+      for (var k = 0; k < n; k++) {
+        var mdt = new Date(v.getFullYear(), v.getMonth() + k, 1);
+        html += '<div class="zdp-m"><div class="zdp-nav-row">'
+          + (k === 0 ? '<button type="button" class="zdp-nav" data-act="pm"' + (prevDis ? ' disabled' : '') + ' aria-label="Предыдущий месяц">‹</button>' : '<span class="zdp-nav-sp"></span>')
+          + '<div class="zdp-mt">' + MN[mdt.getMonth()] + ' ' + mdt.getFullYear() + '</div>'
+          + (k === n - 1 ? '<button type="button" class="zdp-nav" data-act="nm"' + (nextDis ? ' disabled' : '') + ' aria-label="Следующий месяц">›</button>' : '<span class="zdp-nav-sp"></span>')
+          + '</div><div class="zdp-g">';
+        WD.forEach(function (w, i) { html += '<div class="zdp-wd' + (i > 4 ? ' we' : '') + '">' + w + '</div>'; });
+        var lead = (mdt.getDay() + 6) % 7;
+        for (var e = 0; e < lead; e++) html += '<span></span>';
+        var days = new Date(mdt.getFullYear(), mdt.getMonth() + 1, 0).getDate(), td = today();
+        for (var dd = 1; dd <= days; dd++) {
+          var d = new Date(mdt.getFullYear(), mdt.getMonth(), dd), st = dayState(d), c = 'zdp-d';
+          if ((d.getDay() + 6) % 7 > 4) c += ' we';
+          if (+d === +td) c += ' t';
+          if (pk.a && +d === +pk.a) c += ' a' + ((pk.mode === 'range' && pk.b && +pk.b !== +pk.a) ? '' : ' solo');
+          if (pk.mode === 'range' && pk.b && +d === +pk.b) c += ' b';
+          if (pk.mode === 'range' && pk.a && pk.b && d > pk.a && d < pk.b) c += ' in';
+          if (st.dis) c += ' dis';
+          html += '<button type="button" class="' + c + '" data-d="' + ymd(d) + '"' + (st.dis ? ' disabled' : '') + '>' + dd + '</button>';
+        }
+        html += '</div></div>';
+      }
+      html += '</div>';
+    }
+    var foot = '';
+    if (o.clearable) foot += '<button type="button" class="zdp-btn ghost" data-act="clear">Сбросить</button>';
+    if (pk.mode === 'date' && o.todayBtn !== false && !dayState(today()).dis) foot += '<button type="button" class="zdp-btn" data-act="today">Сегодня</button>';
+    if (pk.mode === 'month' && o.max === 'now') foot += '<button type="button" class="zdp-btn" data-act="lastm">Прошлый месяц</button>';
+    if (o.note) foot = '<span class="zdp-note">' + esc(o.note) + '</span>' + foot;
+    if (foot) html += '<div class="zdp-foot">' + foot + '</div>';
+    pop.innerHTML = html;
+    paintHover();
+  }
+  function hint() {
+    var pk = cur, o = pk.o;
+    if (pk.mode === 'month') return o.hint || 'Выберите месяц';
+    if (pk.mode === 'date') return o.hint || 'Выберите дату';
+    if (!pk.a) return o.hintStart || 'Выберите начало';
+    if (!pk.b) return human(pk.a, true) + ' → ' + (o.hintEnd || 'выберите конец');
+    var n = diff(pk.a, pk.b);
+    return human(pk.a, false) + ' → ' + human(pk.b, true) + (o.minNights ? ' · ' + nightsW(n) : ' · ' + daysW(n + 1));
+  }
+  function paintHover() {
+    if (!cur || cur.mode !== 'range' || !pop) return;
+    var a = cur.a, h = cur.hover ? parse(cur.hover) : null;
+    var btns = pop.querySelectorAll('[data-d]');
+    for (var i = 0; i < btns.length; i++) {
+      var d = parse(btns[i].getAttribute('data-d'));
+      btns[i].classList.toggle('hv', !!(a && !cur.b && h && h > a && d > a && d <= h));
+    }
+    var hn = pop.querySelector('.zdp-hint');
+    if (hn) hn.textContent = (a && !cur.b && h && h > a) ? human(a, false) + ' → ' + human(h, true) + ' · ' + (cur.o.minNights ? nightsW(diff(a, h)) : daysW(diff(a, h) + 1)) : hint();
+  }
+  function onClick(e) {
+    var t = e.target.closest ? e.target.closest('button') : null;
+    if (!t || t.disabled || !cur) return;
+    var pk = cur, act = t.getAttribute('data-act');
+    if (act === 'close') return close();
+    if (act === 'pm' || act === 'nm') { pk.view = new Date(pk.view.getFullYear(), pk.view.getMonth() + (act === 'pm' ? -1 : 1), 1); render(); return; }
+    if (act === 'py' || act === 'ny') { pk.year += (act === 'py' ? -1 : 1); render(); return; }
+    if (act === 'clear') { pk.ins.forEach(function (i) { setVal(i, ''); }); close(); return; }
+    if (act === 'today') { commitDate(pk, today()); return; }
+    if (act === 'lastm') { var lm = new Date(today().getFullYear(), today().getMonth() - 1, 1); setVal(pk.ins[0], ym(lm)); close(); return; }
+    var m = t.getAttribute('data-m');
+    if (m) { setVal(pk.ins[0], m); close(); return; }
+    var ds = t.getAttribute('data-d');
+    if (!ds) return;
+    var d = parse(ds);
+    if (pk.mode === 'date') { commitDate(pk, d); return; }
+    // ── период ──
+    if (pk.phase === 'start' || !pk.a) {
+      pk.a = d; pk.b = null; pk.phase = 'end'; pk.hover = null; render(); return;
+    }
+    if (d < pk.a) { pk.a = d; pk.hover = null; render(); return; }          // раньше начала — новое начало
+    var n = diff(pk.a, d);
+    if (n === 0 && pk.o.minNights) return;                                     // для проживания нужна хотя бы ночь
+    pk.b = d;
+    var a = pk.a, b = pk.b;
+    setVal(pk.ins[0], ymd(a)); setVal(pk.ins[1], ymd(b));
+    render();
+    setTimeout(close, 160);
+  }
+  function commitDate(pk, d) { setVal(pk.ins[0], ymd(d)); close(); }
+  function show(pk) {
+    if (pk.mode === 'month') {
+      var m = parseYm(pk.ins[0].value);
+      setTrig(pk.trigs[0], m ? (MN[m.getMonth()].charAt(0).toUpperCase() + MN[m.getMonth()].slice(1) + ' ' + m.getFullYear()) : '', pk.o.placeholder || 'Месяц', pk);
+      return;
+    }
+    var a = parse(pk.ins[0].value), b = pk.mode === 'range' ? parse(pk.ins[1].value) : null;
+    if (pk.mode === 'date') { setTrig(pk.trigs[0], a ? human(a, true) : '', pk.o.placeholder || 'Дата', pk); return; }
+    if (pk.o.split) {
+      setTrig(pk.trigs[0], a ? human(a, true) : '', (pk.o.placeholders || [])[0] || 'С даты', pk);
+      setTrig(pk.trigs[1], b ? human(b, true) : '', (pk.o.placeholders || [])[1] || 'По дату', pk);
+      return;
+    }
+    var txt = '';
+    if (a && b) {
+      var sameY = a.getFullYear() === b.getFullYear();
+      txt = (+a === +b) ? human(a, true) : human(a, !sameY) + ' — ' + human(b, true);
+      if (pk.o.minNights) txt += ' · ' + nightsW(diff(a, b));
+    } else if (a) txt = 'с ' + human(a, true);
+    else if (b) txt = 'по ' + human(b, true);
+    setTrig(pk.trigs[0], txt, pk.o.placeholder || 'Любые даты', pk);
+  }
+  function setTrig(t, txt, ph, pk) {
+    var clear = pk.o.clearable && pk.ins.some(function (i) { return !!i.value; });
+    t.innerHTML = ICON + '<span class="' + (txt ? 'zdp-v' : 'zdp-ph') + '">' + esc(txt || ph) + '</span>'
+      + (clear ? '<span class="zdp-x" data-x="1" title="Сбросить" aria-label="Сбросить">✕</span>' : '');
+  }
+  function mkTrig(o) {
+    var t = document.createElement('button');
+    t.type = 'button'; t.className = 'zdp-trig' + (o.trigClass ? ' ' + o.trigClass : '');
+    t.setAttribute('aria-haspopup', 'dialog'); t.setAttribute('aria-expanded', 'false');
+    return t;
+  }
+  function make(mode, ins, o) {
+    o = o || {};
+    if (!ins[0] || (mode === 'range' && !ins[1])) return null;
+    if (ins[0]._zdp) return ins[0]._zdp;
+    var pk = { mode: mode, ins: ins, o: o, trigs: [] };
+    var hideEl = o.hide || null;
+    if (mode === 'range' && o.split) {
+      ins.forEach(function (inp, i) {
+        var t = mkTrig(o); t.classList.add('full');
+        inp.parentNode.insertBefore(t, inp); inp.style.display = 'none';
+        t.addEventListener('click', function (e) {
+          if (e.target.getAttribute && e.target.getAttribute('data-x')) { e.stopPropagation(); ins.forEach(function (x) { setVal(x, ''); }); return; }
+          if (cur === pk) { close(); return; }
+          open(pk, t, i === 1 ? 'end' : 'start');
+        });
+        pk.trigs.push(t);
+      });
+    } else {
+      var t = mkTrig(o);
+      var host = hideEl || ins[0];
+      host.parentNode.insertBefore(t, host);
+      if (hideEl) hideEl.style.display = 'none'; else ins.forEach(function (i) { i.style.display = 'none'; });
+      t.addEventListener('click', function (e) {
+        if (e.target.getAttribute && e.target.getAttribute('data-x')) { e.stopPropagation(); ins.forEach(function (x) { setVal(x, ''); }); return; }
+        if (cur === pk) { close(); return; }
+        open(pk, t, 'start');
+      });
+      pk.trigs.push(t);
+    }
+    ins.forEach(function (inp) { inp._zdp = pk; watch(inp, function () { if (cur !== pk) show(pk); }); });
+    show(pk);
+    return pk;
+  }
+  window.zdpRange = function (a, b, o) { return make('range', [a, b], o); };
+  window.zdpDate = function (a, o) { return make('date', [a], o); };
+  window.zdpMonth = function (a, o) { return make('month', [a], o); };
+  window.zdpYmd = ymd;
+})();
+
+</script>
 <script>
 const API = 'https://api.zaedem.by';
 
@@ -771,6 +1176,23 @@ function showPage(name, el) {
   if (name === 'agentika') loadAgentika();
 }
 
+// ══ КАЛЕНДАРИ (01.10): свои вместо системных — см. zdp в начале скрипта ══
+// Фильтр броней — любые даты (и прошлые), период только вперёд, один день — двойной клик.
+// Замер — только с сегодняшнего дня, от 1 до 30 ночей. Месяц отчёта — не позже текущего.
+function initAdminCalendars(){
+  if(window._admCalOk) return; window._admCalOk=true;
+  const f=document.getElementById('bk-dfrom'), t=document.getElementById('bk-dto');
+  if(f&&t) zdpRange(f,t,{hide:f.closest('.dbox'), clearable:true, minNights:0, title:'Период броней',
+    placeholder:'Любые даты', hintStart:'Выберите первый день', hintEnd:'выберите последний день',
+    note:'Один день — нажмите его дважды. Прошлые даты доступны'});
+  const a=document.getElementById('bn-in'), b=document.getElementById('bn-out');
+  if(a&&b) zdpRange(a,b,{hide:a.closest('.dbox'), min:'today', max:()=>{const d=new Date();d.setDate(d.getDate()+500);return d;}, minNights:1, maxNights:30,
+    title:'Даты замера', hintStart:'Выберите дату заезда', hintEnd:'выберите дату выезда', note:'Прошедшие даты Островок не ищет. До 30 ночей'});
+  const m=document.getElementById('ag-month');
+  if(m) zdpMonth(m,{max:'now', title:'Месяц отчёта', hint:'Брони с выездом в этом месяце'});
+}
+document.addEventListener('DOMContentLoaded', initAdminCalendars);
+
 // ══ АГЕНТИКА (01.10): оплата броней Островка, отчёт, замер выдачи ══
 function agPl(n,a,b,c){ n=Math.abs(n)%100; var m=n%10; if(n>10&&n<20)return c; if(m>1&&m<5)return b; if(m===1)return a; return c; }
 function agMoney(n, cur){ if(n===null||n===undefined||isNaN(n))return '—'; return Number(n).toLocaleString('ru-RU',{minimumFractionDigits:2,maximumFractionDigits:2})+(cur?' '+cur:''); }
@@ -787,10 +1209,12 @@ function agRowHTML(x, paidList){
     : x.urgency==='today' ? '<span class="badge badge-blue">сегодня-завтра</span>' : '';
   const tariff = x.kind==='refundable'
     ? 'возвратный<div class="ag-sub">бесплатная отмена до '+esc(x.free_until_minsk)+'</div><div class="ag-sub">по договору — до '+esc(x.contract_deadline_minsk)+'</div>'
-    : '<span style="color:#b45309">невозвратный</span><div class="ag-sub">платить сразу, срок — п. 3.8</div>';
+    : '<span style="color:#b45309">невозвратный</span><div class="ag-sub">по договору — до '+esc(x.contract_deadline_minsk||'')+' (3 рабочих дня, п. 3.8)</div>';
   const due = paidList
     ? '<div class="ag-due">✓ '+esc(new Date(x.supplier_paid_at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</div>'+(x.supplier_paid_note?'<div class="ag-sub">'+esc(x.supplier_paid_note)+'</div>':'')
-    : '<div class="ag-due">'+esc(x.pay_by_minsk)+'</div><div class="ag-sub">'+esc(agLeft(x.minutes_left))+'</div>'+badge;
+    : '<div class="ag-due">'+esc(x.pay_by_minsk)+'</div><div class="ag-sub">'+esc(agLeft(x.minutes_left))+'</div>'+badge
+      +(x.bank_shifted?'<div class="ag-sub">перенесено в банковские часы</div>':'')
+      +(x.too_late?'<div class="ag-sub" style="color:#dc2626;font-weight:700">банк не успеет — картой в системе или по лимиту</div>':'');
   const st = x.status==='pending' ? '<div class="ag-sub">ждёт подтверждения Островка</div>' : '';
   const act = paidList
     ? '<button class="act-btn act-cancel" onclick="agMarkPaid(\''+escAttr(x.booking_num)+'\',false)">Снять отметку</button>'
@@ -811,13 +1235,17 @@ function agTable(list, paidList){
 async function loadAgentika(){
   const mi=document.getElementById('ag-month');
   if(mi && !mi.value){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); mi.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
+  initAdminCalendars();
   agBenchHistory();
+  agLimits(false);
   const box=document.getElementById('ag-unpaid');
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
     const d=await r.json();
     if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
     document.getElementById('ag-buf').textContent=d.buffer_min;
+    if(d.bank_hours){ document.getElementById('ag-bank').textContent=String(d.bank_hours.to).padStart(2,'0')+':00'; }
+    if(d.nonref_hour!=null){ document.getElementById('ag-nrh').textContent=String(d.nonref_hour).padStart(2,'0')+':00'; }
     document.getElementById('ag-cnt').textContent=d.unpaid.length?('· '+d.unpaid.length):'';
     const nb=document.getElementById('nb-agentika'); if(nb){ nb.textContent=d.unpaid.length; nb.style.display=d.unpaid.length?'':'none'; }
     const sums=Object.keys(d.totals||{}).map(function(c){ return agMoney(d.totals[c],c); }).join(' + ')||'—';
@@ -848,6 +1276,8 @@ async function agMarkPaid(num, paid){
 async function agReport(){
   const m=document.getElementById('ag-month').value;
   if(!/^\d{4}-\d{2}$/.test(m)){ showToast('Выберите месяц',true); return; }
+  const nowM=zdpYmd(new Date()).slice(0,7);
+  if(m>nowM){ showToast('Отчёт — за прошедший или текущий месяц',true); return; }
   try{
     const r=await fetch(API+'/api/agentika/report?month='+encodeURIComponent(m),{headers:authHeaders()});
     if(!r.ok){ let e=''; try{ e=(await r.json()).error; }catch(_){} showToast(e||('Ошибка '+r.status),true); return; }
@@ -858,24 +1288,26 @@ async function agReport(){
 }
 function bnRowsHTML(run){
   const p=run.params||{};
+  const resTxt=(p.residency&&p.residency!=='by')?' · гости '+p.residency.toUpperCase():'';
   return (run.results||[]).map(function(x){
     const k=x.kinds||{};
     const cur=x.contract_currency?Object.keys(x.contract_currency).join('/'):'—';
     const pr=x.night_price_byn?(x.night_price_byn.min+' / '+x.night_price_byn.median+' / '+x.night_price_byn.max):'—';
     return '<tr><td>'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))+'</td>'
       +'<td>'+esc(run.key_id||'—')+'</td><td>'+esc(x.city)+'</td>'
-      +'<td>'+esc((p.checkin||'')+' → '+(p.checkout||''))+'</td>'
+      +'<td>'+esc((p.checkin||'')+' → '+(p.checkout||''))+(resTxt?'<div class="ag-sub">'+esc(resTxt.slice(3))+'</div>':'')+'</td>'
       +'<td><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b>'+(x.hit_limit?' <span class="badge badge-amber">упёрлись в предел '+esc(p.limit)+'</span>':'')+'</td>'
       +'<td>'+(x.total_hotels!=null?x.total_hotels:'—')+'</td>'
+      +'<td>'+(x.not_in_db!=null?(x.not_in_db?'<b style="color:#b45309">'+x.not_in_db+'</b>':'0'):'—')+'</td>'
       +'<td>'+(k.hotels!=null?esc(k.hotels):'—')+'</td><td>'+(k.apart!=null?esc(k.apart):'—')+'</td><td>'+(k.country!=null?esc(k.country):'—')+'</td>'
-      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ</div>':'')+'</td>'
+      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ'+(x.wire_kb!=null&&x.wire_kb<x.kb?' · по сети '+x.wire_kb+' КБ':'')+'</div>':'')+(p.limit?'<div class="ag-sub">предел '+esc(p.limit)+'</div>':'')+'</td>'
       +'<td>'+esc(cur)+'</td><td>'+esc(pr)+'</td>'
       +'<td>'+(x.error?'<span style="color:#dc2626">'+esc(x.error)+'</span>':'')+'</td></tr>';
   }).join('');
 }
 function bnTable(runs){
   if(!runs.length) return '<div class="empty">Замеров ещё не было</div>';
-  return '<div class="tw-x"><table class="bn-tbl"><tr><th>Когда</th><th>Договор (ID)</th><th>Город</th><th>Даты</th><th>Пришло</th><th>Всего у Островка</th><th>Отели</th><th>Квартиры</th><th>Загородные</th><th>Ответ</th><th>Валюта договора</th><th>Цена за ночь, BYN: мин / медиана / макс</th><th></th></tr>'
+  return '<div class="tw-x"><table class="bn-tbl"><tr><th>Когда</th><th>Договор (ID)</th><th>Город</th><th>Даты</th><th>Пришло</th><th>Всего у Островка</th><th title="Объекты, которых ещё нет в нашей базе: без названия и фото, пока их не дозагрузит фон или дамп">Нет в базе</th><th>Отели</th><th>Квартиры</th><th>Загородные</th><th>Ответ</th><th>Валюта договора</th><th>Цена за ночь, BYN: мин / медиана / макс</th><th></th></tr>'
     +runs.map(bnRowsHTML).join('')+'</table></div>';
 }
 async function agBenchHistory(){
@@ -885,11 +1317,44 @@ async function agBenchHistory(){
     const d=await r.json();
     if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
     box.innerHTML=bnTable(d.runs||[]);
+    // Условия первого (эталонного) замера — подставляем, чтобы сравнение было честным
+    if(!window._bnPrefilled && (d.runs||[]).length){
+      window._bnPrefilled=true;
+      const first=d.runs[d.runs.length-1].params||{};
+      const t=zdpYmd(new Date());
+      if(first.checkin && first.checkin>=t){
+        document.getElementById('bn-in').value=first.checkin;
+        document.getElementById('bn-out').value=first.checkout;
+        if(Array.isArray(first.cities)) document.getElementById('bn-cities').value=first.cities.join(',');
+      }
+    }
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+}
+async function agLimits(refresh){
+  const box=document.getElementById('lim-box');
+  try{
+    const r=await fetch(API+'/api/ostrovok/limits'+(refresh?'?refresh=1':''),{headers:authHeaders()});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    document.getElementById('lim-at').textContent=d.at?('· '+new Date(d.at).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'})):'';
+    const pw=d.prewarm||{};
+    document.getElementById('lim-note').innerHTML='Островок сам сообщает, сколько запросов в какой метод разрешено. Наш общий предел на поиск: <b>'+esc(d.global_used_15min)+' из '+esc(d.global_max_15min)+'</b> за 15 минут. '
+      +(d.prewarm_on?('Прогрев включён'+(pw.last_at?(': последний круг '+new Date(pw.last_at).toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})+', обновлено '+pw.warmed+' из '+pw.planned+(pw.stopped?' (остановлен: '+esc(pw.stopped)+')':'')):', первый круг через 2 минуты после запуска')+'.'):'Прогрев выключен (OST_PREWARM=1 — включить).')
+      +(d.error?' <span style="color:#dc2626">Островок не ответил: '+esc(d.error)+'</span>':'');
+    const rows=(d.rows||[]);
+    if(!rows.length){ box.innerHTML='<div class="empty">Островок не прислал список лимитов'+(d.error?': '+esc(d.error):'')+'</div>'; return; }
+    const show=window._limAll?rows:rows.filter(x=>x.key);
+    const per=x=>!x.limited?'без лимита':(x.requests+' за '+(x.seconds>=86400?(x.seconds/86400)+' сут':x.seconds>=3600?(x.seconds/3600)+' ч':x.seconds>=60?(x.seconds/60)+' мин':x.seconds+' с'));
+    box.innerHTML='<div class="tw-x"><table class="lim-tbl"><tr><th>Метод</th><th>Лимит</th><th>В минуту</th><th>Состояние</th></tr>'
+      +show.map(x=>'<tr class="'+(x.key?'lim-key':'')+'"><td>'+esc(x.endpoint)+'</td><td>'+esc(per(x))+'</td><td>'+(x.limited&&x.seconds?Math.round(x.requests*60/x.seconds*10)/10:'—')+'</td><td>'
+        +(x.active?'<span class="badge badge-green">работает</span>':'<span class="badge badge-red">закрыт</span>')+(x.debug?' <span class="badge badge-amber">отладка</span>':'')+'</td></tr>').join('')
+      +'</table></div><div style="padding:8px 1.2rem"><button class="act-btn" onclick="window._limAll=!window._limAll;agLimits(false)">'+(window._limAll?'Только основные':'Показать все ('+rows.length+')')+'</button></div>';
   }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
 }
 async function agBench(){
   const btn=document.getElementById('bn-btn');
-  const body={ cities:document.getElementById('bn-cities').value, checkin:document.getElementById('bn-in').value, checkout:document.getElementById('bn-out').value };
+  const body={ cities:document.getElementById('bn-cities').value, checkin:document.getElementById('bn-in').value, checkout:document.getElementById('bn-out').value, residency:(document.getElementById('bn-res')||{}).value||'by' };
+  if(!body.checkin||!body.checkout){ showToast('Выберите даты замера',true); return; }
   const lim=document.getElementById('bn-limit').value.trim(); if(lim) body.limit=parseInt(lim,10);
   btn.disabled=true; btn.textContent='📏 Идёт замер…';
   try{
@@ -900,6 +1365,31 @@ async function agBench(){
     agBenchHistory();
   }catch(e){ showToast('Ошибка сети: '+e.message,true); }
   finally{ btn.disabled=false; btn.textContent='📏 Запустить замер'; }
+}
+
+// ── УНП ХОЗЯИНА (01.10): необязательное поле. 9 цифр → спрашиваем реестр МНС через наш API
+// и показываем наименование и статус. Сервер при сохранении проверит ещё раз сам.
+function admUnpVal(id){ const el=document.getElementById(id); return el?String(el.value||'').replace(/\D/g,''):''; }
+let _admUnpT={};
+function admUnpInput(el){
+  const info=document.getElementById(el.id+'-info'); if(!info) return;
+  const v=String(el.value||'').replace(/\D/g,'');
+  clearTimeout(_admUnpT[el.id]);
+  if(!v){ info.className='unp-info'; info.textContent=''; return; }
+  if(v.length<9){ info.className='unp-info wait'; info.textContent='Ещё '+(9-v.length)+' цифр'; return; }
+  if(v.length>9){ info.className='unp-info bad'; info.textContent='УНП — ровно 9 цифр'; return; }
+  info.className='unp-info wait'; info.textContent='Проверяем в реестре МНС…';
+  _admUnpT[el.id]=setTimeout(async function(){
+    try{
+      const r=await fetch(API+'/api/partner/unp/'+v); const d=await r.json().catch(()=>({}));
+      if(admUnpVal(el.id)!==v) return;
+      if(r.status===503){ info.className='unp-info wait'; info.textContent='Реестр МНС не отвечает — УНП сохраним, наименование подставим позже'; return; }
+      if(!d.found){ info.className='unp-info bad'; info.textContent='Такого УНП нет в реестре МНС — проверьте цифры или оставьте поле пустым'; return; }
+      const x=d.data||{};
+      info.className='unp-info '+(x.active?'ok':'bad');
+      info.textContent=(x.name_short||x.name_full||'')+' · '+(x.status||'')+(x.address?(' · '+x.address):'');
+    }catch(e){ info.className='unp-info wait'; info.textContent='Не удалось проверить — УНП всё равно сохраним'; }
+  },350);
 }
 
 // ── ПРИГЛАШЕНИЯ (магическая ссылка) ──
@@ -916,7 +1406,8 @@ async function createInvite(){
       description_ru:document.getElementById('inv-desc').value.trim(),
       phone:document.getElementById('inv-phone').value.trim(),
       email:document.getElementById('inv-email').value.trim(),
-      source_listing_url:document.getElementById('inv-url').value.trim()
+      source_listing_url:document.getElementById('inv-url').value.trim(),
+      unp:admUnpVal('inv-unp')
     })});
     const d=await r.json();
     btn.disabled=false; btn.textContent='Создать приглашение';
@@ -964,14 +1455,16 @@ async function createObject(){
       checkout_time:document.getElementById('no-cout').value.trim(),
       // Владелец объекта. Раньше объект создавался вообще без владельца —
       // партнёр входил в кабинет и видел «У вас нет привязанных отелей».
-      owner_email:(document.getElementById('no-owner')||{}).value ? document.getElementById('no-owner').value.trim() : ''
+      owner_email:(document.getElementById('no-owner')||{}).value ? document.getElementById('no-owner').value.trim() : '',
+      unp:admUnpVal('no-unp')
     })});
     const d=await r.json();
     btn.disabled=false; btn.textContent='Создать и опубликовать';
     if(d.ok){
       showToast('Объект создан');
       if(!d.owner_id) showToast('Объект создан, но БЕЗ владельца — партнёр его в кабинете не увидит', true);
-      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules','no-cancel','no-owner'].forEach(id=>{var el=document.getElementById(id); if(el)el.value='';});
+      ['no-name','no-addr','no-latlng','no-desc','no-phone','no-email','no-tg','no-wa','no-viber','no-rules','no-cancel','no-owner','no-unp'].forEach(id=>{var el=document.getElementById(id); if(el)el.value='';});
+      var ni=document.getElementById('no-unp-info'); if(ni) ni.textContent='';
       if(typeof loadHotels==='function') loadHotels();
     } else { alert(d.error||'Не удалось создать'); }
   }catch(e){ btn.disabled=false; btn.textContent='Создать и опубликовать'; alert('Сервис недоступен'); }
@@ -1200,7 +1693,7 @@ async function runRecategorize(){
     const d=await r.json();
     if(!d.ok){ st.style.display='block'; st.textContent='Ошибка запуска: '+(d.error||r.status); btn.disabled=false; btn.textContent='⚙ Пересчитать категории/теги'; return; }
     st.style.display='block';
-    st.textContent=d.running?'Пересчёт уже идёт…':'Запущено: '+(d.total||0)+' отелей. Идёт в фоне, можно закрыть страницу.';
+    st.textContent=d.running?'Пересчёт уже идёт…':'Пересчёт по нашей базе: '+(d.total||0)+' отелей. Островок не запрашиваем — займёт до минуты.';
     if(_recatTimer)clearInterval(_recatTimer);
     _recatTimer=setInterval(recatPoll,5000);
     recatPoll();
@@ -1219,7 +1712,7 @@ async function recatPoll(){
     } else {
       clearInterval(_recatTimer); _recatTimer=null;
       btn.disabled=false; btn.textContent='⚙ Пересчитать категории/теги';
-      if(p.total){ st.textContent='✅ Готово: обновлено '+(p.updated||0)+' из '+(p.total||0)+(p.finished_at?(' · '+new Date(p.finished_at).toLocaleTimeString()):''); }
+      if(p.total){ st.textContent='✅ Готово: обновлено '+(p.updated||0)+' из '+(p.total||0)+(p.no_kind?(', без типа '+p.no_kind+' (тип придёт со следующим дампом)'):'')+(p.finished_at?(' · '+new Date(p.finished_at).toLocaleTimeString()):''); }
       else { st.style.display='none'; }
     }
   }catch(e){}
