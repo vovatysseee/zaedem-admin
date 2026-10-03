@@ -184,6 +184,10 @@ div.ag-note b{color:var(--text)}
 #page-agentika .ag-tbl td,#page-agentika .bn-tbl td{word-break:normal;overflow-wrap:break-word}
 #page-agentika .ag-tbl .badge,#page-agentika .ag-tbl button{white-space:nowrap}
 .tw-x{overflow-x:auto}
+.dump-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;padding:12px 1.2rem;font-size:13px;line-height:1.45}
+.dump-nums{grid-template-columns:repeat(5,minmax(0,1fr));padding-top:0}
+.dump-nums .stat{padding:.8rem 1rem}
+@media(max-width:1100px){.dump-nums{grid-template-columns:repeat(3,minmax(0,1fr))}}
 
 /* PAGES */
 .page{display:none}
@@ -715,6 +719,15 @@ div.ag-note b{color:var(--text)}
           </div>
           <div class="ag-note" id="lim-note">Островок сам сообщает, сколько запросов в какой метод разрешено (метод overview). Прогрев поиска берёт не больше 20% лимита поиска.</div>
           <div id="lim-box"><div class="empty">Загрузка…</div></div>
+        </div>
+        <!-- 02.10: дамп каталога Островка — запуск и ход -->
+        <div class="section" id="dump-sec">
+          <div class="sec-head">
+            <div><span class="sec-title">Каталог Островка (дамп)</span> <span class="sec-cnt" id="dump-at"></span></div>
+            <button class="sec-btn" id="dump-btn" onclick="agDumpStart(this)">▶ Запустить дамп</button>
+          </div>
+          <div class="ag-note">Дамп — весь каталог Островка. Сервер скачивает его, отбирает объекты Беларуси и сохраняет фото, описания, удобства, бесконтактное заселение и правила объектов. Идёт долго, обычно до часа. <b>Пока дамп идёт, не заливайте файлы на сервер</b>: перезапуск оборвёт его, и придётся начинать заново.</div>
+          <div id="dump-box"><div class="empty">Загрузка…</div></div>
         </div>
       </div>
 
@@ -1277,6 +1290,7 @@ async function loadAgentika(){
   initAdminCalendars();
   agBenchHistory();
   agLimits(false);
+  agDump();
   const box=document.getElementById('ag-unpaid');
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
@@ -1401,6 +1415,57 @@ async function agLimits(refresh, btn){
       +'</table></div><div style="padding:8px 1.2rem"><button class="act-btn" onclick="window._limAll=!window._limAll;agLimits(false)">'+(window._limAll?'Только основные':'Показать все ('+rows.length+')')+'</button></div>';
   }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; if(refresh)showToast('Ошибка сети: '+e.message,true); }
   finally{ if(btn){ btn.disabled=false; btn.textContent=bt||'↻ Спросить у Островка'; } }
+}
+// ═ 02.10 ДАМП КАТАЛОГА ОСТРОВКА: запуск и ход ═
+var _dumpPoll=null;
+function agDumpFmt(t){ return t?new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'; }
+function agDumpNum(l,v,sub){ return '<div class="stat"><div class="stat-label">'+esc(l)+'</div><div class="stat-val" style="font-size:1.1rem">'+esc(v)+'</div>'+(sub?'<div class="stat-sub">'+esc(sub)+'</div>':'')+'</div>'; }
+async function agDump(){
+  const box=document.getElementById('dump-box'); if(!box) return;
+  clearTimeout(_dumpPoll);
+  try{
+    const r=await fetch(API+'/api/ostrovok/dump/status',{headers:authHeaders()});
+    const d=await r.json();
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    const j=d.job||{}, o=d.objects||null;
+    const st=({idle:[j.last_try?'не идёт':'не запускался после перезапуска сервера','badge-gray'],running:['идёт','badge-amber'],done:['готово','badge-green'],error:['ошибка','badge-red']})[j.state]||[String(j.state||'—'),'badge-gray'];
+    let prog='—';
+    if(j.state==='running') prog=(j.phase==='save')
+      ? 'Сохраняем объекты Беларуси: <b>'+esc(j.saved)+'</b> из '+esc(j.to_save)
+      : 'Скачиваем каталог: просмотрено <b>'+Number(j.processed||0).toLocaleString('ru-RU')+'</b> объектов, из них Беларусь — '+esc(j.belarus);
+    else if(j.state==='done') prog='Сохранено объектов Беларуси: <b>'+esc(j.saved)+'</b>'+(j.finishedAt?' · закончен '+esc(agDumpFmt(j.finishedAt)):'');
+    else if(j.state==='error') prog='<span style="color:#dc2626">Оборвался: '+esc(j.error||'')+'</span>';
+    const lt=j.last_try;
+    const ltTxt=lt
+      ? 'Последний запуск: '+(lt.by==='admin'?'из админки':'автоматически при старте сервера')+', '+esc(agDumpFmt(lt.at))+' — '+(lt.ok?esc(lt.detail):'<b style="color:#dc2626">'+esc(lt.detail)+'</b>')
+      : 'После перезапуска сервера запусков ещё не было'+(d.auto?' (автоматический — через 3 минуты после старта, если нужен)':' · автоматический запуск выключен переменной OST_AUTO_DUMP=0');
+    box.innerHTML='<div class="dump-grid">'
+      +'<div><div class="ag-sub">Состояние</div><span class="badge '+st[1]+'">'+esc(st[0])+'</span>'+(j.startedAt&&j.state!=='idle'?'<div class="ag-sub">начат '+esc(agDumpFmt(j.startedAt))+'</div>':'')+'</div>'
+      +'<div style="grid-column:span 2"><div class="ag-sub">Ход</div>'+prog+'<div class="ag-sub" style="margin-top:6px">'+ltTxt+'</div></div>'
+      +'</div>'
+      +(o&&o.total!=null?('<div class="dump-grid dump-nums">'
+        +agDumpNum('Объектов Островка',o.total)
+        +agDumpNum('Бесконтактное заселение',o.contactless,'признак Островка '+o.contactless_by_ostrovok+' · по описаниям '+o.contactless_by_text)
+        +agDumpNum('Без депозита / с депозитом',o.no_deposit+' / '+o.with_deposit)
+        +agDumpNum('Удобства от Островка',o.with_ostrovok_amenities,'для ИИ-поиска')
+        +agDumpNum('Ждут дампа',o.waiting_dump,o.waiting_dump?'заполнятся после полного дампа':'все обработаны')
+        +'</div>'):'');
+    const btn=document.getElementById('dump-btn');
+    if(btn&&!btn._busy){ btn.disabled=(j.state==='running'); btn.textContent=(j.state==='running')?'Дамп идёт…':'▶ Запустить дамп'; }
+    const at=document.getElementById('dump-at'); if(at) at.textContent=(j.state==='running')?'· обновляется каждые 5 с':'';
+    if(j.state==='running' && curAdmPage()==='agentika') _dumpPoll=setTimeout(agDump,5000);
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+}
+async function agDumpStart(btn){
+  if(!confirm('Запустить полный дамп каталога Островка?\n\nОн идёт долго, обычно до часа. Пока дамп идёт, не заливайте файлы на сервер: перезапуск оборвёт его.')) return;
+  btn._busy=true; btn.disabled=true; btn.textContent='Запускаем…';
+  try{
+    const r=await fetch(API+'/api/ostrovok/dump/start',{method:'POST',headers:authHeaders(),body:JSON.stringify({type:'full'})});
+    const d=await r.json();
+    if(!r.ok||!d.ok) showToast(d.error||('Ошибка '+r.status),true);
+    else showToast('Дамп запущен — ход видно в этом блоке, обновляется сам');
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+  finally{ btn._busy=false; agDump(); }
 }
 async function agBench(){
   const btn=document.getElementById('bn-btn');
