@@ -1420,6 +1420,16 @@ async function agLimits(refresh, btn){
 var _dumpPoll=null;
 function agDumpFmt(t){ return t?new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'; }
 function agDumpNum(l,v,sub){ return '<div class="stat"><div class="stat-label">'+esc(l)+'</div><div class="stat-val" style="font-size:1.1rem">'+esc(v)+'</div>'+(sub?'<div class="stat-sub">'+esc(sub)+'</div>':'')+'</div>'; }
+// 03.10: способ выдачи ключей по данным Островка (keys_pickup.type), из нашей базы
+var AG_KEYS_RU={lockbox:'ключница',keypad:'кодовый замок',smartlock:'смарт-замок',reception:'ресепшен',phone:'по телефону',address:'по адресу',unspecified:'не указан',_none:'нет в данных Островка',_no_static:'нет данных объекта'};
+function agDumpKeys(list){
+  if(!Array.isArray(list)||!list.length) return '';
+  var cl=['lockbox','keypad','smartlock'];
+  return '<div class="ag-sub" style="padding:0 1.2rem 14px;line-height:1.7">Способ выдачи ключей: '
+    +list.map(function(k){ var t=AG_KEYS_RU[k.type]||k.type; var b=cl.indexOf(k.type)>=0;
+      return (b?'<b>':'')+esc(t)+' '+Number(k.n).toLocaleString('ru-RU')+(b?'</b>':''); }).join(' · ')
+    +'<br><span style="color:var(--muted)">Жирным — считаются бесконтактным заселением (признак Островка).</span></div>';
+}
 async function agDump(){
   const box=document.getElementById('dump-box'); if(!box) return;
   clearTimeout(_dumpPoll);
@@ -1434,6 +1444,8 @@ async function agDump(){
       ? 'Сохраняем объекты Беларуси: <b>'+esc(j.saved)+'</b> из '+esc(j.to_save)
       : 'Скачиваем каталог: просмотрено <b>'+Number(j.processed||0).toLocaleString('ru-RU')+'</b> объектов, из них Беларусь — '+esc(j.belarus);
     else if(j.state==='done') prog='Сохранено объектов Беларуси: <b>'+esc(j.saved)+'</b>'+(j.finishedAt?' · закончен '+esc(agDumpFmt(j.finishedAt)):'');
+    // 03.10: объекты, у которых данные не сохранились целиком (причина — первая ошибка)
+    if(j.save_errors) prog+='<div style="color:#dc2626;margin-top:4px">Не сохранилось целиком: <b>'+esc(j.save_errors)+'</b>'+(j.save_error?' — '+esc(j.save_error):'')+'</div>';
     else if(j.state==='error') prog='<span style="color:#dc2626">Оборвался: '+esc(j.error||'')+'</span>';
     const lt=j.last_try;
     const ltTxt=lt
@@ -1449,7 +1461,8 @@ async function agDump(){
         +agDumpNum('Без депозита / с депозитом',o.no_deposit+' / '+o.with_deposit)
         +agDumpNum('Удобства от Островка',o.with_ostrovok_amenities,'для ИИ-поиска')
         +agDumpNum('Ждут дампа',o.waiting_dump,o.waiting_dump?'заполнятся после полного дампа':'все обработаны')
-        +'</div>'):'');
+        +'</div>'):'')
+      +agDumpKeys(d.keys);
     const btn=document.getElementById('dump-btn');
     if(btn&&!btn._busy){ btn.disabled=(j.state==='running'); btn.textContent=(j.state==='running')?'Дамп идёт…':'▶ Запустить дамп'; }
     const at=document.getElementById('dump-at'); if(at) at.textContent=(j.state==='running')?'· обновляется каждые 5 с':'';
