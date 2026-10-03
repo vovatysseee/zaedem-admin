@@ -188,6 +188,16 @@ div.ag-note b{color:var(--text)}
 .dump-nums{grid-template-columns:repeat(5,minmax(0,1fr));padding-top:0}
 .dump-nums .stat{padding:.8rem 1rem}
 @media(max-width:1100px){.dump-nums{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* 03.10: журнал сервера — строки лога, свежие сверху, без прокрутки вбок */
+.lg-box{max-height:calc(100vh - 330px);min-height:260px;overflow-y:auto;overflow-x:hidden;background:#fbfaf7;font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:12px;line-height:1.45}
+.lg-row{display:flex;gap:12px;padding:3px 1.2rem;border-bottom:1px solid #f0ece3}
+.lg-t{flex:0 0 auto;color:var(--muted);white-space:nowrap}
+.lg-m{flex:1;min-width:0;white-space:pre-wrap;overflow-wrap:anywhere;word-break:break-word}
+.lg-row.warn{background:var(--amber-dim)}
+.lg-row.error{background:var(--red-dim)}
+.lg-row.error .lg-m{color:#b91c1c}
+.lg-m mark{background:var(--lime);color:#000;border-radius:2px}
+.lg-auto{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
 
 /* PAGES */
 .page{display:none}
@@ -366,6 +376,8 @@ div.ag-note b{color:var(--text)}
       <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Пользователи</div>
       <div class="sb-sec">Островок</div>
       <div class="ni" onclick="showPage('agentika',this)"><span class="ni-ico">💸</span> Агентика <span class="nb" id="nb-agentika" style="display:none">0</span></div>
+      <div class="sb-sec">Сервер</div>
+      <div class="ni" onclick="showPage('logs',this)"><span class="ni-ico">🧾</span> Журнал сервера</div>
     </div>
     <div class="sb-bottom">
       <button class="logout-btn" onclick="doLogout()">🚪 Выйти</button>
@@ -661,6 +673,38 @@ div.ag-note b{color:var(--text)}
             <button class="fbar-reset" id="us-reset" onclick="resetUserFilters()">Сбросить</button>
           </div>
           <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ЖУРНАЛ СЕРВЕРА (03.10): последние строки лога API, очищенные от почты, телефонов и ключей -->
+      <div class="page" id="page-logs">
+        <div class="stats" id="lg-stats"></div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Журнал сервера</span> <span class="sec-cnt" id="lg-cnt"></span></div>
+            <button class="sec-btn" onclick="logsLoad()">↻ Обновить</button>
+          </div>
+          <div class="ag-note">
+            То же, что Railway → Logs: последние <b id="lg-max">2000</b> строк с момента запуска сервера, свежие сверху. Почта, телефоны, номера карт, ключи и адрес базы скрыты. После перезапуска сервера журнал начинается заново.
+            Нужна помощь — «Скопировать» и вставьте в чат Claude.
+          </div>
+          <div class="fbar">
+            <select id="lg-level" onchange="logsLoad()">
+              <option value="">Все строки</option>
+              <option value="warn">Предупреждения и ошибки</option>
+              <option value="error">Только ошибки</option>
+            </select>
+            <input type="search" id="lg-q" placeholder="Поиск: 429, дамп, бронь…" oninput="logsSearch()" style="flex:1;min-width:180px">
+            <select id="lg-limit" onchange="logsLoad()">
+              <option value="200">200 строк</option>
+              <option value="500" selected>500 строк</option>
+              <option value="10000">Все</option>
+            </select>
+            <label class="lg-auto"><input type="checkbox" id="lg-auto" onchange="logsAuto()" checked> обновлять каждые 10 с</label>
+            <button class="sec-btn" onclick="logsCopy()">⧉ Скопировать</button>
+            <button class="sec-btn" onclick="logsDownload()">⬇ Скачать .txt</button>
+          </div>
+          <div class="lg-box" id="lg-box"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
       </div>
 
@@ -1200,7 +1244,7 @@ function showPage(name, el, boot) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   // При старте данные ещё не загружены: таблицы нарисует loadAll (refreshCurrentPage),
@@ -1213,6 +1257,7 @@ function showPage(name, el, boot) {
   }
   if (name === 'moderation') loadModeration();
   if (name === 'agentika') loadAgentika();
+  if (name === 'logs') logsOpen();
 }
 // Текущий раздел — перерисовать данными, НЕ переключая страницу (кнопка «Обновить», старт)
 function curAdmPage() { var on = document.querySelector('.page.on'); return on ? on.id.replace('page-', '') : 'dashboard'; }
@@ -1225,6 +1270,7 @@ function refreshCurrentPage(boot) {
     if (name === 'hotels') applyHotelFilters();
     if (!boot && name === 'moderation') loadModeration();
     if (!boot && name === 'agentika') loadAgentika();
+    if (!boot && name === 'logs') logsLoad();
   } catch (e) { console.error('refresh page:', e.message); }
 }
 
@@ -1244,6 +1290,85 @@ function initAdminCalendars(){
   if(m) zdpMonth(m,{max:'now', title:'Месяц отчёта', hint:'Брони с выездом в этом месяце'});
 }
 document.addEventListener('DOMContentLoaded', initAdminCalendars);
+
+// ══ ЖУРНАЛ СЕРВЕРА (03.10): последние строки лога API (на сервере — services/logbuf.js) ══
+// Свежие сверху. Автообновление — только пока открыт этот раздел и вкладка на экране;
+// если журнал прокручен вниз (читаете), обновление ждёт, чтобы строки не прыгали.
+var _lgLines=[], _lgTimer=null, _lgDeb=null, _lgBusy=false;
+function lgTime(t){
+  try{ return new Date(t).toLocaleString('ru-RU',{timeZone:'Europe/Minsk',day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'}).replace(',',''); }
+  catch(e){ return new Date(t).toISOString().slice(5,19).replace('T',' '); }
+}
+function lgUptime(s){ s=Math.max(0,s|0); var d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60); return (d?d+' д ':'')+(d||h?h+' ч ':'')+m+' мин'; }
+function lgHi(s,q){
+  if(!q) return esc(s);
+  var lo=s.toLowerCase(), ql=q.toLowerCase(), out='', i=0, j;
+  while((j=lo.indexOf(ql,i))>=0){ out+=esc(s.slice(i,j))+'<mark>'+esc(s.slice(j,j+q.length))+'</mark>'; i=j+q.length; }
+  return out+esc(s.slice(i));
+}
+async function logsLoad(auto){
+  var box=document.getElementById('lg-box'); if(!box||_lgBusy) return;
+  _lgBusy=true;
+  var lv=document.getElementById('lg-level').value, q=document.getElementById('lg-q').value.trim(), lim=document.getElementById('lg-limit').value;
+  try{
+    var r=await fetch(API+'/api/admin/logs?level='+encodeURIComponent(lv)+'&q='+encodeURIComponent(q)+'&limit='+encodeURIComponent(lim),{headers:authHeaders(),cache:'no-store'});
+    var d=null; try{ d=await r.json(); }catch(e){}
+    if(!r.ok||!d||!d.ok){
+      if(!auto) box.innerHTML='<div class="empty">'+(r.status===404?'На сервере ещё нет журнала — залейте бэкенд порции 17.':esc((d&&d.error)||('Ошибка '+r.status)))+'</div>';
+      return;
+    }
+    _lgLines=d.lines||[];
+    var st=d.stats||{}, c=st.counts||{};
+    document.getElementById('lg-max').textContent=st.max||'';
+    document.getElementById('lg-stats').innerHTML=
+      '<div class="stat"><div class="stat-label">Сервер работает</div><div class="stat-val" style="font-size:1.1rem">'+esc(lgUptime(st.uptime_s))+'</div><div class="stat-sub">с '+esc(st.started_at?lgTime(Date.parse(st.started_at)):'—')+'</div></div>'
+     +'<div class="stat"><div class="stat-label">Строк в журнале</div><div class="stat-val">'+(st.lines|0)+'</div><div class="stat-sub">'+(st.dropped?'старых вытеснено: '+st.dropped:'из '+(st.max|0)+' возможных')+'</div></div>'
+     +'<div class="stat"><div class="stat-label">Предупреждения</div><div class="stat-val '+(c.warn?'c-amber':'')+'">'+(c.warn|0)+'</div><div class="stat-sub">с момента запуска</div></div>'
+     +'<div class="stat"><div class="stat-label">Ошибки</div><div class="stat-val '+(c.error?'c-red':'')+'">'+(c.error|0)+'</div><div class="stat-sub">с момента запуска</div></div>';
+    document.getElementById('lg-cnt').textContent='· показано '+_lgLines.length+' '+agPl(_lgLines.length,'строка','строки','строк')+' · '+lgTime(Date.now()).slice(-8);
+    box.innerHTML=_lgLines.length
+      ? _lgLines.map(function(x){ return '<div class="lg-row '+(x.lvl==='error'?'error':x.lvl==='warn'?'warn':'')+'"><span class="lg-t">'+esc(lgTime(x.t))+'</span><span class="lg-m">'+lgHi(String(x.msg||''),q)+'</span></div>'; }).join('')
+      : '<div class="empty">'+(q||lv?'Ничего не найдено — измените фильтр или поиск':'Журнал пуст')+'</div>';
+  }catch(e){
+    if(!auto) box.innerHTML='<div class="empty">Сервер не отвечает: '+esc(e.message)+'</div>';
+  }finally{ _lgBusy=false; }
+}
+function logsSearch(){ clearTimeout(_lgDeb); _lgDeb=setTimeout(function(){ logsLoad(); },350); }
+function logsAuto(){
+  clearInterval(_lgTimer); _lgTimer=null;
+  var cb=document.getElementById('lg-auto');
+  if(!cb||!cb.checked) return;
+  _lgTimer=setInterval(function(){
+    if(curAdmPage()!=='logs'){ clearInterval(_lgTimer); _lgTimer=null; return; }
+    if(document.hidden) return;
+    var box=document.getElementById('lg-box'); if(box&&box.scrollTop>40) return;
+    logsLoad(true);
+  },10000);
+}
+function logsOpen(){ logsLoad(); logsAuto(); }
+// Для копирования и файла — по порядку времени, старые сверху
+function lgText(){
+  return _lgLines.slice().reverse().map(function(x){ return lgTime(x.t)+'  '+(x.lvl==='error'?'[ОШИБКА] ':x.lvl==='warn'?'[ВНИМАНИЕ] ':'')+x.msg; }).join('\n');
+}
+function logsCopy(){
+  if(!_lgLines.length){ showToast('Журнал пуст',true); return; }
+  var t=lgText(), n=_lgLines.length, ok=function(){ showToast('Скопировано: '+n+' '+agPl(n,'строка','строки','строк')); };
+  var fb=function(){
+    var ta=document.createElement('textarea'); ta.value=t; ta.style.position='fixed'; ta.style.opacity='0'; document.body.appendChild(ta); ta.select();
+    try{ document.execCommand('copy'); ok(); }catch(e){ showToast('Не удалось скопировать — используйте «Скачать .txt»',true); }
+    ta.remove();
+  };
+  if(navigator.clipboard&&navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(ok,fb); else fb();
+}
+function logsDownload(){
+  if(!_lgLines.length){ showToast('Журнал пуст',true); return; }
+  var d=new Date(), p=function(v){ return String(v).padStart(2,'0'); };
+  var a=document.createElement('a');
+  a.href=URL.createObjectURL(new Blob([lgText()+'\n'],{type:'text/plain;charset=utf-8'}));
+  a.download='zaedem-log-'+d.getFullYear()+p(d.getMonth()+1)+p(d.getDate())+'-'+p(d.getHours())+p(d.getMinutes())+'.txt';
+  document.body.appendChild(a); a.click();
+  setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+}
 
 // ══ АГЕНТИКА (01.10): оплата броней Островка, отчёт, замер выдачи ══
 function agPl(n,a,b,c){ n=Math.abs(n)%100; var m=n%10; if(n>10&&n<20)return c; if(m>1&&m<5)return b; if(m===1)return a; return c; }
@@ -1421,7 +1546,7 @@ var _dumpPoll=null;
 function agDumpFmt(t){ return t?new Date(t).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'—'; }
 function agDumpNum(l,v,sub){ return '<div class="stat"><div class="stat-label">'+esc(l)+'</div><div class="stat-val" style="font-size:1.1rem">'+esc(v)+'</div>'+(sub?'<div class="stat-sub">'+esc(sub)+'</div>':'')+'</div>'; }
 // 03.10: способ выдачи ключей по данным Островка (keys_pickup.type), из нашей базы
-var AG_KEYS_RU={lockbox:'ключница',keypad:'кодовый замок',smartlock:'смарт-замок',reception:'ресепшен',phone:'по телефону',address:'по адресу',unspecified:'не указан',_none:'нет в данных Островка',_no_static:'нет данных объекта'};
+var AG_KEYS_RU={lockbox:'ключница',keypad:'кодовый замок',smartlock:'смарт-замок',reception:'ресепшен',office:'в офисе',apartments:'в апартаментах',phone:'по телефону',address:'по адресу',unspecified:'не указан',_none:'нет в данных Островка',_no_static:'нет данных объекта'};
 function agDumpKeys(list){
   if(!Array.isArray(list)||!list.length) return '';
   var cl=['lockbox','keypad','smartlock'];
