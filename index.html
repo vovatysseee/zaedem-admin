@@ -453,7 +453,7 @@ tr.pay-off td{opacity:.55}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Динамика броней</span> <span class="sec-cnt" id="chart-range"></span></div>
-            <button class="tb-btn" onclick="loadStats()">↻ Обновить</button>
+            <button class="tb-btn" id="stats-refresh" onclick="admRefresh(this,'График броней обновлён',loadStats)">↻ Обновить</button>
           </div>
           <div class="chart-ctl">
             <span class="seg-lbl">Период</span>
@@ -734,7 +734,7 @@ tr.pay-off td{opacity:.55}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Журнал сервера</span> <span class="sec-cnt" id="lg-cnt"></span></div>
-            <button class="sec-btn" onclick="logsLoad()">↻ Обновить</button>
+            <button class="sec-btn" id="lg-refresh" onclick="admRefresh(this,'Журнал обновлён',logsLoadBtn)">↻ Обновить</button>
           </div>
           <div class="ag-note">
             То же, что Railway → Logs: последние <b id="lg-max">2000</b> строк с момента запуска сервера, свежие сверху. Почта, телефоны, номера карт, ключи и адрес базы скрыты. После перезапуска сервера журнал начинается заново.
@@ -766,7 +766,7 @@ tr.pay-off td{opacity:.55}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Оплатить Агентике</span> <span class="sec-cnt" id="ag-cnt"></span></div>
-            <button class="sec-btn" onclick="loadAgentika()">↻ Обновить</button>
+            <button class="sec-btn" id="ag-refresh" onclick="admRefresh(this,'Агентика обновлена',loadAgentika)">↻ Обновить</button>
           </div>
           <div class="ag-note">
             <b>Сроки оплаты Агентике</b> (сверено с офертой B2B-397211 и Правилами бронирования). Оплачено — когда деньги <b>зачислены</b> на счёт Агентики (п. 3.9), поэтому платим в банковские часы.
@@ -1417,6 +1417,23 @@ async function payLoad() {
     return false;
   }
 }
+// 04.10 (порция 20): общий отклик для кнопок «↻ Обновить» в разделах (график броней на главной, Журнал, Агентика).
+// Раньше раздел перечитывался молча: если данные не поменялись, казалось, что кнопка не нажимается.
+// Теперь: на время запроса «↻ Обновляю…» и кнопка неактивна, потом всплывашка «✓ … — ЧЧ:ММ»
+// или красная «Не удалось обновить — причина на странице». fn возвращает false при ошибке.
+async function admRefresh(btn, okText, fn) {
+  if (btn && btn.dataset.busy === '1') return;
+  var txt = btn ? btn.textContent : '';
+  if (btn) { btn.dataset.busy = '1'; btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = '↻ Обновляю…'; }
+  var ok = false;
+  try { ok = (await fn()) !== false; } catch (e) { ok = false; }
+  finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = txt || '↻ Обновить'; btn.dataset.busy = ''; }
+  }
+  var now = new Date();
+  if (ok) showToast('✓ ' + okText + ' — ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'));
+  else showToast('Не удалось обновить — причина на странице', true);
+}
 // 04.10: кнопка «↻ Обновить» в «Оплатах» — с видимым откликом. Раньше список перечитывался молча:
 // если ничего не поменялось, казалось, что кнопка не работает.
 var _payRefreshing = false;
@@ -1538,7 +1555,7 @@ async function logsLoad(auto){
     var d=null; try{ d=await r.json(); }catch(e){}
     if(!r.ok||!d||!d.ok){
       if(!auto) box.innerHTML='<div class="empty">'+(r.status===404?'На сервере ещё нет журнала — залейте бэкенд порции 17.':esc((d&&d.error)||('Ошибка '+r.status)))+'</div>';
-      return;
+      return false;
     }
     _lgLines=d.lines||[];
     var st=d.stats||{}, c=st.counts||{};
@@ -1552,9 +1569,17 @@ async function logsLoad(auto){
     box.innerHTML=_lgLines.length
       ? _lgLines.map(function(x){ return '<div class="lg-row '+(x.lvl==='error'?'error':x.lvl==='warn'?'warn':'')+'"><span class="lg-t">'+esc(lgTime(x.t))+'</span><span class="lg-m">'+lgHi(String(x.msg||''),q)+'</span></div>'; }).join('')
       : '<div class="empty">'+(q||lv?'Ничего не найдено — измените фильтр или поиск':'Журнал пуст')+'</div>';
+    return true;   // 04.10: итог для кнопки «↻ Обновить»
   }catch(e){
     if(!auto) box.innerHTML='<div class="empty">Сервер не отвечает: '+esc(e.message)+'</div>';
+    return false;
   }finally{ _lgBusy=false; }
+}
+// 04.10: кнопка «↻ Обновить» журнала — если журнал как раз обновляется сам (раз в 10 с), дожидаемся
+// и перечитываем: иначе нажатие попадало на занятый журнал и молча ничего не делало
+async function logsLoadBtn(){
+  for(var i=0;i<60&&_lgBusy;i++) await new Promise(function(r){ setTimeout(r,100); });
+  return logsLoad();
 }
 function logsSearch(){ clearTimeout(_lgDeb); _lgDeb=setTimeout(function(){ logsLoad(); },350); }
 function logsAuto(){
@@ -1643,7 +1668,7 @@ async function loadAgentika(){
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
     const d=await r.json();
-    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    if(!r.ok||!d.ok){ box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return false; }
     document.getElementById('ag-buf').textContent=d.buffer_min;
     if(d.bank_hours){ document.getElementById('ag-bank').textContent=String(d.bank_hours.to).padStart(2,'0')+':00'; }
     if(d.nonref_hour!=null){ document.getElementById('ag-nrh').textContent=String(d.nonref_hour).padStart(2,'0')+':00'; }
@@ -1658,7 +1683,8 @@ async function loadAgentika(){
      +'<div class="stat"><div class="stat-label">Просрочено / срочно</div><div class="stat-val '+(d.overdue?'c-red':(d.urgent?'c-amber':''))+'">'+d.overdue+' / '+d.urgent+'</div><div class="stat-sub">срочно — меньше 3 часов</div></div>';
     box.innerHTML=agTable(d.unpaid,false);
     document.getElementById('ag-paid').innerHTML=agTable(d.paid||[],true);
-  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+    return true;   // 04.10: итог для кнопки «↻ Обновить»
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; return false; }
 }
 async function agMarkPaid(num, paid){
   let note='';
@@ -2492,18 +2518,20 @@ function setStatsSource(v, el) {
 
 async function loadStats() {
   const wrap = document.getElementById('chart-wrap');
-  if (!wrap) return;
+  if (!wrap) return false;
   wrap.innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
   try {
     const r = await fetch(`${API}/api/bookings/stats?period=${encodeURIComponent(statsPeriod)}&source=${encodeURIComponent(statsSource)}`, { headers: authHeaders() });
     if (!r.ok) throw new Error('HTTP ' + r.status);
     statsData = await r.json();
     renderChart();
+    return true;   // 04.10: итог для кнопки «↻ Обновить»
   } catch (e) {
     // Не роняем дашборд: остальные блоки продолжают работать.
     wrap.innerHTML = '<div class="empty">Не удалось загрузить статистику</div>';
     document.getElementById('chart-sum').innerHTML = '';
     document.getElementById('chart-legend').innerHTML = '';
+    return false;
   }
 }
 
