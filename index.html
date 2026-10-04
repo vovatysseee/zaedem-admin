@@ -198,6 +198,22 @@ div.ag-note b{color:var(--text)}
 .lg-row.error .lg-m{color:#b91c1c}
 .lg-m mark{background:var(--lime);color:#000;border-radius:2px}
 .lg-auto{display:flex;align-items:center;gap:6px;font-size:12px;color:var(--muted);cursor:pointer;user-select:none}
+/* 03.10: оплаты и напоминания */
+.pay-form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 14px;padding:14px 1.2rem;border-bottom:1px solid var(--border);background:var(--surf2)}
+.pay-form label{display:block;font-size:11px;font-weight:600;color:var(--muted);margin-bottom:4px}
+.pay-form input[type=text],.pay-form input[type=number],.pay-form select{width:100%;padding:9px 12px;border:1.5px solid var(--border2);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff}
+.pay-form input:focus,.pay-form select:focus{border-color:var(--green)}
+.pay-form .pf-wide{grid-column:span 2}
+.pay-form .pf-sum{display:flex;gap:8px}.pay-form .pf-sum input{flex:1;min-width:0}.pay-form .pf-sum select{width:84px;flex:0 0 84px}
+.pay-form .pf-btns{grid-column:1/-1;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.pay-form .pf-err{color:#dc2626;font-size:12px}
+.pay-form .zdp-trig{width:100%}
+.pay-sub{font-size:11px;color:var(--muted);margin-top:3px;line-height:1.4;overflow-wrap:anywhere}
+.pay-hist{font-size:11px;color:var(--muted);margin-top:3px}
+.pay-undo{color:var(--muted);text-decoration:underline;cursor:pointer;margin-left:4px}
+.pay-acts{white-space:nowrap;text-align:right}
+.pay-acts .act-btn{margin-left:4px}
+tr.pay-off td{opacity:.55}
 
 /* PAGES */
 .page{display:none}
@@ -376,6 +392,8 @@ div.ag-note b{color:var(--text)}
       <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Пользователи</div>
       <div class="sb-sec">Островок</div>
       <div class="ni" onclick="showPage('agentika',this)"><span class="ni-ico">💸</span> Агентика <span class="nb" id="nb-agentika" style="display:none">0</span></div>
+      <div class="sb-sec">Компания</div>
+      <div class="ni" onclick="showPage('pay',this)"><span class="ni-ico">💳</span> Оплаты <span class="nb" id="nb-pay" style="display:none">0</span></div>
       <div class="sb-sec">Сервер</div>
       <div class="ni" onclick="showPage('logs',this)"><span class="ni-ico">🧾</span> Журнал сервера</div>
     </div>
@@ -673,6 +691,40 @@ div.ag-note b{color:var(--text)}
             <button class="fbar-reset" id="us-reset" onclick="resetUserFilters()">Сбросить</button>
           </div>
           <div id="tourists-table"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- ОПЛАТЫ (03.10): напоминания об оплатах компании — аренда, связь, бухгалтер, отчёты -->
+      <div class="page" id="page-pay">
+        <div class="stats" id="pay-stats"></div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Оплаты по срокам</span> <span class="sec-cnt" id="pay-cnt"></span></div>
+            <div><button class="sec-btn" onclick="payForm()">＋ Добавить</button> <button class="sec-btn" onclick="payLoad()">↻ Обновить</button></div>
+          </div>
+          <div class="ag-note">
+            Всё, что компания платит или сдаёт по сроку: аренда, коммуналка, интернет, бухгалтер, отчёт Агентике. Сверху — просроченные и ближайшие.
+            Telegram — каждое утро после <b id="pay-tgh">9:00</b>, пока не нажато «Оплачено» (без получателя и заметок, только название, сумма и дата).
+            «N-й рабочий день» считается по пн–пт, без праздников и переносов — напоминание приходит заранее, точную дату сверьте.
+            Номера счетов и карт сюда не вписываются.
+          </div>
+          <div id="pay-form" class="pay-form" style="display:none">
+            <div class="pf-wide"><label for="pf-title">Что оплачиваем *</label><input type="text" id="pf-title" maxlength="100" placeholder="Аренда офиса"></div>
+            <div><label for="pf-amount">Сумма</label><div class="pf-sum"><input type="text" id="pf-amount" inputmode="decimal" placeholder="0,00"><select id="pf-currency"><option>BYN</option><option>USD</option><option>EUR</option><option>RUB</option></select></div></div>
+            <div><label for="pf-kind">Как часто</label><select id="pf-kind" onchange="payKindUi()"><option value="monthly">Каждый месяц, число</option><option value="workday">Каждый месяц, N-й рабочий день</option><option value="once">Один раз</option></select></div>
+            <div id="pf-day-box"><label for="pf-day" id="pf-day-lbl">Число месяца</label><input type="number" id="pf-day" min="1" max="31" placeholder="5"></div>
+            <div id="pf-date-box" style="display:none"><label>Дата</label><input type="date" id="pf-date"></div>
+            <div><label for="pf-remind">Напоминать за, дней</label><input type="number" id="pf-remind" min="0" max="30" value="3"></div>
+            <div><label for="pf-cp">Кому</label><input type="text" id="pf-cp" maxlength="100" placeholder="Арендодатель"></div>
+            <div class="pf-wide"><label for="pf-note">Заметка</label><input type="text" id="pf-note" maxlength="300" placeholder="Договор № …, оплата по счёту"></div>
+            <div class="pf-btns">
+              <button class="sec-btn" id="pf-save" onclick="paySave()">Сохранить</button>
+              <button class="sec-btn" style="background:var(--surf3);color:var(--text)" onclick="payFormClose()">Отмена</button>
+              <label id="pf-active-box" style="display:none;font-size:12px;color:var(--muted)"><input type="checkbox" id="pf-active"> напоминать</label>
+              <span class="pf-err" id="pf-err"></span>
+            </div>
+          </div>
+          <div id="pay-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
       </div>
 
@@ -1244,7 +1296,7 @@ function showPage(name, el, boot) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера',pay:'Оплаты и напоминания'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   // При старте данные ещё не загружены: таблицы нарисует loadAll (refreshCurrentPage),
@@ -1258,6 +1310,7 @@ function showPage(name, el, boot) {
   if (name === 'moderation') loadModeration();
   if (name === 'agentika') loadAgentika();
   if (name === 'logs') logsOpen();
+  if (name === 'pay') payLoad();
 }
 // Текущий раздел — перерисовать данными, НЕ переключая страницу (кнопка «Обновить», старт)
 function curAdmPage() { var on = document.querySelector('.page.on'); return on ? on.id.replace('page-', '') : 'dashboard'; }
@@ -1271,6 +1324,7 @@ function refreshCurrentPage(boot) {
     if (!boot && name === 'moderation') loadModeration();
     if (!boot && name === 'agentika') loadAgentika();
     if (!boot && name === 'logs') logsLoad();
+    if (!boot && name === 'pay') payLoad();
   } catch (e) { console.error('refresh page:', e.message); }
 }
 
@@ -1290,6 +1344,155 @@ function initAdminCalendars(){
   if(m) zdpMonth(m,{max:'now', title:'Месяц отчёта', hint:'Брони с выездом в этом месяце'});
 }
 document.addEventListener('DOMContentLoaded', initAdminCalendars);
+
+// ══ ОПЛАТЫ (03.10): напоминания об оплатах компании (на сервере — routes/reminders.js) ══
+var _pay = { items: [], edit: null };
+var PAY_KIND = { monthly: function (x) { return 'каждый месяц, ' + x.day + '-го'; },
+                 workday: function (x) { return 'каждый месяц, ' + x.day + '-й рабочий день'; },
+                 once:    function () { return 'один раз'; } };
+function payRu(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : '—'; }
+function payPeriod(p) { return p === 'once' ? 'разово' : (p.slice(5, 7) + '.' + p.slice(0, 4)); }
+function payMoney(a, c) { return a === null || a === undefined ? '—' : Number(a).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ' + esc(c); }
+function payBadgeEl(d) {
+  var n = d.days_left;
+  if (d.status === 'overdue') return '<span class="badge badge-red">Просрочено ' + (-n) + ' ' + agPl(-n, 'день', 'дня', 'дней') + '</span>';
+  if (d.status === 'today') return '<span class="badge badge-amber">Сегодня</span>';
+  if (d.status === 'soon') return '<span class="badge badge-amber">Через ' + n + ' ' + agPl(n, 'день', 'дня', 'дней') + '</span>';
+  if (d.status === 'later') return '<span class="badge badge-gray">Через ' + n + ' ' + agPl(n, 'день', 'дня', 'дней') + '</span>';
+  if (d.status === 'done') return '<span class="badge badge-green">Оплачено</span>';
+  return '<span class="badge badge-gray">Выключено</span>';
+}
+function paySetBadge(st) {
+  var nb = document.getElementById('nb-pay'); if (!nb || !st) return;
+  var n = (st.overdue || 0) + (st.today || 0) + (st.soon || 0);
+  nb.textContent = n; nb.style.display = n ? '' : 'none';
+}
+async function payBadge() {
+  try {
+    var r = await fetch(API + '/api/admin/reminders', { headers: authHeaders(), cache: 'no-store' });
+    if (r.ok) { var d = await r.json(); paySetBadge(d.stats); }
+  } catch (e) {}
+}
+async function payLoad() {
+  var box = document.getElementById('pay-list'); if (!box) return;
+  try {
+    var r = await fetch(API + '/api/admin/reminders', { headers: authHeaders(), cache: 'no-store' });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok) {
+      box.innerHTML = '<div class="empty">' + (r.status === 404 ? 'На сервере ещё нет оплат — залейте бэкенд порции 18.' : esc((d && d.error) || ('Ошибка ' + r.status))) + '</div>';
+      return;
+    }
+    _pay.items = d.items || [];
+    document.getElementById('pay-tgh').textContent = String(d.tg_hour).padStart(2, '0') + ':00' + (d.alerts ? '' : ' (Telegram сейчас выключен)');
+    var st = d.stats || {}, mt = st.month_total || {};
+    var month = Object.keys(mt).map(function (c) { return payMoney(mt[c], c); }).join(' + ') || '—';
+    document.getElementById('pay-stats').innerHTML =
+      '<div class="stat"><div class="stat-label">Просрочено</div><div class="stat-val ' + (st.overdue ? 'c-red' : '') + '">' + (st.overdue | 0) + '</div><div class="stat-sub">не отмечено «Оплачено»</div></div>'
+     + '<div class="stat"><div class="stat-label">Ближайшие 7 дней</div><div class="stat-val ' + (st.today || st.soon ? 'c-amber' : '') + '">' + (st.week | 0) + '</div><div class="stat-sub">сегодня — ' + (st.today | 0) + '</div></div>'
+     + '<div class="stat"><div class="stat-label">К оплате в этом месяце</div><div class="stat-val" style="font-size:1.1rem">' + month + '</div><div class="stat-sub">по ближайшим срокам</div></div>'
+     + '<div class="stat"><div class="stat-label">Напоминаний</div><div class="stat-val">' + (st.total | 0) + '</div><div class="stat-sub">включённых</div></div>';
+    paySetBadge(st);
+    document.getElementById('pay-cnt').textContent = _pay.items.length ? '· ' + _pay.items.length : '';
+    if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return; }
+    box.innerHTML = '<table><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
+      + _pay.items.map(function (x) {
+        var sub = [x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
+        var hist = (x.history || []).map(function (h, i) {
+          return payPeriod(h.period) + (i === 0 ? ' <span class="pay-undo" title="Снять отметку" onclick="payUnpaid(' + x.id + ',\'' + escAttr(h.period) + '\')">отменить</span>' : '');
+        }).join(' · ');
+        var canPay = x.active && ['overdue', 'today', 'soon', 'later'].indexOf(x.due.status) >= 0;
+        return '<tr class="' + (x.active ? '' : 'pay-off') + '">'
+          + '<td style="white-space:nowrap">' + (x.due.date ? payRu(x.due.date) : '—') + '</td>'
+          + '<td><b>' + esc(x.title) + '</b>' + (sub ? '<div class="pay-sub">' + sub + '</div>' : '') + (hist ? '<div class="pay-hist">Оплачено: ' + hist + '</div>' : '') + '</td>'
+          + '<td style="white-space:nowrap">' + payMoney(x.amount, x.currency) + '</td>'
+          + '<td>' + esc(PAY_KIND[x.kind] ? PAY_KIND[x.kind](x) : x.kind) + (x.remind_days ? '<div class="pay-sub">напомнить за ' + x.remind_days + ' дн.</div>' : '') + '</td>'
+          + '<td>' + payBadgeEl(x.due) + '</td>'
+          + '<td class="pay-acts">' + (canPay ? '<button class="act-btn act-approve" onclick="payPaid(' + x.id + ')">✓ Оплачено</button>' : '')
+          + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
+          + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
+      }).join('') + '</tbody></table>';
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Сервер не отвечает: ' + esc(e.message) + '</div>';
+  }
+}
+function payKindUi() {
+  var k = document.getElementById('pf-kind').value;
+  document.getElementById('pf-day-box').style.display = k === 'once' ? 'none' : '';
+  document.getElementById('pf-date-box').style.display = k === 'once' ? '' : 'none';
+  var day = document.getElementById('pf-day');
+  document.getElementById('pf-day-lbl').textContent = k === 'workday' ? 'Номер рабочего дня' : 'Число месяца';
+  day.max = k === 'workday' ? 23 : 31;
+  day.placeholder = k === 'workday' ? '6' : '5';
+}
+function payForm(id) {
+  var f = document.getElementById('pay-form');
+  var x = id ? _pay.items.find(function (i) { return i.id === id; }) : null;
+  _pay.edit = x ? x.id : null;
+  document.getElementById('pf-title').value = x ? x.title : '';
+  document.getElementById('pf-amount').value = x && x.amount !== null ? String(x.amount).replace('.', ',') : '';
+  document.getElementById('pf-currency').value = x ? x.currency : 'BYN';
+  document.getElementById('pf-kind').value = x ? x.kind : 'monthly';
+  document.getElementById('pf-day').value = x && x.day ? x.day : '';
+  document.getElementById('pf-date').value = x && x.due_date ? x.due_date : '';
+  document.getElementById('pf-remind').value = x ? x.remind_days : 3;
+  document.getElementById('pf-cp').value = x && x.counterparty ? x.counterparty : '';
+  document.getElementById('pf-note').value = x && x.note ? x.note : '';
+  document.getElementById('pf-active').checked = x ? !!x.active : true;
+  document.getElementById('pf-active-box').style.display = x ? '' : 'none';
+  document.getElementById('pf-err').textContent = '';
+  document.getElementById('pf-save').textContent = x ? 'Сохранить изменения' : 'Добавить';
+  if (window.zdpDate && !f._zdp) { f._zdp = zdpDate(document.getElementById('pf-date'), { title: 'Дата оплаты', placeholder: 'Выберите дату', min: 'today' }); }
+  payKindUi();
+  f.style.display = '';
+  document.getElementById('pf-title').focus();
+}
+function payFormClose() { document.getElementById('pay-form').style.display = 'none'; _pay.edit = null; }
+async function paySave() {
+  var err = document.getElementById('pf-err'), btn = document.getElementById('pf-save');
+  var body = {
+    title: document.getElementById('pf-title').value,
+    amount: document.getElementById('pf-amount').value,
+    currency: document.getElementById('pf-currency').value,
+    kind: document.getElementById('pf-kind').value,
+    day: document.getElementById('pf-day').value,
+    due_date: document.getElementById('pf-date').value,
+    remind_days: document.getElementById('pf-remind').value,
+    counterparty: document.getElementById('pf-cp').value,
+    note: document.getElementById('pf-note').value,
+    active: _pay.edit ? document.getElementById('pf-active').checked : true
+  };
+  err.textContent = ''; btn.disabled = true;
+  try {
+    var r = await fetch(API + '/api/admin/reminders' + (_pay.edit ? '/' + _pay.edit : ''), { method: _pay.edit ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok) { err.textContent = (d && d.error) || ('Ошибка ' + r.status); return; }
+    showToast(_pay.edit ? 'Сохранено' : 'Напоминание добавлено');
+    payFormClose(); payLoad();
+  } catch (e) { err.textContent = 'Сервер не отвечает'; }
+  finally { btn.disabled = false; }
+}
+async function payPaid(id) {
+  var x = _pay.items.find(function (i) { return i.id === id; }); if (!x) return;
+  if (!confirm('Отметить оплату «' + x.title + '» за срок ' + payRu(x.due.date) + '?')) return;
+  var r = await fetch(API + '/api/admin/reminders/' + id + '/paid', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ period: x.due.period }) });
+  var d = null; try { d = await r.json(); } catch (e) {}
+  if (!r.ok || !d || !d.ok) { showToast((d && d.error) || 'Не отметилось', true); return; }
+  showToast('✓ Оплачено: ' + x.title); payLoad();
+}
+async function payUnpaid(id, period) {
+  if (!confirm('Снять отметку «Оплачено» за ' + payPeriod(period) + '?')) return;
+  var r = await fetch(API + '/api/admin/reminders/' + id + '/paid/' + encodeURIComponent(period), { method: 'DELETE', headers: authHeaders() });
+  if (!r.ok) { showToast('Не получилось', true); return; }
+  showToast('Отметка снята'); payLoad();
+}
+async function payDelete(id) {
+  var x = _pay.items.find(function (i) { return i.id === id; }); if (!x) return;
+  if (!confirm('Удалить напоминание «' + x.title + '» вместе с отметками об оплате?\n\nЧтобы просто приостановить — «✎» и снять галочку «напоминать».')) return;
+  var r = await fetch(API + '/api/admin/reminders/' + id, { method: 'DELETE', headers: authHeaders() });
+  if (!r.ok) { showToast('Не удалилось', true); return; }
+  if (_pay.edit === id) payFormClose();
+  showToast('Удалено'); payLoad();
+}
 
 // ══ ЖУРНАЛ СЕРВЕРА (03.10): последние строки лога API (на сервере — services/logbuf.js) ══
 // Свежие сверху. Автообновление — только пока открыт этот раздел и вкладка на экране;
@@ -1804,6 +2007,7 @@ async function loadAll(opts) {
   // и если статистика подтормозит, дашборд не должен из-за неё стоять.
   loadStats();
   try{ bellCollect(); }catch(e){}
+  try{ payBadge(); }catch(e){}   // 03.10: счётчик просроченных и близких оплат в меню
   // 02.10: открытый раздел перерисовываем на месте — без переключения страниц
   // (раньше здесь был showPage: при F5 и «Обновить» экран прыгал через дашборд)
   refreshCurrentPage(opts && opts.boot);
