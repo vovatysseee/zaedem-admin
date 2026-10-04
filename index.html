@@ -700,7 +700,7 @@ tr.pay-off td{opacity:.55}
         <div class="section">
           <div class="sec-head">
             <div><span class="sec-title">Оплаты по срокам</span> <span class="sec-cnt" id="pay-cnt"></span></div>
-            <div><button class="sec-btn" onclick="payForm()">＋ Добавить</button> <button class="sec-btn" onclick="payLoad()">↻ Обновить</button></div>
+            <div><button class="sec-btn" onclick="payForm()">＋ Добавить</button> <button class="sec-btn" id="pay-refresh" onclick="payRefresh(this)">↻ Обновить</button></div>
           </div>
           <div class="ag-note">
             Всё, что компания платит или сдаёт по сроку: аренда, коммуналка, интернет, бухгалтер, отчёт Агентике. Сверху — просроченные и ближайшие.
@@ -1380,7 +1380,7 @@ async function payLoad() {
     var d = null; try { d = await r.json(); } catch (e) {}
     if (!r.ok || !d || !d.ok) {
       box.innerHTML = '<div class="empty">' + (r.status === 404 ? 'На сервере ещё нет оплат — залейте бэкенд порции 18.' : esc((d && d.error) || ('Ошибка ' + r.status))) + '</div>';
-      return;
+      return false;
     }
     _pay.items = d.items || [];
     document.getElementById('pay-tgh').textContent = String(d.tg_hour).padStart(2, '0') + ':00' + (d.alerts ? '' : ' (Telegram сейчас выключен)');
@@ -1393,7 +1393,7 @@ async function payLoad() {
      + '<div class="stat"><div class="stat-label">Напоминаний</div><div class="stat-val">' + (st.total | 0) + '</div><div class="stat-sub">включённых</div></div>';
     paySetBadge(st);
     document.getElementById('pay-cnt').textContent = _pay.items.length ? '· ' + _pay.items.length : '';
-    if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return; }
+    if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return true; }
     box.innerHTML = '<table><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
       + _pay.items.map(function (x) {
         var sub = [x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
@@ -1411,9 +1411,29 @@ async function payLoad() {
           + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
           + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
       }).join('') + '</tbody></table>';
+    return true;
   } catch (e) {
     box.innerHTML = '<div class="empty">Сервер не отвечает: ' + esc(e.message) + '</div>';
+    return false;
   }
+}
+// 04.10: кнопка «↻ Обновить» в «Оплатах» — с видимым откликом. Раньше список перечитывался молча:
+// если ничего не поменялось, казалось, что кнопка не работает.
+var _payRefreshing = false;
+async function payRefresh(btn) {
+  if (_payRefreshing) return;
+  _payRefreshing = true;
+  var txt = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.style.opacity = '.6'; btn.textContent = '↻ Обновляю…'; }
+  var ok = false;
+  try { ok = await payLoad(); } catch (e) { ok = false; }
+  finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = ''; btn.textContent = txt || '↻ Обновить'; }
+    _payRefreshing = false;
+  }
+  var now = new Date();
+  if (ok) showToast('✓ Оплаты обновлены — ' + String(now.getHours()).padStart(2, '0') + ':' + String(now.getMinutes()).padStart(2, '0'));
+  else showToast('Не удалось обновить оплаты — причина в списке', true);
 }
 function payKindUi() {
   var k = document.getElementById('pf-kind').value;
