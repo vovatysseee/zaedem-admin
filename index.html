@@ -882,6 +882,8 @@ tr.pay-off td{opacity:.55}
             <div><label for="pe-code">Код назначения</label><input type="text" id="pe-code" maxlength="5" inputmode="numeric" placeholder="5 цифр"></div>
             <div><label for="pe-prio">Очерёдность</label><input type="number" id="pe-prio" min="1" max="99" value="21"></div>
             <div class="pf-wide"><label>НДС</label><div class="seg pay-vat" id="pe-vat"><button type="button" data-r="0" onclick="peVatPick(0)">без НДС</button><button type="button" data-r="10" onclick="peVatPick(10)">10%</button><button type="button" data-r="20" onclick="peVatPick(20)">20%</button></div></div>
+            <!-- 09.10: за какой месяц платёж (period_shift: 0 — месяц срока, -1 — прошлый, например аренда за сентябрь в октябре) -->
+            <div><label>Платёж за</label><div class="seg pay-vat" id="pe-shift"><button type="button" data-s="0" onclick="peShiftPick(0)">месяц срока</button><button type="button" data-s="-1" onclick="peShiftPick(-1)">прошлый месяц</button></div></div>
             <div class="pf-full"><label for="pe-tpl">Шаблон назначения</label><textarea id="pe-tpl" maxlength="500" rows="2" placeholder="Арендная плата за {месяц} по договору {договор}"></textarea>
               <div class="pay-sub">{месяц} — октябрь 2026, {мм.гггг} — 10.2026, {договор} — № … от …; „Сумма …, в т.ч. НДС …“ или „Без НДС“ допишется само</div></div>
             <div><label for="pe-cno">Договор №</label><input type="text" id="pe-cno" maxlength="60" placeholder="12/2026"></div>
@@ -1863,7 +1865,7 @@ function peRender() {
   if (!list.length) { box.innerHTML = '<div class="empty">Получателей пока нет. «＋ Добавить» — арендодатель, связь, бухгалтер…</div>'; return; }
   box.innerHTML = '<table class="pay-tbl"><thead><tr><th>Получатель</th><th>Счёт</th><th>Код</th><th>НДС</th><th></th></tr></thead><tbody>'
     + list.map(function (p) {
-      return '<tr><td data-l="Получатель"><b>' + esc(p.short_name) + '</b>' + (p.name ? '<div class="pay-sub">' + esc(p.name) + '</div>' : '') + '</td>'
+      return '<tr><td data-l="Получатель"><b>' + esc(p.short_name) + '</b>' + (p.name ? '<div class="pay-sub">' + esc(p.name) + '</div>' : '') + (peShift(p) === -1 ? '<div class="pay-sub">за прошлый месяц</div>' : '') + '</td>'
         + '<td data-l="Счёт"><span class="pe-acc">' + esc(peMask(p.iban)) + '</span></td>'
         + '<td data-l="Код">' + esc(p.purpose_code || '—') + '</td>'
         + '<td data-l="НДС">' + esc(peVatTxt(p.vat_rate)) + '</td>'
@@ -1894,6 +1896,12 @@ function peVatPick(r) {
   _pay.peVat = r;
   document.querySelectorAll('#pe-vat button').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-r')) === r); });
 }
+// 09.10: «Платёж за» — period_shift получателя; сервер, не приславший поле, считается как 0 (месяц срока)
+function peShift(p) { return p && Number(p.period_shift) === -1 ? -1 : 0; }
+function peShiftPick(v) {
+  _pay.peShift = v;
+  document.querySelectorAll('#pe-shift button').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-s')) === v); });
+}
 function peForm(id) {
   var f = document.getElementById('pe-form');
   var x = id ? payPayee(id) : null;
@@ -1912,6 +1920,7 @@ function peForm(id) {
   document.getElementById('pe-cdate').value = v('contract_date').slice(0, 10);
   document.getElementById('pe-note').value = v('note');
   peVatPick(x ? Number(x.vat_rate) || 0 : null);   // у нового получателя НДС выбирается явно
+  peShiftPick(peShift(x));
   document.getElementById('pe-err').textContent = '';
   document.getElementById('pe-save').textContent = x ? 'Сохранить изменения' : 'Добавить';
   if (window.zdpDate && !f._zdp) { f._zdp = zdpDate(document.getElementById('pe-cdate'), { title: 'Дата договора', placeholder: 'Выберите дату', clearable: true }); }
@@ -1930,7 +1939,8 @@ async function peSave() {
     short_name: g('pe-short'), name: g('pe-name'), unp: g('pe-unp'), bank_name: g('pe-bank'),
     bic: g('pe-bic').toUpperCase(), iban: c.norm, purpose_code: g('pe-code'),
     priority: g('pe-prio') === '' ? null : Number(g('pe-prio')), vat_rate: _pay.peVat,
-    purpose_template: g('pe-tpl'), contract_no: g('pe-cno'), contract_date: g('pe-cdate') || null, note: g('pe-note')
+    purpose_template: g('pe-tpl'), contract_no: g('pe-cno'), contract_date: g('pe-cdate') || null, note: g('pe-note'),
+    period_shift: _pay.peShift === -1 ? -1 : 0
   };
   err.textContent = ''; btn.disabled = true;
   try {
