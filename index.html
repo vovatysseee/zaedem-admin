@@ -214,6 +214,51 @@ div.ag-note b{color:var(--text)}
 .pay-acts{white-space:nowrap;text-align:right}
 .pay-acts .act-btn{margin-left:4px}
 tr.pay-off td{opacity:.55}
+/* 09.10: получатели, НДС и платёжка в «Оплатах» */
+.pay-tabs{border:1px solid var(--border);border-bottom:none;border-radius:var(--rl) var(--rl) 0 0}
+#page-pay.pay-on #pay-sec-rem,#page-pay.pay-on #pay-sec-pe{border-top-left-radius:0;border-top-right-radius:0}
+.pay-form textarea{width:100%;padding:9px 12px;border:1.5px solid var(--border2);border-radius:8px;font-size:13px;font-family:inherit;outline:none;background:#fff;resize:vertical}
+.pay-form textarea:focus{border-color:var(--green)}
+.pay-form .pf-full{grid-column:1/-1}
+.pay-vat{margin-top:6px;max-width:100%;flex-wrap:wrap}
+.pay-calc{font-size:11.5px;color:var(--muted);margin-top:5px;line-height:1.4;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.pay-calc b{color:var(--text)}
+.pe-iban-st{font-size:11.5px;margin-top:4px;min-height:14px}
+.pe-iban-st.ok{color:var(--green)}.pe-iban-st.bad{color:#dc2626}
+.pe-acc{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px;white-space:nowrap}
+.pay-vatline{font-size:10.5px;color:var(--muted);margin-top:2px;white-space:nowrap}
+.pp-modal textarea{resize:vertical;line-height:1.4}
+.pp-meta{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-top:4px}
+.pp-done{padding:10px 12px;background:rgba(26,92,56,.08);color:var(--green);border-radius:8px;font-size:12px;line-height:1.5;margin-bottom:10px}
+#pp-err{font-size:12px;color:#dc2626}
+/* 09.10: узкий экран (телефон) — меню сверху, плашки по 2, таблицы «Оплат» карточками.
+   Раньше на 390 px страница прокручивалась вбок: меню слева занимало 220 px. На компьютере (шире 760 px) ничего не меняется. */
+@media(max-width:760px){
+  #app{flex-direction:column}
+  .sb{position:static;width:100%;border-right:none}
+  .sb-admin,.sb-sec{display:none}
+  .sb-nav{display:flex;flex-wrap:wrap;gap:2px;padding:6px 8px}
+  .ni{padding:6px 10px;border-left:none;border-radius:8px}
+  .sb-bottom{padding:8px 16px}
+  .main{margin-left:0;width:100%}
+  .topbar{padding:0 1rem}
+  .content{padding:1rem}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr));gap:.6rem}
+  .stat{padding:.9rem;min-width:0}
+  .stat-val{font-size:1.25rem;overflow-wrap:anywhere}
+  .sec-head{flex-wrap:wrap;gap:8px}
+  .modal{padding:18px;width:94%;max-height:88vh}
+  .pay-form{grid-template-columns:minmax(0,1fr)}
+  .pay-form .pf-wide{grid-column:auto}
+  .pay-tbl thead{display:none}
+  .pay-tbl,.pay-tbl tbody,.pay-tbl tr,.pay-tbl td{display:block;width:100%}
+  .pay-tbl tr{padding:8px 0;border-bottom:1px solid var(--border)}
+  .pay-tbl tr:last-child{border-bottom:none}
+  .pay-tbl td{border:none;padding:3px 1.2rem}
+  .pay-tbl td[data-l]::before{content:attr(data-l);display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:1px}
+  .pay-tbl .pay-acts{text-align:left;white-space:normal;padding-top:6px}
+  .pay-tbl .pay-acts .act-btn{margin:0 4px 4px 0}
+}
 
 /* PAGES */
 .page{display:none}
@@ -697,7 +742,12 @@ tr.pay-off td{opacity:.55}
       <!-- ОПЛАТЫ (03.10): напоминания об оплатах компании — аренда, связь, бухгалтер, отчёты -->
       <div class="page" id="page-pay">
         <div class="stats" id="pay-stats"></div>
-        <div class="section">
+        <!-- 09.10: вкладки «Напоминания / Получатели» — только если сервер умеет платёжки (payments_file) -->
+        <div class="tabs pay-tabs" id="pay-tabs" style="display:none">
+          <div class="tab on" id="pay-tab-rem" onclick="payTab('rem')">Напоминания</div>
+          <div class="tab" id="pay-tab-pe" onclick="payTab('pe')">Получатели <span class="sec-cnt" id="pe-cnt"></span></div>
+        </div>
+        <div class="section" id="pay-sec-rem">
           <div class="sec-head">
             <div><span class="sec-title">Оплаты по срокам</span> <span class="sec-cnt" id="pay-cnt"></span></div>
             <div><button class="sec-btn" onclick="payForm()">＋ Добавить</button> <button class="sec-btn" id="pay-refresh" onclick="payRefresh(this)">↻ Обновить</button></div>
@@ -706,11 +756,15 @@ tr.pay-off td{opacity:.55}
             Всё, что компания платит или сдаёт по сроку: аренда, коммуналка, интернет, бухгалтер, отчёт Агентике. Сверху — просроченные и ближайшие.
             Telegram — каждое утро после <b id="pay-tgh">9:00</b>, пока не нажато «Оплачено» (без получателя и заметок, только название, сумма и дата).
             «N-й рабочий день» считается по пн–пт, без праздников и переносов — напоминание приходит заранее, точную дату сверьте.
-            Номера счетов и карт сюда не вписываются.
+            <span id="pay-acc-note">Номера счетов и карт сюда не вписываются.</span>
           </div>
           <div id="pay-form" class="pay-form" style="display:none">
             <div class="pf-wide"><label for="pf-title">Что оплачиваем *</label><input type="text" id="pf-title" maxlength="100" placeholder="Аренда офиса"></div>
-            <div><label for="pf-amount">Сумма</label><div class="pf-sum"><input type="text" id="pf-amount" inputmode="decimal" placeholder="0,00"><select id="pf-currency"><option>BYN</option><option>USD</option><option>EUR</option><option>RUB</option></select></div></div>
+            <!-- 09.10: получатель с реквизитами (для платёжки); без получателя — как раньше -->
+            <div id="pf-payee-box" style="display:none"><label for="pf-payee">Получатель</label><select id="pf-payee" onchange="payVatUi()"><option value="">— без получателя —</option></select></div>
+            <div><label for="pf-amount" id="pf-amount-lbl">Сумма</label><div class="pf-sum"><input type="text" id="pf-amount" inputmode="decimal" placeholder="0,00" oninput="payCalcUi()"><select id="pf-currency"><option>BYN</option><option>USD</option><option>EUR</option><option>RUB</option></select></div>
+              <div class="seg pay-vat" id="pf-vat" style="display:none"><button type="button" class="on" onclick="payVatPick('pf',false)">к оплате (с НДС)</button><button type="button" onclick="payVatPick('pf',true)">без НДС</button></div>
+              <div class="pay-calc" id="pf-calc"></div></div>
             <div><label for="pf-kind">Как часто</label><select id="pf-kind" onchange="payKindUi()"><option value="monthly">Каждый месяц, число</option><option value="workday">Каждый месяц, N-й рабочий день</option><option value="once">Один раз</option></select></div>
             <div id="pf-day-box"><label for="pf-day" id="pf-day-lbl">Число месяца</label><input type="number" id="pf-day" min="1" max="31" placeholder="5"></div>
             <div id="pf-date-box" style="display:none"><label>Дата</label><input type="date" id="pf-date"></div>
@@ -725,6 +779,39 @@ tr.pay-off td{opacity:.55}
             </div>
           </div>
           <div id="pay-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+        <!-- 09.10: получатели платежей — реквизиты и НДС для «📄 Платёжка». Полный счёт виден только в форме. -->
+        <div class="section" id="pay-sec-pe" style="display:none">
+          <div class="sec-head">
+            <div><span class="sec-title">Получатели</span> <span class="sec-cnt" id="pe-cnt2"></span></div>
+            <div><button class="sec-btn" onclick="peForm()">＋ Добавить</button></div>
+          </div>
+          <div class="ag-note">
+            Кому платим по счёту: реквизиты, код назначения и НДС. По ним «📄 Платёжка» у напоминания собирает файл для eParitet.
+            В списке счёт показан сокращённо, полностью — только в форме «✎».
+          </div>
+          <div id="pe-form" class="pay-form" style="display:none">
+            <div><label for="pe-short">Краткое имя *</label><input type="text" id="pe-short" maxlength="60" placeholder="Арендодатель"></div>
+            <div class="pf-wide"><label for="pe-name">Наименование получателя *</label><input type="text" id="pe-name" maxlength="200" placeholder="ООО «…»"></div>
+            <div><label for="pe-unp">УНП</label><input type="text" id="pe-unp" maxlength="9" inputmode="numeric" placeholder="9 цифр"></div>
+            <div class="pf-wide"><label for="pe-bank">Банк</label><input type="text" id="pe-bank" maxlength="200" placeholder="ОАО «…»"></div>
+            <div><label for="pe-bic">БИК</label><input type="text" id="pe-bic" maxlength="11" placeholder="AKBBBY2X" oninput="this.value=this.value.toUpperCase()"></div>
+            <div class="pf-wide"><label for="pe-iban">Счёт (IBAN)</label><input type="text" id="pe-iban" maxlength="42" placeholder="BY00 XXXX 0000 0000 0000 0000 0000" autocomplete="off" spellcheck="false" oninput="peIbanUi()"><div class="pe-iban-st" id="pe-iban-st"></div></div>
+            <div><label for="pe-code">Код назначения</label><input type="text" id="pe-code" maxlength="5" inputmode="numeric" placeholder="5 цифр"></div>
+            <div><label for="pe-prio">Очерёдность</label><input type="number" id="pe-prio" min="1" max="99" value="21"></div>
+            <div class="pf-wide"><label>НДС</label><div class="seg pay-vat" id="pe-vat"><button type="button" data-r="0" onclick="peVatPick(0)">без НДС</button><button type="button" data-r="10" onclick="peVatPick(10)">10%</button><button type="button" data-r="20" onclick="peVatPick(20)">20%</button></div></div>
+            <div class="pf-full"><label for="pe-tpl">Шаблон назначения</label><textarea id="pe-tpl" maxlength="500" rows="2" placeholder="Арендная плата за {месяц} по договору {договор}"></textarea>
+              <div class="pay-sub">{месяц} — октябрь 2026, {мм.гггг} — 10.2026, {договор} — № … от …; „Сумма …, в т.ч. НДС …“ или „Без НДС“ допишется само</div></div>
+            <div><label for="pe-cno">Договор №</label><input type="text" id="pe-cno" maxlength="60" placeholder="12/2026"></div>
+            <div><label>Дата договора</label><input type="date" id="pe-cdate"></div>
+            <div class="pf-wide"><label for="pe-note">Заметка</label><input type="text" id="pe-note" maxlength="300"></div>
+            <div class="pf-btns">
+              <button class="sec-btn" id="pe-save" onclick="peSave()">Сохранить</button>
+              <button class="sec-btn" style="background:var(--surf3);color:var(--text)" onclick="peFormClose()">Отмена</button>
+              <span class="pf-err" id="pe-err"></span>
+            </div>
+          </div>
+          <div id="pe-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
       </div>
 
@@ -832,6 +919,27 @@ tr.pay-off td{opacity:.55}
 </div>
 
 <!-- MODAL -->
+<!-- 09.10: окно «📄 Платёжка» — расчёт НДС, назначение с сервера (preview), скачивание файла для eParitet -->
+<div class="modal-bg" id="pp-modal">
+  <div class="modal pp-modal">
+    <h3 id="pp-title">Платёжка</h3>
+    <div class="modal-field"><label for="pp-amount" id="pp-amount-lbl">Сумма *</label>
+      <input type="text" id="pp-amount" inputmode="decimal" placeholder="0,00" oninput="ppAmountInput()">
+      <div class="seg pay-vat" id="pp-vat" style="display:none"><button type="button" class="on" onclick="payVatPick('pp',false)">к оплате (с НДС)</button><button type="button" onclick="payVatPick('pp',true)">без НДС</button></div>
+      <div class="pay-calc" id="pp-calc"></div></div>
+    <div class="modal-field"><label>Дата документа</label><input type="date" id="pp-date"></div>
+    <div class="modal-field"><label for="pp-purpose">Назначение платежа</label>
+      <textarea id="pp-purpose" rows="4" oninput="ppPurposeInput()"></textarea>
+      <div class="pp-meta"><span id="pp-count">0 симв.</span> <span class="pay-undo" id="pp-auto" style="display:none" onclick="ppAutoBack()">вернуть автоматическое</span></div></div>
+    <div class="jr-warn" id="pp-warn" style="display:none"></div>
+    <div class="pp-done" id="pp-done" style="display:none"></div>
+    <div class="pf-err" id="pp-err"></div>
+    <div class="modal-btns">
+      <button class="modal-btn modal-btn-cancel" onclick="ppClose()">Закрыть</button>
+      <button class="modal-btn modal-btn-primary" id="pp-dl" onclick="ppDownload()">Скачать файл</button>
+    </div>
+  </div>
+</div>
 <div class="modal-bg" id="modal">
   <div class="modal">
     <h3 id="modal-title">Детали</h3>
@@ -1349,6 +1457,7 @@ document.addEventListener('DOMContentLoaded', initAdminCalendars);
 var _pay = { items: [], edit: null };
 var PAY_KIND = { monthly: function (x) { return 'каждый месяц, ' + x.day + '-го'; },
                  workday: function (x) { return 'каждый месяц, ' + x.day + '-й рабочий день'; },
+                 lastworkday: function () { return 'каждый месяц, последний рабочий день'; },   // 09.10: новый вид срока
                  once:    function () { return 'один раз'; } };
 function payRu(s) { return s ? s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4) : '—'; }
 function payPeriod(p) { return p === 'once' ? 'разово' : (p.slice(5, 7) + '.' + p.slice(0, 4)); }
@@ -1383,6 +1492,8 @@ async function payLoad() {
       return false;
     }
     _pay.items = d.items || [];
+    // 09.10: получатели и платёжки — только если сервер их включил (payments_file) и отдаёт получателей (404 — выключено)
+    await payPeLoad(d.payments_file === true);
     document.getElementById('pay-tgh').textContent = String(d.tg_hour).padStart(2, '0') + ':00' + (d.alerts ? '' : ' (Telegram сейчас выключен)');
     var st = d.stats || {}, mt = st.month_total || {};
     var month = Object.keys(mt).map(function (c) { return payMoney(mt[c], c); }).join(' + ') || '—';
@@ -1394,20 +1505,21 @@ async function payLoad() {
     paySetBadge(st);
     document.getElementById('pay-cnt').textContent = _pay.items.length ? '· ' + _pay.items.length : '';
     if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return true; }
-    box.innerHTML = '<table><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
+    box.innerHTML = '<table class="pay-tbl"><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
       + _pay.items.map(function (x) {
-        var sub = [x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
+        var sub = [_pay.on && x.payee ? '→ ' + x.payee.short_name : '', x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
         var hist = (x.history || []).map(function (h, i) {
           return payPeriod(h.period) + (i === 0 ? ' <span class="pay-undo" title="Снять отметку" onclick="payUnpaid(' + x.id + ',\'' + escAttr(h.period) + '\')">отменить</span>' : '');
         }).join(' · ');
         var canPay = x.active && ['overdue', 'today', 'soon', 'later'].indexOf(x.due.status) >= 0;
         return '<tr class="' + (x.active ? '' : 'pay-off') + '">'
-          + '<td style="white-space:nowrap">' + (x.due.date ? payRu(x.due.date) : '—') + '</td>'
-          + '<td><b>' + esc(x.title) + '</b>' + (sub ? '<div class="pay-sub">' + sub + '</div>' : '') + (hist ? '<div class="pay-hist">Оплачено: ' + hist + '</div>' : '') + '</td>'
-          + '<td style="white-space:nowrap">' + payMoney(x.amount, x.currency) + '</td>'
-          + '<td>' + esc(PAY_KIND[x.kind] ? PAY_KIND[x.kind](x) : x.kind) + (x.remind_days ? '<div class="pay-sub">напомнить за ' + x.remind_days + ' дн.</div>' : '') + '</td>'
-          + '<td>' + payBadgeEl(x.due) + '</td>'
+          + '<td data-l="Срок" style="white-space:nowrap">' + (x.due.date ? payRu(x.due.date) : '—') + '</td>'
+          + '<td data-l="Что"><b>' + esc(x.title) + '</b>' + (sub ? '<div class="pay-sub">' + sub + '</div>' : '') + (hist ? '<div class="pay-hist">Оплачено: ' + hist + '</div>' : '') + '</td>'
+          + '<td data-l="Сумма" style="white-space:nowrap">' + payAmountCell(x) + '</td>'
+          + '<td data-l="Как часто">' + esc(PAY_KIND[x.kind] ? PAY_KIND[x.kind](x) : x.kind) + (x.remind_days ? '<div class="pay-sub">напомнить за ' + x.remind_days + ' дн.</div>' : '') + '</td>'
+          + '<td data-l="Статус">' + payBadgeEl(x.due) + '</td>'
           + '<td class="pay-acts">' + (canPay ? '<button class="act-btn act-approve" onclick="payPaid(' + x.id + ')">✓ Оплачено</button>' : '')
+          + (_pay.on && x.payee ? '<button class="act-btn act-approve" title="Файл платёжного поручения для eParitet" onclick="ppOpen(' + x.id + ')">📄 Платёжка</button>' : '')
           + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
           + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
       }).join('') + '</tbody></table>';
@@ -1454,7 +1566,7 @@ async function payRefresh(btn) {
 }
 function payKindUi() {
   var k = document.getElementById('pf-kind').value;
-  document.getElementById('pf-day-box').style.display = k === 'once' ? 'none' : '';
+  document.getElementById('pf-day-box').style.display = k === 'once' || k === 'lastworkday' ? 'none' : '';   // 09.10: у «последнего рабочего дня» дня нет
   document.getElementById('pf-date-box').style.display = k === 'once' ? '' : 'none';
   var day = document.getElementById('pf-day');
   document.getElementById('pf-day-lbl').textContent = k === 'workday' ? 'Номер рабочего дня' : 'Число месяца';
@@ -1471,7 +1583,14 @@ function payForm(id) {
   document.getElementById('pf-kind').value = x ? x.kind : 'monthly';
   document.getElementById('pf-day').value = x && x.day ? x.day : '';
   document.getElementById('pf-date').value = x && x.due_date ? x.due_date : '';
-  document.getElementById('pf-remind').value = x ? x.remind_days : 3;
+  document.getElementById('pf-remind').value = x ? x.remind_days : (_pay.on ? 2 : 3);   // 09.10: с платёжками по умолчанию за 2 дня
+  // 09.10: получатель и «сумма без НДС» (в ответе сервера флага нет — видно по money: net совпадает с суммой)
+  if (x && x.kind === 'lastworkday') payKindOpt(true);
+  document.getElementById('pf-kind').value = x ? x.kind : 'monthly';
+  document.getElementById('pf-payee').value = _pay.on && x && x.payee ? String(x.payee.id) : '';
+  _pay.pfNet = payIsNet(x);
+  _pay.pfPayee = x && x.payee ? x.payee : null;
+  payVatUi();
   document.getElementById('pf-cp').value = x && x.counterparty ? x.counterparty : '';
   document.getElementById('pf-note').value = x && x.note ? x.note : '';
   document.getElementById('pf-active').checked = x ? !!x.active : true;
@@ -1498,6 +1617,13 @@ async function paySave() {
     note: document.getElementById('pf-note').value,
     active: _pay.edit ? document.getElementById('pf-active').checked : true
   };
+  // 09.10: получатель и признак «сумма без НДС» — только когда сервер умеет платёжки
+  if (_pay.on) {
+    var pv = document.getElementById('pf-payee').value, pr = payPfRate();
+    body.payee_id = pv ? Number(pv) : null;
+    body.amount_is_net = pr > 0 ? !!_pay.pfNet : false;
+    if (body.kind === 'lastworkday') delete body.day;
+  }
   err.textContent = ''; btn.disabled = true;
   try {
     var r = await fetch(API + '/api/admin/reminders' + (_pay.edit ? '/' + _pay.edit : ''), { method: _pay.edit ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
@@ -1529,6 +1655,321 @@ async function payDelete(id) {
   if (!r.ok) { showToast('Не удалилось', true); return; }
   if (_pay.edit === id) payFormClose();
   showToast('Удалено'); payLoad();
+}
+
+// ══ ПОЛУЧАТЕЛИ И ПЛАТЁЖКИ (09.10): реквизиты с НДС, «📄 Платёжка» для eParitet (на сервере — /api/admin/payees и /reminders/:id/payment-file) ══
+// Если сервер не включил платёжки (payments_file !== true) или /payees отвечает 404 — ничего нового не видно, раздел как раньше.
+// НДС считается так же, как на сервере, в копейках: с НДС — vat = round(gross×r/(100+r)), без НДС — vat = round(net×r/100).
+function payNum(v) { return Number(v).toLocaleString('ru-RU', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+function payKop(str) {
+  var t = String(str == null ? '' : str).replace(/[\s\u00a0]/g, '').replace(',', '.');
+  if (!/^\d{1,9}(\.\d{1,2})?$/.test(t)) return null;
+  var a = t.split('.');
+  return Number(a[0]) * 100 + Number(((a[1] || '') + '00').slice(0, 2));
+}
+function payVat(k, r, isNet) {
+  if (isNet) { var v = Math.round(k * r / 100); return { net: k, vat: v, total: k + v }; }
+  var g = Math.round(k * r / (100 + r)); return { net: k - g, vat: g, total: k };
+}
+// Живая строка под суммой: «Без НДС 318,48 · НДС 20% 63,70 · К оплате 382,18»
+function payCalcLine(str, r, isNet) {
+  if (r === null || r === undefined) return '';
+  var k = payKop(str), filled = String(str || '').trim() !== '';
+  if (filled && k === null) return '<span style="color:#dc2626">Сумма — число, например 382,18</span>';
+  if (!(r > 0)) return k === null ? 'Без НДС' : 'Без НДС · К оплате <b>' + payNum(k / 100) + '</b>';
+  if (k === null) return 'НДС ' + r + '% посчитается от суммы';
+  var m = payVat(k, r, isNet);
+  return 'Без НДС <b>' + payNum(m.net / 100) + '</b> · НДС ' + r + '% <b>' + payNum(m.vat / 100) + '</b> · К оплате <b>' + payNum(m.total / 100) + '</b>';
+}
+// Сумма в напоминании хранилась «без НДС», если в money net совпадает с суммой, а total — нет
+function payIsNet(x) {
+  if (!x || !x.money || x.amount === null || x.amount === undefined || !(Number(x.money.vat) > 0)) return false;
+  return Math.abs(Number(x.money.net) - Number(x.amount)) < 0.005 && Math.abs(Number(x.money.total) - Number(x.amount)) >= 0.005;
+}
+function payAmountCell(x) {
+  if (!_pay.on) return payMoney(x.amount, x.currency);
+  if (x.money && x.money.total !== null && x.money.total !== undefined) {
+    return payMoney(x.money.total, x.currency) + (Number(x.money.vat) > 0 ? '<div class="pay-vatline">в т.ч. НДС ' + payNum(x.money.vat) + '</div>' : '');
+  }
+  if (x.amount === null || x.amount === undefined) return '<span style="color:var(--muted)">по счёту</span>';
+  return payMoney(x.amount, x.currency);
+}
+function payPayee(id) { id = Number(id); return (_pay.payees || []).find(function (p) { return p.id === id; }) || null; }
+function payVatSeg(id, net) {
+  var b = document.querySelectorAll('#' + id + ' button');
+  if (b.length === 2) { b[0].classList.toggle('on', !net); b[1].classList.toggle('on', !!net); }
+}
+function payVatPick(pre, net) {
+  if (pre === 'pf') { _pay.pfNet = net; payVatSeg('pf-vat', net); payCalcUi(); }
+  else { _pay.ppNet = net; payVatSeg('pp-vat', net); ppAmountInput(); }
+}
+// Ставка выбранного в форме получателя (null — без получателя)
+function payPfRate() {
+  var v = document.getElementById('pf-payee').value; if (!_pay.on || !v) return null;
+  var p = payPayee(v) || (_pay.pfPayee && String(_pay.pfPayee.id) === v ? _pay.pfPayee : null);
+  return p ? Number(p.vat_rate) || 0 : null;
+}
+function payVatUi() {
+  var r = payPfRate();
+  document.getElementById('pf-vat').style.display = r > 0 ? '' : 'none';
+  payVatSeg('pf-vat', _pay.pfNet);
+  payCalcUi();
+}
+function payCalcUi() {
+  var el = document.getElementById('pf-calc'); if (!el) return;
+  el.innerHTML = _pay.on ? payCalcLine(document.getElementById('pf-amount').value, payPfRate(), !!_pay.pfNet) : '';
+}
+function payKindOpt(on) {
+  var sel = document.getElementById('pf-kind'), o = sel.querySelector('option[value="lastworkday"]');
+  if (on && !o) { o = document.createElement('option'); o.value = 'lastworkday'; o.textContent = 'Последний рабочий день месяца'; sel.insertBefore(o, sel.querySelector('option[value="once"]')); }
+  if (!on && o && sel.value !== 'lastworkday') o.remove();
+}
+async function payPeLoad(flag) {
+  var on = false, err = '';
+  if (flag) {
+    try {
+      var r = await fetch(API + '/api/admin/payees', { headers: authHeaders(), cache: 'no-store' });
+      var d = null; try { d = await r.json(); } catch (e) {}
+      if (r.status !== 404) {
+        on = true;
+        if (r.ok && d && d.ok) _pay.payees = d.items || [];
+        else err = (d && d.error) || ('Ошибка ' + r.status);
+      }
+    } catch (e) { on = true; err = 'Сервер не отвечает: ' + e.message; }
+  }
+  _pay.on = on; _pay.peErr = err;
+  if (!on) _pay.payees = [];
+  payOnUi();
+}
+// Показать или спрятать всё новое разом
+function payOnUi() {
+  var on = !!_pay.on;
+  document.getElementById('page-pay').classList.toggle('pay-on', on);
+  document.getElementById('pay-tabs').style.display = on ? '' : 'none';
+  if (!on) payTab('rem');
+  document.getElementById('pf-payee-box').style.display = on ? '' : 'none';
+  document.getElementById('pay-acc-note').textContent = on
+    ? 'Номера счетов — только в карточке получателя (вкладка «Получатели»), в название и заметку их не вписывайте.'
+    : 'Номера счетов и карт сюда не вписываются.';
+  payKindOpt(on);
+  document.getElementById('pf-amount-lbl').textContent = on ? 'Сумма (пусто = по счёту)' : 'Сумма';
+  document.getElementById('pf-amount').placeholder = on ? 'пусто = по счёту' : '0,00';
+  var sel = document.getElementById('pf-payee'), cur = sel.value;
+  sel.innerHTML = '<option value="">— без получателя —</option>' + (_pay.payees || []).map(function (p) {
+    return '<option value="' + p.id + '">' + esc(p.short_name) + '</option>';
+  }).join('');
+  if (cur && !payPayee(cur) && _pay.pfPayee && String(_pay.pfPayee.id) === cur) sel.insertAdjacentHTML('beforeend', '<option value="' + esc(cur) + '">' + esc(_pay.pfPayee.short_name) + '</option>');
+  sel.value = cur;
+  if (sel.value !== cur) sel.value = '';
+  payVatUi();
+  if (on) peRender();
+}
+function payTab(t) {
+  _pay.tab = t;
+  document.getElementById('pay-tab-rem').classList.toggle('on', t === 'rem');
+  document.getElementById('pay-tab-pe').classList.toggle('on', t === 'pe');
+  document.getElementById('pay-sec-rem').style.display = t === 'rem' ? '' : 'none';
+  document.getElementById('pay-sec-pe').style.display = t === 'pe' ? '' : 'none';
+}
+function peMask(iban) { var t = String(iban || '').replace(/\s+/g, ''); return t.length > 8 ? t.slice(0, 4) + '…' + t.slice(-4) : (t || '—'); }
+function peVatTxt(r) { return Number(r) > 0 ? Number(r) + '%' : 'без НДС'; }
+function peRender() {
+  var box = document.getElementById('pe-list'), list = _pay.payees || [];
+  var n = list.length ? '· ' + list.length : '';
+  document.getElementById('pe-cnt').textContent = n; document.getElementById('pe-cnt2').textContent = n;
+  if (_pay.peErr) { box.innerHTML = '<div class="empty">' + esc(_pay.peErr) + '</div>'; return; }
+  if (!list.length) { box.innerHTML = '<div class="empty">Получателей пока нет. «＋ Добавить» — арендодатель, связь, бухгалтер…</div>'; return; }
+  box.innerHTML = '<table class="pay-tbl"><thead><tr><th>Получатель</th><th>Счёт</th><th>Код</th><th>НДС</th><th></th></tr></thead><tbody>'
+    + list.map(function (p) {
+      return '<tr><td data-l="Получатель"><b>' + esc(p.short_name) + '</b>' + (p.name ? '<div class="pay-sub">' + esc(p.name) + '</div>' : '') + '</td>'
+        + '<td data-l="Счёт"><span class="pe-acc">' + esc(peMask(p.iban)) + '</span></td>'
+        + '<td data-l="Код">' + esc(p.purpose_code || '—') + '</td>'
+        + '<td data-l="НДС">' + esc(peVatTxt(p.vat_rate)) + '</td>'
+        + '<td class="pay-acts"><button class="act-btn act-cancel" title="Изменить" onclick="peForm(' + p.id + ')">✎</button>'
+        + '<button class="act-btn act-reject" title="Удалить" onclick="peDelete(' + p.id + ')">✕</button></td></tr>';
+    }).join('') + '</tbody></table>';
+}
+// Счёт: формат (BY — 28 знаков) и контрольная сумма mod 97, как у банка
+function peIbanCheck(raw) {
+  var t = String(raw || '').replace(/\s+/g, '').toUpperCase();
+  if (!t) return { ok: true, empty: true, norm: '' };
+  if (!/^[A-Z]{2}\d{2}[A-Z0-9]+$/.test(t)) return { ok: false, norm: t, msg: '✗ Счёт: две буквы страны, две цифры, дальше буквы и цифры' };
+  if (t.slice(0, 2) === 'BY' ? t.length !== 28 : (t.length < 15 || t.length > 34)) return { ok: false, norm: t, msg: '✗ Длина счёта ' + t.length + ', а нужно ' + (t.slice(0, 2) === 'BY' ? '28 (BY + 26 знаков)' : 'от 15 до 34') };
+  var s = t.slice(4) + t.slice(0, 4), m = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s.charCodeAt(i), v = c >= 65 ? String(c - 55) : s[i];
+    for (var j = 0; j < v.length; j++) m = (m * 10 + (v.charCodeAt(j) - 48)) % 97;
+  }
+  if (m !== 1) return { ok: false, norm: t, msg: '✗ Контрольная сумма не сходится — проверьте цифры счёта' };
+  return { ok: true, norm: t, msg: '✓ Счёт верный' };
+}
+function peIbanUi() {
+  var c = peIbanCheck(document.getElementById('pe-iban').value), st = document.getElementById('pe-iban-st');
+  st.textContent = c.empty ? '' : c.msg; st.className = 'pe-iban-st ' + (c.empty ? '' : c.ok ? 'ok' : 'bad');
+  return c;
+}
+function peVatPick(r) {
+  _pay.peVat = r;
+  document.querySelectorAll('#pe-vat button').forEach(function (b) { b.classList.toggle('on', Number(b.getAttribute('data-r')) === r); });
+}
+function peForm(id) {
+  var f = document.getElementById('pe-form');
+  var x = id ? payPayee(id) : null;
+  _pay.peEdit = x ? x.id : null;
+  var v = function (k) { return x && x[k] !== null && x[k] !== undefined ? String(x[k]) : ''; };
+  document.getElementById('pe-short').value = v('short_name');
+  document.getElementById('pe-name').value = v('name');
+  document.getElementById('pe-unp').value = v('unp');
+  document.getElementById('pe-bank').value = v('bank_name');
+  document.getElementById('pe-bic').value = v('bic');
+  document.getElementById('pe-iban').value = v('iban');
+  document.getElementById('pe-code').value = v('purpose_code');
+  document.getElementById('pe-prio').value = x && x.priority ? x.priority : 21;
+  document.getElementById('pe-tpl').value = v('purpose_template');
+  document.getElementById('pe-cno').value = v('contract_no');
+  document.getElementById('pe-cdate').value = v('contract_date').slice(0, 10);
+  document.getElementById('pe-note').value = v('note');
+  peVatPick(x ? Number(x.vat_rate) || 0 : null);   // у нового получателя НДС выбирается явно
+  document.getElementById('pe-err').textContent = '';
+  document.getElementById('pe-save').textContent = x ? 'Сохранить изменения' : 'Добавить';
+  if (window.zdpDate && !f._zdp) { f._zdp = zdpDate(document.getElementById('pe-cdate'), { title: 'Дата договора', placeholder: 'Выберите дату', clearable: true }); }
+  peIbanUi();
+  f.style.display = '';
+  document.getElementById('pe-short').focus();
+}
+function peFormClose() { document.getElementById('pe-form').style.display = 'none'; _pay.peEdit = null; }
+async function peSave() {
+  var err = document.getElementById('pe-err'), btn = document.getElementById('pe-save');
+  var c = peIbanUi();
+  if (!c.ok) { err.textContent = 'Проверьте счёт: ' + c.msg.replace('✗ ', ''); return; }
+  if ([0, 10, 20].indexOf(_pay.peVat) < 0) { err.textContent = 'Выберите НДС: без НДС, 10% или 20%'; return; }
+  var g = function (id) { return document.getElementById(id).value.trim(); };
+  var body = {
+    short_name: g('pe-short'), name: g('pe-name'), unp: g('pe-unp'), bank_name: g('pe-bank'),
+    bic: g('pe-bic').toUpperCase(), iban: c.norm, purpose_code: g('pe-code'),
+    priority: g('pe-prio') === '' ? null : Number(g('pe-prio')), vat_rate: _pay.peVat,
+    purpose_template: g('pe-tpl'), contract_no: g('pe-cno'), contract_date: g('pe-cdate') || null, note: g('pe-note')
+  };
+  err.textContent = ''; btn.disabled = true;
+  try {
+    var r = await fetch(API + '/api/admin/payees' + (_pay.peEdit ? '/' + _pay.peEdit : ''), { method: _pay.peEdit ? 'PUT' : 'POST', headers: authHeaders(), body: JSON.stringify(body) });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok) { err.textContent = (d && d.error) || ('Ошибка ' + r.status); return; }
+    showToast(_pay.peEdit ? 'Получатель сохранён' : 'Получатель добавлен');
+    peFormClose(); payLoad();
+  } catch (e) { err.textContent = 'Сервер не отвечает'; }
+  finally { btn.disabled = false; }
+}
+async function peDelete(id) {
+  var p = payPayee(id); if (!p) return;
+  if (!confirm('Удалить получателя «' + p.short_name + '»?')) return;
+  try {
+    var r = await fetch(API + '/api/admin/payees/' + id, { method: 'DELETE', headers: authHeaders() });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    // 409 — к получателю привязаны напоминания: показываем текст сервера как есть
+    if (!r.ok || !d || !d.ok) { showToast((d && d.error) || 'Не удалилось', true); return; }
+    if (_pay.peEdit === id) peFormClose();
+    showToast('Получатель удалён'); payLoad();
+  } catch (e) { showToast('Сервер не отвечает', true); }
+}
+
+// Окно «📄 Платёжка». Назначение подставляет сервер (preview) — при открытии и через ~300 мс после правки суммы.
+// Если назначение поправили руками, оно больше не перезаписывается (ссылка «вернуть автоматическое»).
+var _pp = { id: null, seq: 0, timer: null };
+function ppOpen(id) {
+  var x = _pay.items.find(function (i) { return i.id === id; }); if (!x || !x.payee) return;
+  clearTimeout(_pp.timer);
+  _pp = { id: id, x: x, r: Number(x.payee.vat_rate) || 0, manual: false, auto: '', seq: _pp.seq + 1, timer: null };
+  document.getElementById('pp-title').textContent = 'Платёжка: ' + x.title + ' → ' + x.payee.short_name;
+  document.getElementById('pp-amount').value = x.amount !== null && x.amount !== undefined ? String(x.amount).replace('.', ',') : '';
+  document.getElementById('pp-amount-lbl').textContent = 'Сумма, ' + (x.currency || 'BYN') + ' *';
+  _pay.ppNet = payIsNet(x);
+  document.getElementById('pp-vat').style.display = _pp.r > 0 ? '' : 'none';
+  payVatSeg('pp-vat', _pay.ppNet);
+  var dt = document.getElementById('pp-date');
+  if (window.zdpDate && !dt._zdp) zdpDate(dt, { title: 'Дата документа', placeholder: 'Выберите дату' });
+  if (!dt._ppOn) { dt._ppOn = true; dt.addEventListener('change', function () { ppSchedule(0); }); }
+  dt.value = window.zdpYmd ? zdpYmd(new Date()) : new Date().toISOString().slice(0, 10);
+  document.getElementById('pp-purpose').value = '';
+  document.getElementById('pp-auto').style.display = 'none';
+  ppCount();
+  ppWarn([]);
+  document.getElementById('pp-done').style.display = 'none';
+  document.getElementById('pp-err').textContent = '';
+  document.getElementById('pp-modal').classList.add('open');
+  ppCalc();
+  ppSchedule(0);
+}
+function ppClose() { clearTimeout(_pp.timer); _pp.seq++; document.getElementById('pp-modal').classList.remove('open'); }
+function ppCalc() { document.getElementById('pp-calc').innerHTML = payCalcLine(document.getElementById('pp-amount').value, _pp.r, !!_pay.ppNet); }
+function ppCount() { document.getElementById('pp-count').textContent = document.getElementById('pp-purpose').value.length + ' симв.'; }
+function ppWarn(list) {
+  var w = document.getElementById('pp-warn'); list = (list || []).filter(Boolean);
+  w.innerHTML = list.map(function (t) { return '⚠ ' + esc(t); }).join('<br>'); w.style.display = list.length ? '' : 'none';
+}
+function ppAmountInput() { ppCalc(); document.getElementById('pp-done').style.display = 'none'; ppSchedule(300); }
+function ppSchedule(ms) { clearTimeout(_pp.timer); _pp.timer = setTimeout(ppPreview, ms); }
+function ppPurposeInput() {
+  _pp.manual = document.getElementById('pp-purpose').value !== _pp.auto;
+  document.getElementById('pp-auto').style.display = _pp.manual ? '' : 'none';
+  ppCount();
+}
+function ppAutoBack() {
+  _pp.manual = false;
+  document.getElementById('pp-purpose').value = _pp.auto;
+  document.getElementById('pp-auto').style.display = 'none';
+  ppCount(); ppSchedule(0);
+}
+// Тело запроса. Пока назначение автоматическое — отправляем пустое, сервер соберёт его по шаблону сам.
+function ppBody(preview) {
+  var k = payKop(document.getElementById('pp-amount').value);
+  return { amount: k / 100, amount_is_net: _pp.r > 0 ? !!_pay.ppNet : false, doc_date: document.getElementById('pp-date').value,
+           purpose: _pp.manual ? document.getElementById('pp-purpose').value : '', preview: preview };
+}
+async function ppPreview() {
+  var k = payKop(document.getElementById('pp-amount').value);
+  if (!(k > 0)) return;
+  var my = ++_pp.seq, id = _pp.id;
+  try {
+    var r = await fetch(API + '/api/admin/reminders/' + id + '/payment-file', { method: 'POST', headers: authHeaders(), body: JSON.stringify(ppBody(true)) });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (my !== _pp.seq) return;   // уже ушёл более свежий запрос или окно закрыто
+    var err = document.getElementById('pp-err');
+    if (!r.ok || !d || !d.ok) { err.textContent = (d && d.error) || ('Ошибка ' + r.status); return; }
+    err.textContent = '';
+    ppApply(d);
+  } catch (e) { if (my === _pp.seq) document.getElementById('pp-err').textContent = 'Сервер не отвечает'; }
+}
+function ppApply(d) {
+  // Правленное руками назначение не трогаем; автоматическое обновит «вернуть автоматическое»
+  if (typeof d.purpose === 'string' && !_pp.manual) { _pp.auto = d.purpose; document.getElementById('pp-purpose').value = d.purpose; }
+  ppCount();
+  ppWarn(d.warnings);
+}
+async function ppDownload() {
+  var err = document.getElementById('pp-err'), btn = document.getElementById('pp-dl');
+  var k = payKop(document.getElementById('pp-amount').value);
+  if (!(k > 0)) { err.textContent = 'Укажите сумму — например 382,18'; document.getElementById('pp-amount').focus(); return; }
+  clearTimeout(_pp.timer);
+  var my = ++_pp.seq, id = _pp.id;
+  err.textContent = ''; btn.disabled = true;
+  try {
+    var r = await fetch(API + '/api/admin/reminders/' + id + '/payment-file', { method: 'POST', headers: authHeaders(), body: JSON.stringify(ppBody(false)) });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok || !d.content_base64) { if (my === _pp.seq) err.textContent = (d && d.error) || ('Ошибка ' + r.status); return; }
+    // Байты файла — как прислал сервер (кодировку d.encoding не трогаем, иначе eParitet не прочтёт)
+    var bin = atob(d.content_base64), bytes = new Uint8Array(bin.length);
+    for (var i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+    var url = URL.createObjectURL(new Blob([bytes], { type: 'application/octet-stream' }));
+    var a = document.createElement('a'); a.href = url; a.download = d.filename || 'platezhka.txt';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+    if (my === _pp.seq) ppApply(d);
+    var done = document.getElementById('pp-done');
+    done.textContent = '✓ Файл «' + (d.filename || 'platezhka.txt') + '» скачан. Загрузите файл в eParitet → Платёжные поручения → Импорт. Проверьте черновик и подпишите сами.';
+    done.style.display = '';
+  } catch (e) { err.textContent = 'Сервер не отвечает'; }
+  finally { btn.disabled = false; }
 }
 
 // ══ ЖУРНАЛ СЕРВЕРА (03.10): последние строки лога API (на сервере — services/logbuf.js) ══
