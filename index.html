@@ -27,11 +27,19 @@
 <!-- Панель не должна попадать в поисковую выдачу. Это не защита (кто знает адрес —
      откроет), но убирает самый лёгкий способ её найти: поиск по типовым словам. -->
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- 09.10: установка на телефон и компьютер как приложение (как в кабинете партнёра): manifest.webmanifest и иконки лежат рядом с index.html -->
+<meta name="theme-color" content="#0a2814">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Админка">
 <title>Заедем.by — Админ-панель</title>
 <script>
 // 02.10: обновление страницы (F5) — сразу на нужном разделе, без мелькания входа и дашборда.
 // Пока скрипт не выбрал раздел, страница не показывается (доли секунды).
-try{ if(sessionStorage.getItem('admin_auth')) document.documentElement.className+=' adm-boot'; }catch(e){}
+// 09.10: вход теперь хранится в localStorage со сроком (admin_exp) — проверяем, что срок не истёк
+try{ if(localStorage.getItem('admin_token') && +localStorage.getItem('admin_exp') > Date.now()) document.documentElement.className+=' adm-boot'; }catch(e){}
 </script>
 <style>html.adm-boot body{visibility:hidden}</style>
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%230F2D1D'/%3E%3Ctext x='32' y='44' font-family='Arial,sans-serif' font-size='36' font-weight='900' fill='%23c9f135' text-anchor='middle'%3EA%3C/text%3E%3C/svg%3E">
@@ -468,6 +476,32 @@ tr.pay-off td{opacity:.55}
 .unp-info.ok{color:var(--green)} .unp-info.bad{color:#dc2626} .unp-info.wait{color:var(--muted)}
 .lim-tbl td,.lim-tbl th{white-space:nowrap}
 .lim-key td:first-child{font-weight:700}
+/* 09.10: вход — «Запомнить это устройство», под «Выйти» — «Выйти на всех устройствах» */
+.login-rem{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:4px 0 8px;cursor:pointer;user-select:none}
+.login-rem input{width:16px;height:16px;accent-color:var(--green);cursor:pointer;flex-shrink:0}
+.logout-all{display:block;width:100%;margin-top:6px;background:none;border:none;color:rgba(255,255,255,.35);font-size:10.5px;text-decoration:underline;padding:2px}
+.logout-all:hover{color:var(--red)}
+.sb-pwa{display:none}
+/* 09.10: «Показать ещё» под длинными списками — сначала 20 строк */
+.more-row{padding:12px 1rem;text-align:center;border-top:1px solid var(--border)}
+.more-btn{padding:9px 18px;border:1.5px solid var(--faint);border-radius:9px;background:var(--surf);color:var(--green);font-family:inherit;font-size:12.5px;font-weight:700}
+.more-btn:hover{border-color:var(--green)}
+#bell-list .more-row{padding:10px 14px}
+/* 09.10: плашка «Установить как приложение» — на телефоне внизу экрана (как в кабинете партнёра) */
+#adm-pwa{position:fixed;left:10px;right:10px;bottom:-160px;z-index:300;background:#0F2D1D;color:#fff;border-radius:16px;padding:12px 14px;display:flex;align-items:center;gap:12px;box-shadow:0 12px 40px rgba(0,0,0,.3);transition:bottom .35s ease;max-width:480px;margin:0 auto}
+#adm-pwa.show{bottom:calc(12px + env(safe-area-inset-bottom))}
+#adm-pwa img{width:40px;height:40px;border-radius:10px;flex-shrink:0}
+#adm-pwa .cp-t{font-size:13px;font-weight:700;line-height:1.3}
+#adm-pwa .cp-s{font-size:12px;color:#cfe3d6;margin-top:3px;line-height:1.35}
+#adm-pwa button{font-family:inherit;border:none;cursor:pointer;border-radius:10px;padding:9px 12px;font-size:12.5px;font-weight:700;flex-shrink:0}
+#adm-pwa .cp-inst{background:#c9f135;color:#0F2D1D}
+#adm-pwa .cp-x{background:none;color:#cfe3d6;padding:9px 6px;font-size:15px}
+@media(max-width:760px){
+  .sb-pwa{display:block;width:100%;margin-bottom:6px;padding:8px;min-height:40px;background:rgba(200,241,53,.12);color:var(--lime);border:none;border-radius:8px;font-size:12px;font-weight:600}
+  .sb-pwa.off{display:none}
+  .logout-all{min-height:32px}
+  .more-btn{min-height:40px;width:100%}
+}
 </style>
 </head>
 <body>
@@ -485,6 +519,8 @@ tr.pay-off td{opacity:.55}
       <label>Пароль</label>
       <input type="password" id="loginPass" placeholder="••••••••" autocomplete="current-password">
     </div>
+    <!-- 09.10: на телефоне и в установленном приложении галочка включена сразу (admRememberDefault) -->
+    <label class="login-rem"><input type="checkbox" id="loginRemember"> Запомнить это устройство на 7 дней</label>
     <button class="login-btn" onclick="doLogin()">Войти</button>
     <div class="login-err" id="loginErr"></div>
   </div>
@@ -525,7 +561,9 @@ tr.pay-off td{opacity:.55}
       <div class="ni" onclick="showPage('logs',this)"><span class="ni-ico">🧾</span> Журнал сервера</div>
     </div>
     <div class="sb-bottom">
+      <button type="button" class="sb-pwa" id="sb-pwa" onclick="admPwaShow()">📲 Установить как приложение</button>
       <button class="logout-btn" onclick="doLogout()">🚪 Выйти</button>
+      <button type="button" class="logout-all" id="logout-all" onclick="doLogoutAll()">Выйти на всех устройствах</button>
     </div>
   </div>
 
@@ -1363,7 +1401,10 @@ let allApps = [];
 let allUsers = [];
 let allHotels = [];
 let currentAppFilter = 'all';
-let adminToken = sessionStorage.getItem('admin_token') || '';
+// 09.10: токен — в localStorage вместе со сроком (admin_exp, мс). Раньше лежал в sessionStorage
+// и пропадал при закрытии вкладки или приложения на телефоне — приходилось входить каждый раз.
+// Кроме токена и срока здесь ничего не храним: данные гостей в localStorage не попадают.
+let adminToken = admTokenLoad();
 
 // ═ ЗАЩИТА ОТ XSS ═ Данные заявок, броней и пользователей приходят из ПУБЛИЧНЫХ форм.
 // Раньше они вставлялись в innerHTML как есть: заявка с названием вида
@@ -1382,6 +1423,95 @@ function escAttr(v) {
     .replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\r?\n/g, ' ');
 }
 
+// ══════════════════════════════════════════════════════
+// 09.10: ВХОД ХРАНИТСЯ НА УСТРОЙСТВЕ ДО КОНЦА СРОКА ТОКЕНА
+// Закрыли вкладку или приложение — при открытии вход не нужен, пока срок не истёк.
+// Срок — из самого токена (поле exp), но не дольше 24 ч без галочки «Запомнить» и 7 дней с ней.
+// Выход по бездействию (30 минут) убран: сессия живёт до конца срока токена,
+// ответ сервера 401 — показываем вход.
+// ══════════════════════════════════════════════════════
+function admTokenExp(t) {   // exp из токена (JWT), мс; 0 — не прочитать
+  try {
+    var p = String(t || '').split('.')[1]; if (!p) return 0;
+    p = p.replace(/-/g, '+').replace(/_/g, '/'); while (p.length % 4) p += '=';
+    var exp = JSON.parse(atob(p)).exp;
+    return exp > 0 ? exp * 1000 : 0;
+  } catch (e) { return 0; }
+}
+function admTokenSave(t, remember) {
+  var cap = Date.now() + (remember ? 7 : 1) * 86400000, exp = admTokenExp(t);
+  exp = exp ? Math.min(exp, cap) : cap;
+  try { localStorage.setItem('admin_token', t); localStorage.setItem('admin_exp', String(exp)); } catch (e) {}
+}
+function admTokenClear() {
+  try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_exp'); } catch (e) {}
+  try { sessionStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_auth'); } catch (e) {}
+}
+function admTokenLoad() {
+  try {
+    // вкладка, открытая до обновления админки: токен ещё в sessionStorage — переносим (срок — до 24 ч)
+    var old = sessionStorage.getItem('admin_token');
+    if (old && sessionStorage.getItem('admin_auth') && !localStorage.getItem('admin_token')) admTokenSave(old, false);
+    sessionStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_auth');
+    var t = localStorage.getItem('admin_token') || '', exp = +localStorage.getItem('admin_exp') || 0;
+    if (t && exp > Date.now()) return t;
+    if (t) admTokenClear();   // срок истёк — стираем
+  } catch (e) {}
+  return '';
+}
+function admTokenValid() {
+  try { return !!adminToken && (+localStorage.getItem('admin_exp') || 0) > Date.now(); } catch (e) { return !!adminToken; }
+}
+// Галочка «Запомнить»: на телефоне и в установленном приложении — включена, на компьютере — выключена
+function admRememberDefault() {
+  var cb = document.getElementById('loginRemember'); if (!cb) return;
+  try { cb.checked = admPwaStandalone() || admPwaPhone(); } catch (e) { cb.checked = false; }
+}
+// Сессия кончилась (сервер ответил 401 или истёк срок) — показываем вход, как при открытии без входа.
+// Без перезагрузки: набранное в открытых формах не теряется, после входа данные перечитываются.
+let _admEnded = false;
+function admSessionEnded(msg) {
+  if (_admEnded) return;
+  _admEnded = true;
+  adminToken = '';
+  admTokenClear();
+  try { closeModal(); } catch (e) {}
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('loginWrap').style.display = 'flex';
+  document.documentElement.classList.remove('adm-boot');
+  admRememberDefault();
+  var p = document.getElementById('loginPass'); if (p) p.value = '';
+  document.getElementById('loginErr').textContent = msg || 'Срок входа истёк — войдите снова';
+}
+// Ответ 401 на любой запрос к нашему API с токеном — значит, токен больше не действует.
+// Запрос входа (без токена) сюда не попадает: там 401 — «неверный пароль».
+(function () {
+  var _fetch = window.fetch.bind(window);
+  window.fetch = function (url, opts) {
+    var sent = adminToken;
+    return _fetch(url, opts).then(function (r) {
+      try {
+        var h = opts && opts.headers, auth = h && (h.Authorization || h.authorization);
+        if (r.status === 401 && sent && sent === adminToken && auth && String(url).indexOf(API) === 0) admSessionEnded();
+      } catch (e) {}
+      return r;
+    });
+  };
+})();
+// Срок вышел, пока админка была открыта, — при возврате на вкладку и раз в минуту
+function admCheckExpiry() { if (adminToken && !admTokenValid()) admSessionEnded(); }
+document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') admCheckExpiry(); });
+setInterval(admCheckExpiry, 60000);
+// Вышли или вошли в другой вкладке того же браузера — эта вкладка делает то же
+window.addEventListener('storage', function (e) {
+  if (e.key !== 'admin_token') return;
+  if (!e.newValue && adminToken) admSessionEnded('Вы вышли в другой вкладке');
+  else if (e.newValue && !adminToken && document.getElementById('loginWrap').style.display !== 'none') {
+    adminToken = admTokenLoad();
+    if (adminToken) admEnter();
+  }
+});
+
 function authHeaders() {
   return {'Content-Type':'application/json', 'Authorization':'Bearer '+adminToken};
 }
@@ -1393,21 +1523,21 @@ async function doLogin() {
   const errEl = document.getElementById('loginErr');
   if(!email||!pass){ errEl.textContent='Заполните все поля'; return; }
   try {
+    // 09.10: remember — галочка «Запомнить это устройство на 7 дней» (сервер, который поле не знает, его просто не читает)
+    const remember = !!(document.getElementById('loginRemember') || {}).checked;
     const r = await fetch(`${API}/api/users/login`, {
       method:'POST',
       headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({email, password: pass})
+      body: JSON.stringify({email, password: pass, remember})
     });
     const d = await r.json();
     if(!r.ok||!d.success){ errEl.textContent = d.error||'Неверный логин или пароль'; return; }
     if(d.user.role !== 'admin'){ errEl.textContent = 'Доступ только для администраторов'; return; }
     adminToken = d.token || '';
-    sessionStorage.setItem('admin_token', adminToken);
-    sessionStorage.setItem('admin_auth', '1');
-    document.getElementById('loginWrap').style.display = 'none';
-    document.getElementById('app').style.display = 'flex';
-    resetIdleTimer();
-    loadAll({silent:true});
+    admTokenSave(adminToken, remember);
+    errEl.textContent = '';
+    document.getElementById('loginPass').value = '';
+    admEnter();
   } catch(e) {
     errEl.textContent = 'Ошибка соединения';
   }
@@ -1418,58 +1548,122 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
 });
 
 function doLogout() {
-  sessionStorage.removeItem('admin_auth');
-  sessionStorage.removeItem('admin_token');
+  admTokenClear();   // 09.10: стираем вход на этом устройстве
   adminToken = '';
   location.reload();
 }
-
-// ══════════════════════════════════════════════════════
-// АВТОВЫХОД ПО БЕЗДЕЙСТВИЮ
-// ══════════════════════════════════════════════════════
-// Сессия жила, пока открыта вкладка. Админка показывает персональные данные
-// гостей — ФИО, телефоны, почту, суммы. Оставленный без присмотра ноутбук
-// или чужой компьютер означали полный доступ к ним на неограниченное время.
-//
-// 30 минут без действий — выход. За минуту до этого предупреждаем:
-// молча выкидывать посреди работы хуже, чем не выкидывать вовсе.
-const IDLE_LIMIT_MS = 30 * 60 * 1000;
-let _idleTimer = null, _idleWarnTimer = null;
-
-function resetIdleTimer() {
-  clearTimeout(_idleTimer); clearTimeout(_idleWarnTimer);
-  if (!sessionStorage.getItem('admin_auth')) return;
-  _idleWarnTimer = setTimeout(function(){
-    showToast('Сессия закроется через минуту без действий', true);
-  }, IDLE_LIMIT_MS - 60000);
-  _idleTimer = setTimeout(function(){
-    sessionStorage.removeItem('admin_auth');
-    sessionStorage.removeItem('admin_token');
-    adminToken = '';
-    alert('Сессия завершена из-за бездействия. Войдите заново.');
-    location.reload();
-  }, IDLE_LIMIT_MS);
-}
-['click','keydown','mousemove','touchstart','scroll'].forEach(function(ev){
-  document.addEventListener(ev, function(){
-    // Не перезапускаем таймер на каждое движение мыши — только раз в 30 секунд,
-    // иначе на каждое событие уходил бы вызов clearTimeout/setTimeout.
-    const now = Date.now();
-    if (!resetIdleTimer._last || now - resetIdleTimer._last > 30000) {
-      resetIdleTimer._last = now;
-      resetIdleTimer();
+// 09.10: «Выйти на всех устройствах» — сервер отзывает все выданные токены, включая этот.
+// Нет такого на сервере (404) — ссылку прячем до конца сеанса.
+async function doLogoutAll() {
+  if (!confirm('Выйти на всех устройствах?\n\nВход сбросится на всех телефонах и компьютерах, включая этот.')) return;
+  try {
+    const r = await fetch(`${API}/api/users/logout-all`, { method:'POST', headers: authHeaders() });
+    if (r.status === 404) {
+      admLogoutAllHide(true);
+      showToast('На сервере это ещё не включено — «Выйти» стирает вход только на этом устройстве', true);
+      return;
     }
-  }, { passive: true });
+    if (!r.ok) { let e=''; try{ e=(await r.json()).error; }catch(_){} showToast(e || ('Ошибка ' + r.status), true); return; }
+    doLogout();
+  } catch (e) { showToast('Ошибка соединения', true); }
+}
+function admLogoutAllHide(set) {
+  try { if (set) sessionStorage.setItem('adm_no_logout_all', '1'); } catch (e) {}
+  var b = document.getElementById('logout-all');
+  try { if (b && sessionStorage.getItem('adm_no_logout_all')) b.style.display = 'none'; } catch (e) {}
+}
+// Показать админку после входа (форма или вход из другой вкладки)
+function admEnter() {
+  _admEnded = false;
+  document.getElementById('loginWrap').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  admLogoutAllHide(false);
+  loadAll({silent:true});
+  try { admPwaMaybe(); } catch (e) {}
+}
+
+// ══════════════════════════════════════════════════════
+// 09.10: «УСТАНОВИТЬ КАК ПРИЛОЖЕНИЕ» НА ТЕЛЕФОНЕ — так же, как в кабинете партнёра (порция 23)
+// После входа с телефона через 4 с внизу появляется плашка:
+//  • Android (Chrome) — кнопка «Установить», если браузер её разрешил; иначе подсказка «⋮ → Установить»;
+//  • iPhone/iPad — подсказка «Поделиться → На экран „Домой“» (Apple не даёт кнопку установки);
+//  • встроенный браузер Telegram/Instagram — «откройте в Safari/Chrome».
+// ✕ — не показывать 14 дней. Уже установлена (открыта с иконки) — плашки нет.
+// В меню на телефоне — пункт «📲 Установить как приложение». На компьютере ничего не появляется.
+// ══════════════════════════════════════════════════════
+var _admPwaDeferred = null;
+var ADM_PWA_KEY = 'adm_pwa_dismissed', ADM_PWA_DAYS = 14;
+function admPwaStandalone(){
+  try { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch (e) { return false; }
+}
+function admPwaIOS(){ var ua = navigator.userAgent || ''; return /iP(hone|ad|od)/.test(ua) || (/Macintosh/.test(ua) && (navigator.maxTouchPoints || 0) > 1); }
+function admPwaAndroid(){ return /Android/i.test(navigator.userAgent || ''); }
+function admPwaInApp(){ return /Instagram|FBAN|FBAV|Telegram|VKClient|; wv\)/i.test(navigator.userAgent || ''); }
+function admPwaPhone(){ return window.innerWidth <= 860 && (admPwaIOS() || admPwaAndroid() || ('ontouchstart' in window)); }
+function admPwaHide(){
+  var t = document.getElementById('adm-pwa'); if (!t) return;
+  t.classList.remove('show'); setTimeout(function(){ if (t.parentNode) t.parentNode.removeChild(t); }, 350);
+}
+function admPwaRender(t){
+  var sub, btn = '';
+  if (admPwaIOS()) {
+    sub = admPwaInApp() ? 'Откройте админку в Safari, затем «Поделиться» → «На экран „Домой“»'
+                        : 'Нажмите «Поделиться» (в новых iOS — «…» → «Поделиться») → «На экран „Домой“»';
+  } else if (_admPwaDeferred) {
+    sub = 'Брони и заявки — с главного экрана, в одно касание';
+    btn = '<button type="button" class="cp-inst" id="adm-pwa-inst">Установить</button>';
+  } else {
+    sub = admPwaInApp() ? 'Откройте админку в Chrome, затем ⋮ → «Установить приложение»'
+                        : 'Меню ⋮ браузера → «Установить приложение» или «Добавить на главный экран»';
+  }
+  t.innerHTML = '<img src="icon-192.png" alt="">'
+    + '<div style="flex:1;min-width:0"><div class="cp-t">Админка — как приложение</div><div class="cp-s">' + sub + '</div></div>'
+    + btn + '<button type="button" class="cp-x" id="adm-pwa-x" aria-label="Закрыть">✕</button>';
+  var ib = document.getElementById('adm-pwa-inst');
+  if (ib) ib.onclick = function(){
+    var d = _admPwaDeferred; _admPwaDeferred = null; admPwaHide();
+    if (d) { try { d.prompt(); } catch (e) {} }
+  };
+  document.getElementById('adm-pwa-x').onclick = function(){
+    admPwaHide();
+    try { localStorage.setItem(ADM_PWA_KEY, String(Date.now())); } catch (e) {}
+  };
+}
+function admPwaShow(){
+  if (admPwaStandalone()) { try { showToast('Админка уже открыта как приложение'); } catch (e) {} return; }
+  var t = document.getElementById('adm-pwa');
+  if (!t) { t = document.createElement('div'); t.id = 'adm-pwa'; document.body.appendChild(t); }
+  admPwaRender(t);
+  requestAnimationFrame(function(){ requestAnimationFrame(function(){ t.classList.add('show'); }); });
+}
+function admPwaMaybe(){
+  var mi = document.getElementById('sb-pwa'); if (mi) mi.classList.toggle('off', admPwaStandalone());   // уже установлена — пункт не нужен
+  if (admPwaStandalone() || !admPwaPhone()) return;
+  try {
+    var d = parseInt(localStorage.getItem(ADM_PWA_KEY) || '0', 10);
+    if (d && Date.now() - d < ADM_PWA_DAYS * 86400000) return;   // закрыли недавно — не пристаём
+  } catch (e) {}
+  setTimeout(function(){
+    var app = document.getElementById('app');
+    if (!app || app.style.display === 'none' || admPwaStandalone()) return;   // вышли из админки за эти секунды
+    admPwaShow();
+  }, 4000);
+}
+window.addEventListener('beforeinstallprompt', function(e){
+  e.preventDefault(); _admPwaDeferred = e;
+  var t = document.getElementById('adm-pwa'); if (t) admPwaRender(t);   // плашка уже на экране — появится кнопка «Установить»
 });
+window.addEventListener('appinstalled', function(){ _admPwaDeferred = null; admPwaHide(); });
 
 // Check auth on load
 // 02.10: после загрузки всех скриптов — сразу открыть нужный раздел (из адреса или прошлого
 // захода), а данные догрузить следом. Раньше показывались вход → дашборд → раздел.
 function admBoot() {
-  if (!sessionStorage.getItem('admin_auth')) { document.documentElement.classList.remove('adm-boot'); return; }
+  if (!admTokenValid()) { document.documentElement.classList.remove('adm-boot'); admRememberDefault(); return; }
   document.getElementById('loginWrap').style.display = 'none';
   document.getElementById('app').style.display = 'flex';
-  resetIdleTimer();
+  admLogoutAllHide(false);
+  try { admPwaMaybe(); } catch (e) {}
   var bp = (location.hash || '').replace('#', '') || sessionStorage.getItem('adm_page') || 'dashboard';
   try { showPage(bp, null, true); } catch (e) { console.error('boot page:', e.message); }
   document.documentElement.classList.remove('adm-boot');
@@ -1481,6 +1675,7 @@ setTimeout(function(){ document.documentElement.classList.remove('adm-boot'); },
 
 // ── NAV ──
 function showPage(name, el, boot) {
+  moreReset();   // 09.10: вернулись в раздел — длинные списки снова с первых 20 строк
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
   var pg = document.getElementById('page-' + name);
@@ -1588,30 +1783,36 @@ async function payLoad() {
      + '<div class="stat"><div class="stat-label">Напоминаний</div><div class="stat-val">' + (st.total | 0) + '</div><div class="stat-sub">включённых</div></div>';
     paySetBadge(st);
     document.getElementById('pay-cnt').textContent = _pay.items.length ? '· ' + _pay.items.length : '';
-    if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return true; }
-    box.innerHTML = '<table class="pay-tbl"><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
-      + _pay.items.map(function (x) {
-        var sub = [_pay.on && x.payee ? '→ ' + x.payee.short_name : '', x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
-        var hist = (x.history || []).map(function (h, i) {
-          return payPeriod(h.period) + (i === 0 ? ' <span class="pay-undo" title="Снять отметку" onclick="payUnpaid(' + x.id + ',\'' + escAttr(h.period) + '\')">отменить</span>' : '');
-        }).join(' · ');
-        var canPay = x.active && ['overdue', 'today', 'soon', 'later'].indexOf(x.due.status) >= 0;
-        return '<tr class="' + (x.active ? '' : 'pay-off') + '">'
-          + '<td data-l="Срок" style="white-space:nowrap">' + (x.due.date ? payRu(x.due.date) : '—') + '</td>'
-          + '<td data-l="Что"><b>' + esc(x.title) + '</b>' + (sub ? '<div class="pay-sub">' + sub + '</div>' : '') + (hist ? '<div class="pay-hist">Оплачено: ' + hist + '</div>' : '') + '</td>'
-          + '<td data-l="Сумма" style="white-space:nowrap">' + payAmountCell(x) + '</td>'
-          + '<td data-l="Как часто">' + esc(PAY_KIND[x.kind] ? PAY_KIND[x.kind](x) : x.kind) + (x.remind_days ? '<div class="pay-sub">напомнить за ' + x.remind_days + ' дн.</div>' : '') + '</td>'
-          + '<td data-l="Статус">' + payBadgeEl(x.due) + '</td>'
-          + '<td class="pay-acts">' + (canPay ? '<button class="act-btn act-approve" onclick="payPaid(' + x.id + ')">✓ Оплачено</button>' : '')
-          + (_pay.on && x.payee ? '<button class="act-btn act-approve" title="Файл платёжного поручения для eParitet" onclick="ppOpen(' + x.id + ')">📄 Платёжка</button>' : '')
-          + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
-          + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
-      }).join('') + '</tbody></table>';
+    payRender();
     return true;
   } catch (e) {
     box.innerHTML = '<div class="empty">Сервер не отвечает: ' + esc(e.message) + '</div>';
     return false;
   }
+}
+// 09.10: отрисовка списка вынесена из payLoad — «Показать ещё» перерисовывает без нового запроса
+function payRender() {
+  var box = document.getElementById('pay-list'); if (!box) return;
+  if (!_pay.items.length) { box.innerHTML = '<div class="empty">Пока пусто. «＋ Добавить» — аренда, интернет, бухгалтер…</div>'; return; }
+  var shown = moreTake('pay', _pay.items, '', payRender);   // 09.10: по 20
+  box.innerHTML = '<table class="pay-tbl"><thead><tr><th>Срок</th><th>Что</th><th>Сумма</th><th>Как часто</th><th>Статус</th><th></th></tr></thead><tbody>'
+    + shown.map(function (x) {
+      var sub = [_pay.on && x.payee ? '→ ' + x.payee.short_name : '', x.counterparty, x.note].filter(Boolean).map(esc).join(' · ');
+      var hist = (x.history || []).map(function (h, i) {
+        return payPeriod(h.period) + (i === 0 ? ' <span class="pay-undo" title="Снять отметку" onclick="payUnpaid(' + x.id + ',\'' + escAttr(h.period) + '\')">отменить</span>' : '');
+      }).join(' · ');
+      var canPay = x.active && ['overdue', 'today', 'soon', 'later'].indexOf(x.due.status) >= 0;
+      return '<tr class="' + (x.active ? '' : 'pay-off') + '">'
+        + '<td data-l="Срок" style="white-space:nowrap">' + (x.due.date ? payRu(x.due.date) : '—') + '</td>'
+        + '<td data-l="Что"><b>' + esc(x.title) + '</b>' + (sub ? '<div class="pay-sub">' + sub + '</div>' : '') + (hist ? '<div class="pay-hist">Оплачено: ' + hist + '</div>' : '') + '</td>'
+        + '<td data-l="Сумма" style="white-space:nowrap">' + payAmountCell(x) + '</td>'
+        + '<td data-l="Как часто">' + esc(PAY_KIND[x.kind] ? PAY_KIND[x.kind](x) : x.kind) + (x.remind_days ? '<div class="pay-sub">напомнить за ' + x.remind_days + ' дн.</div>' : '') + '</td>'
+        + '<td data-l="Статус">' + payBadgeEl(x.due) + '</td>'
+        + '<td class="pay-acts">' + (canPay ? '<button class="act-btn act-approve" onclick="payPaid(' + x.id + ')">✓ Оплачено</button>' : '')
+        + (_pay.on && x.payee ? '<button class="act-btn act-approve" title="Файл платёжного поручения для eParitet" onclick="ppOpen(' + x.id + ')">📄 Платёжка</button>' : '')
+        + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
+        + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
+    }).join('') + '</tbody></table>' + moreBtn('pay');
 }
 // 04.10 (порция 20): общий отклик для кнопок «↻ Обновить» в разделах (график броней на главной, Журнал, Агентика).
 // Раньше раздел перечитывался молча: если данные не поменялись, казалось, что кнопка не нажимается.
@@ -2079,6 +2280,17 @@ function lgHi(s,q){
   while((j=lo.indexOf(ql,i))>=0){ out+=esc(s.slice(i,j))+'<mark>'+esc(s.slice(j,j+q.length))+'</mark>'; i=j+q.length; }
   return out+esc(s.slice(i));
 }
+// 09.10: строки журнала — по 20 с «Показать ещё»; поиск и фильтр, как раньше, — на сервере по всему журналу.
+// Автообновление раз в 10 с раскрытое не сворачивает (те же фильтр и поиск — то же число строк).
+var _lgShown={q:'',lv:'',lim:''};
+function lgRender(){
+  var box=document.getElementById('lg-box'); if(!box) return;
+  var f=_lgShown, q=f.q;
+  var shown=moreTake('lg', _lgLines, [f.lv,f.q,f.lim].join('|'), lgRender);
+  box.innerHTML=_lgLines.length
+    ? shown.map(function(x){ return '<div class="lg-row '+(x.lvl==='error'?'error':x.lvl==='warn'?'warn':'')+'"><span class="lg-t">'+esc(lgTime(x.t))+'</span><span class="lg-m">'+lgHi(String(x.msg||''),q)+'</span></div>'; }).join('')+moreBtn('lg')
+    : '<div class="empty">'+(q||f.lv?'Ничего не найдено — измените фильтр или поиск':'Журнал пуст')+'</div>';
+}
 async function logsLoad(auto){
   var box=document.getElementById('lg-box'); if(!box||_lgBusy) return;
   _lgBusy=true;
@@ -2099,9 +2311,8 @@ async function logsLoad(auto){
      +'<div class="stat"><div class="stat-label">Предупреждения</div><div class="stat-val '+(c.warn?'c-amber':'')+'">'+(c.warn|0)+'</div><div class="stat-sub">с момента запуска</div></div>'
      +'<div class="stat"><div class="stat-label">Ошибки</div><div class="stat-val '+(c.error?'c-red':'')+'">'+(c.error|0)+'</div><div class="stat-sub">с момента запуска</div></div>';
     document.getElementById('lg-cnt').textContent='· показано '+_lgLines.length+' '+agPl(_lgLines.length,'строка','строки','строк')+' · '+lgTime(Date.now()).slice(-8);
-    box.innerHTML=_lgLines.length
-      ? _lgLines.map(function(x){ return '<div class="lg-row '+(x.lvl==='error'?'error':x.lvl==='warn'?'warn':'')+'"><span class="lg-t">'+esc(lgTime(x.t))+'</span><span class="lg-m">'+lgHi(String(x.msg||''),q)+'</span></div>'; }).join('')
-      : '<div class="empty">'+(q||lv?'Ничего не найдено — измените фильтр или поиск':'Журнал пуст')+'</div>';
+    _lgShown={q:q,lv:lv,lim:lim};
+    lgRender();
     return true;   // 04.10: итог для кнопки «↻ Обновить»
   }catch(e){
     if(!auto) box.innerHTML='<div class="empty">Сервер не отвечает: '+esc(e.message)+'</div>';
@@ -2187,8 +2398,11 @@ function agRowHTML(x, paidList){
 }
 function agTable(list, paidList){
   if(!list.length) return '<div class="empty">'+(paidList?'Пока нет оплаченных за 45 дней':'Неоплаченных броней Островка нет 👍')+'</div>';
+  // 09.10: по 20 строк; «Показать ещё» перерисовывает таблицу из последнего ответа сервера
+  const key=paidList?'agp':'agu', box=paidList?'ag-paid':'ag-unpaid';
+  const shown=moreTake(key, list, '', function(){ document.getElementById(box).innerHTML=agTable(list, paidList); });
   return '<div class="tw-x"><table class="ag-tbl"><tr><th>'+(paidList?'Оплачено':'Оплатить до (Минск)')+'</th><th>№ заказа</th><th>Объект и даты</th><th>Сумма Агентике</th><th>Цена гостю</th><th>Гость</th><th>Тариф</th><th></th></tr>'
-    +list.map(function(x){ return agRowHTML(x, paidList); }).join('')+'</table></div>';
+    +shown.map(function(x){ return agRowHTML(x, paidList); }).join('')+'</table></div>'+moreBtn(key);
 }
 async function loadAgentika(){
   const mi=document.getElementById('ag-month');
@@ -2525,22 +2739,28 @@ async function loadModeration(){
     const d=await r.json();
     moderList=(d.hotels||[]).filter(h=>h.status==='moderation');
     const nb=document.getElementById('nb-moder'); if(nb)nb.textContent=moderList.length;
-    if(!moderList.length){ box.innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">Нет объектов на модерации</p>'; return; }
-    box.innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted)"><th style="padding:10px">Объект</th><th>Контакты</th><th>Подтверждён</th><th>Действия</th></tr></thead><tbody>'+
-      // ═ БЕЗОПАСНОСТЬ ═ Все поля через esc(), включая phone и email.
-      // Раньше телефон и email вставлялись СЫРЫМИ, а name_ru/address экранировали
-      // только «<», пропуская кавычки и «&». Данные сюда приходят из ПУБЛИЧНОЙ формы
-      // подтверждения объекта, то есть их задаёт посторонний человек.
-      // Телефон вида <img src=x onerror=...> выполнялся бы в админке при открытии
-      // страницы модерации — с доступом к токену администратора.
-      // h.id тоже экранируем: он подставляется внутрь onclick, то есть в код.
-      moderList.map(h=>`<tr style="border-top:1px solid var(--border)">
-        <td data-l="Объект" style="padding:12px 10px"><b>${esc(h.name_ru||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(h.address||'')}</span></td>
-        <td data-l="Контакты" style="font-size:12px;color:var(--muted)">${esc(h.phone||'')} ${esc(h.email||'')}</td>
-        <td data-l="Подтверждён" style="font-size:12px;color:var(--muted)">${h.claimed_at?esc(new Date(h.claimed_at).toLocaleDateString('ru')):'—'}</td>
-        <td style="white-space:nowrap"><button onclick="approveModeration('${escAttr(h.id)}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${escAttr(h.id)}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
-      </tr>`).join('')+'</tbody></table>';
+    moderRender();
   }catch(e){ box.innerHTML='<p style="color:#dc2626;padding:20px">Ошибка загрузки</p>'; }
+}
+// 09.10: отрисовка вынесена из loadModeration — «Показать ещё» перерисовывает без нового запроса
+function moderRender(){
+  const box=document.getElementById('moder-table');
+  if(!moderList.length){ box.innerHTML='<p style="color:var(--muted);padding:20px;text-align:center">Нет объектов на модерации</p>'; return; }
+  const shown=moreTake('mod', moderList, '', moderRender);   // 09.10: по 20
+  box.innerHTML='<table style="width:100%;border-collapse:collapse"><thead><tr style="text-align:left;font-size:11px;text-transform:uppercase;color:var(--muted)"><th style="padding:10px">Объект</th><th>Контакты</th><th>Подтверждён</th><th>Действия</th></tr></thead><tbody>'+
+    // ═ БЕЗОПАСНОСТЬ ═ Все поля через esc(), включая phone и email.
+    // Раньше телефон и email вставлялись СЫРЫМИ, а name_ru/address экранировали
+    // только «<», пропуская кавычки и «&». Данные сюда приходят из ПУБЛИЧНОЙ формы
+    // подтверждения объекта, то есть их задаёт посторонний человек.
+    // Телефон вида <img src=x onerror=...> выполнялся бы в админке при открытии
+    // страницы модерации — с доступом к токену администратора.
+    // h.id тоже экранируем: он подставляется внутрь onclick, то есть в код.
+    shown.map(h=>`<tr style="border-top:1px solid var(--border)">
+      <td data-l="Объект" style="padding:12px 10px"><b>${esc(h.name_ru||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(h.address||'')}</span></td>
+      <td data-l="Контакты" style="font-size:12px;color:var(--muted)">${esc(h.phone||'')} ${esc(h.email||'')}</td>
+      <td data-l="Подтверждён" style="font-size:12px;color:var(--muted)">${h.claimed_at?esc(new Date(h.claimed_at).toLocaleDateString('ru')):'—'}</td>
+      <td style="white-space:nowrap"><button onclick="approveModeration('${escAttr(h.id)}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${escAttr(h.id)}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
+    </tr>`).join('')+'</tbody></table>'+moreBtn('mod');
 }
 async function approveModeration(id){
   if(!confirm('Одобрить объект? Он появится на сайте.'))return;
@@ -2651,15 +2871,18 @@ function bellCollect(){
     ev.push({t:new Date(h.claimed_at||h.updated_at||0).getTime(),ic:'🕵️',txt:'На модерацию — '+(h.name_ru||''),page:'moderation'});
   });
   ev.sort(function(a,b){return b.t-a.t;});
-  window._bellEvents=ev.slice(0,30);
+  // 09.10: в списке — все события по 20 с «Показать ещё» (раньше — только 30 последних);
+  // число на значке считаем, как раньше, по 30 последним
+  window._bellEvents=ev;
   var seen=bellSeenTs();
-  var unread=window._bellEvents.filter(function(e){return e.t>seen;}).length;
+  var unread=ev.slice(0,30).filter(function(e){return e.t>seen;}).length;
   var badge=document.getElementById('bell-badge');
   if(badge){ if(unread>0){ badge.style.display='block'; badge.textContent=unread>99?'99+':unread; } else badge.style.display='none'; }
   var list=document.getElementById('bell-list');
   if(list){
     if(!window._bellEvents.length){ list.innerHTML='<div style="padding:24px;text-align:center;color:var(--muted);font-size:13px">Пока событий нет</div>'; return; }
-    list.innerHTML=window._bellEvents.map(function(e){
+    var shown=moreTake('bell', window._bellEvents, '', bellCollect);
+    list.innerHTML=shown.map(function(e){
       var isNew=e.t>seen;
       var when=e.t?new Date(e.t).toLocaleString('ru',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
       return '<div onclick="bellGo(\''+e.page+'\')" style="padding:11px 14px;border-bottom:1px solid var(--border);cursor:pointer;display:flex;gap:10px;'+(isNew?'background:rgba(26,92,56,.05)':'')+'">'
@@ -2667,7 +2890,7 @@ function bellCollect(){
         +'<div style="flex:1;min-width:0"><div style="font-size:12.5px;color:var(--ink);line-height:1.4">'+String(e.txt).replace(/</g,'&lt;')+'</div><div style="font-size:11px;color:var(--muted);margin-top:2px">'+when+'</div></div>'
         +(isNew?'<span style="width:7px;height:7px;border-radius:50%;background:#dc2626;flex-shrink:0;margin-top:4px"></span>':'')
         +'</div>';
-    }).join('');
+    }).join('')+moreBtn('bell', true);
   }
 }
 function toggleBell(){
@@ -2675,7 +2898,7 @@ function toggleBell(){
   if(!d)return;
   var show=(d.style.display==='none'||!d.style.display);
   d.style.display=show?'block':'none';
-  if(show){ bellCollect(); }
+  if(show){ delete _more.bell; bellCollect(); }   // 09.10: открыли колокольчик — снова 20 событий
 }
 function markBellRead(){
   var ev=window._bellEvents||[];
@@ -2803,10 +3026,11 @@ function filterHotels(val) {
 function renderHotelsTable(hotels) {
   syncFilterBar(['ht-search','ht-fstatus'], 'ht-reset', 'hotels-cnt',
                 hotels.length, (allHotels||[]).length);
+  const shown = moreTake('ht', hotels, [currentHotelSource, document.getElementById('ht-search')?.value || '', document.getElementById('ht-fstatus')?.value || ''].join('|'), applyHotelFilters);   // 09.10: по 20
   document.getElementById('hotels-table').innerHTML = hotels.length ? `
     <table>
       <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Владелец</th><th>Статус</th><th>Действия</th></tr>
-      ${hotels.map(h => `
+      ${shown.map(h => `
         <tr>
           <td data-l="Название"><b>${esc(h.name_ru||'—')}</b></td>
           <td data-l="Город">${esc(h.city_ru||'—')}</td>
@@ -2831,7 +3055,7 @@ function renderHotelsTable(hotels) {
             `}
           </td>
         </tr>`).join('')}
-    </table>` : emptyBox((allHotels||[]).length, 'resetHotelFilters()', 'Объектов пока нет');
+    </table>${moreBtn('ht')}` : emptyBox((allHotels||[]).length, 'resetHotelFilters()', 'Объектов пока нет');
 }
 function objStatusLabel(s){ return {application:'Заявка',moderation:'На модерации',approved:'Одобрен',active:'Активен',paused:'На паузе'}[s]||s; }
 function objStatusBadge(s){
@@ -3191,6 +3415,34 @@ function escSvg(v) {
 // Заглушка пустого списка. Разводим два случая, которые выглядели одинаково:
 // «данных нет вообще» и «данные есть, но под фильтры не попали».
 // Во втором даём кнопку сброса прямо здесь — не нужно искать её глазами.
+// ══════════════════════════════════════════════════════
+// 09.10: «ПОКАЗАТЬ ЕЩЁ» В ДЛИННЫХ СПИСКАХ
+// Сначала 20 строк, внизу «Показать ещё 20 (осталось N)». Фильтры и поиск работают по всему
+// списку, как раньше, — режется только показ. Сменили фильтр или поиск, вернулись в раздел — снова 20.
+// Обновление данных (кнопка «Обновить», автообновление, действие в строке) раскрытое не сворачивает.
+// sig — состояние фильтров списка; redraw — перерисовать список после «Показать ещё».
+// ══════════════════════════════════════════════════════
+var MORE_STEP = 20, _more = {};
+function moreTake(key, list, sig, redraw) {
+  var m = _more[key];
+  if (!m || m.sig !== sig) m = _more[key] = { n: MORE_STEP, sig: sig };
+  m.total = list.length; m.redraw = redraw;
+  return list.length > m.n ? list.slice(0, m.n) : list;
+}
+function moreBtn(key, keepOpen) {
+  var m = _more[key], left = m ? m.total - m.n : 0;
+  if (left <= 0) return '';
+  var txt = left > MORE_STEP ? 'Показать ещё ' + MORE_STEP + ' (осталось ' + left + ')' : 'Показать остальные (' + left + ')';
+  // keepOpen — список колокольчика: клик не должен закрыть выпадающее окно
+  return '<div class="more-row"><button type="button" class="more-btn" onclick="' + (keepOpen ? 'event.stopPropagation();' : '') + 'moreShow(\'' + key + '\')">' + txt + '</button></div>';
+}
+function moreShow(key) {
+  var m = _more[key]; if (!m) return;
+  m.n += MORE_STEP;
+  try { if (m.redraw) m.redraw(); } catch (e) { console.error('more:', e.message); }
+}
+function moreReset() { _more = {}; }   // вход в раздел — снова по 20
+
 function emptyBox(total, resetFn, noneText) {
   if (!total) return `<div class="empty">${noneText}</div>`;
   return `<div class="empty">
@@ -3470,10 +3722,11 @@ function resetBookingFilters() {
 function renderBookingsTable(bookings) {
   syncFilterBar(['bk-search','bk-fstatus','bk-fsource','bk-dfrom','bk-dto'],
                 'bk-reset', 'bookings-cnt', bookings.length, (allBookings||[]).length);
+  const shown = moreTake('bk', bookings, JSON.stringify(getBookingFilters()), applyBookingFilters);   // 09.10: по 20
   document.getElementById('bookings-table').innerHTML = bookings.length ? `
     <table>
       <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
-      ${bookings.map(b => `
+      ${shown.map(b => `
         <tr>
           <td data-l="Бронь"><b>${esc(b.booking_num)}</b></td>
           <td data-l="Источник">${sourceBadge(b.source)}</td>
@@ -3490,7 +3743,7 @@ function renderBookingsTable(bookings) {
             ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
-    </table>` : emptyBox((allBookings||[]).length, 'resetBookingFilters()', 'Броней пока нет');
+    </table>${moreBtn('bk')}` : emptyBox((allBookings||[]).length, 'resetBookingFilters()', 'Броней пока нет');
 }
 
 // ═ БЕЗОПАСНОСТЬ ═ Защита от инъекции формул в CSV.
@@ -3560,10 +3813,11 @@ function renderAppsTable(apps, filter = 'all') {
   );
   syncFilterBar(['ap-search'], 'ap-reset', 'apps-cnt',
                 filtered.length, (apps||[]).length);
+  const shown = moreTake('ap', filtered, filter + '|' + q, function(){ renderAppsTable(allApps, currentAppFilter); });   // 09.10: по 20
   document.getElementById('apps-table').innerHTML = filtered.length ? `
     <table>
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
-      ${filtered.map(a => `
+      ${shown.map(a => `
         <tr>
           <td data-l="Отель"><b>${esc(a.hotel_name)}</b>${appLegalHTML(a)}</td>
           <td data-l="Город">${esc(a.city||'—')}</td>
@@ -3580,7 +3834,7 @@ function renderAppsTable(apps, filter = 'all') {
             ` : '—'}
           </td>
         </tr>`).join('')}
-    </table>` : emptyBox((apps||[]).length, 'resetAppFilters()', 'Заявок пока нет');
+    </table>${moreBtn('ap')}` : emptyBox((apps||[]).length, 'resetAppFilters()', 'Заявок пока нет');
 }
 
 // УНП из заявки. Наименование и статус записывает СЕРВЕР по реестру МНС:
@@ -3639,10 +3893,11 @@ function renderTouristsTable(users) {
   );
   syncFilterBar(['us-search','us-factive'], 'us-reset', 'tourists-cnt',
                 list.length, (users||[]).length);
+  const shown = moreTake('us', list, currentUserFilter + '|' + fa + '|' + q, function(){ renderTouristsTable(allUsers); });   // 09.10: по 20
   document.getElementById('tourists-table').innerHTML = list.length ? `
     <table>
       <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
-      ${list.map(u => `
+      ${shown.map(u => `
         <tr>
           <td data-l="Имя">${esc(u.name||u.first_name||'—')}</td>
           <td data-l="Email">${esc(u.email)}</td>
@@ -3661,7 +3916,7 @@ function renderTouristsTable(users) {
             </button>
           </td>
         </tr>`).join('')}
-    </table>` : emptyBox((users||[]).length, 'resetUserFilters()', 'Пользователей пока нет');
+    </table>${moreBtn('us')}` : emptyBox((users||[]).length, 'resetUserFilters()', 'Пользователей пока нет');
 }
 
 // Сброс пароля пользователю. Роль НЕ меняется — отдельная ручка именно для этого.
