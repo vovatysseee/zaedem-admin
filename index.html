@@ -250,14 +250,96 @@ tr.pay-off td{opacity:.55}
   .modal{padding:18px;width:94%;max-height:88vh}
   .pay-form{grid-template-columns:minmax(0,1fr)}
   .pay-form .pf-wide{grid-column:auto}
-  .pay-tbl thead{display:none}
-  .pay-tbl,.pay-tbl tbody,.pay-tbl tr,.pay-tbl td{display:block;width:100%}
-  .pay-tbl tr{padding:8px 0;border-bottom:1px solid var(--border)}
-  .pay-tbl tr:last-child{border-bottom:none}
-  .pay-tbl td{border:none;padding:3px 1.2rem}
-  .pay-tbl td[data-l]::before{content:attr(data-l);display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:1px}
-  .pay-tbl .pay-acts{text-align:left;white-space:normal;padding-top:6px}
-  .pay-tbl .pay-acts .act-btn{margin:0 4px 4px 0}
+  /* 09.10: карточки — во всех таблицах админки и окон, не только в «Оплатах» (подпись — из data-l ячейки) */
+  #app table,.modal table{display:block;width:100%}
+  #app thead,.modal thead,#app tr:has(>th),.modal tr:has(>th){display:none}
+  #app tbody,#app tr,#app td,.modal tbody,.modal tr,.modal td{display:block;width:100%}
+  #app tr,.modal tr{padding:8px 0;border:none!important;border-bottom:1px solid var(--border)!important}
+  #app tr:last-child,.modal tr:last-child{border-bottom:none!important}
+  #app td,.modal td{border:none;padding:3px 1rem!important;white-space:normal!important;overflow-wrap:anywhere}
+  #app td[data-l]::before,.modal td[data-l]::before{content:attr(data-l);display:block;font-size:9.5px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;margin-bottom:1px;white-space:normal}
+  #app td:not([data-l]),.modal td:not([data-l]){padding-top:6px!important}
+  #app tr:hover td{background:none}
+  #app tr.ag-row-overdue{background:var(--red-dim)}
+  #app tr.ag-row-urgent{background:var(--amber-dim)}
+  .modal .jr-t td{padding:3px 0!important}
+  .pay-tbl .pay-acts{text-align:left;white-space:normal}
+  .act-btn{min-height:40px;min-width:40px;padding:6px 12px;font-size:11px;margin:0 4px 4px 0}
+  td .act-btn,td select,td>button{margin-bottom:4px}
+  .tw-x{overflow-x:visible}
+}
+/* 09.10: телефон — все разделы. Нет прокрутки вбок, длинные строки (почта, номера, счета, ссылки) переносятся,
+   кнопки и поля не ниже 40 px (палец), окна целиком в экране и прокручиваются внутри.
+   Только при ширине до 760 px — на компьютере ничего не меняется. */
+@media(max-width:760px){
+  #app,.modal,.toast,#bell-drop{overflow-wrap:anywhere}
+  .login-wrap{padding:16px}
+  .login-box{padding:28px 20px}
+  /* меню и шапка */
+  .sb-logo{padding:4px 16px}
+  .sb-logo-main span{display:inline-flex;align-items:center;min-height:40px}
+  .sb-logo-sub{display:none}
+  .ni{min-height:40px}
+  .logout-btn{min-height:40px}
+  .topbar{height:auto;min-height:52px;flex-wrap:wrap;gap:6px 8px;padding:6px 1rem}
+  .tb-title{min-width:0}
+  .tb-btn{min-height:40px;min-width:40px}
+  .tb-bell{position:static!important}
+  .sb{z-index:auto}   /* иначе меню (элемент flex с z-index) перекрывает список колокольчика */
+  #bell-drop{position:fixed!important;top:8px!important;left:8px!important;right:8px!important;width:auto!important;max-height:70vh!important}
+  #bell-drop span[onclick]{display:inline-flex;align-items:center;min-height:40px;padding:0 4px}
+  /* блоки, фильтры, вкладки */
+  .sec-head{padding:.8rem 1rem}
+  .sec-head>div{min-width:0}
+  .sec-btn{min-height:40px;margin:2px 0}
+  .ag-note,div.ag-note{padding:10px 1rem}
+  .fbar{padding:10px 1rem;gap:8px}
+  .fbar>input,.fbar>select,.fbar>.dbox,.fbar>.zdp-trig{flex:1 1 100%;width:100%!important;min-width:0!important}
+  .fbar>.seg,.fbar>.ag-hint{flex:1 1 100%;min-width:0}
+  .fbar-reset{min-height:40px}
+  .lg-auto,label:has(>input[type=checkbox]){display:inline-flex;align-items:center;gap:6px;min-height:40px}
+  .tabs{flex-wrap:wrap;padding:0 .6rem}
+  .tab{min-height:40px;display:flex;align-items:center}
+  .seg{display:flex;flex-wrap:wrap;max-width:100%}
+  .seg button{min-height:40px;flex:1 1 auto;padding:6px 8px}
+  .chart-ctl{gap:8px;padding:10px 1rem}
+  .seg-lbl{flex:1 1 100%}
+  .chart-sum{gap:12px 18px;padding:12px 1rem}
+  .chart-wrap{padding:12px 1rem 6px}
+  .chart-legend{flex-wrap:wrap;gap:6px 14px;padding:0 1rem 12px}
+  /* m-wrap и m-1col — классы-обёртки в разметке (ряд кнопок отелей, ссылка-приглашение, сетки форм): на телефоне — в столбик */
+  .m-wrap{flex-wrap:wrap}
+  .m-wrap>*{margin-left:0!important}
+  .m-wrap>input{flex:1 1 100%!important;min-width:0}
+  .m-1col{grid-template-columns:minmax(0,1fr)!important}
+  /* «Пригласить», «Создать объект», «На модерации»: текст и карточка формы не впритык к краю блока */
+  #page-invite .section>p,#page-newobj .section>p,#page-moderation .section>p{padding:0 1rem}
+  #page-invite .section>div:not(.sec-head),#page-newobj .section>div:not(.sec-head){margin-left:.6rem;margin-right:.6rem;margin-bottom:.6rem;padding:16px!important}
+  #page-hotels .m-wrap>button{min-height:40px}
+  #app input:not([type=checkbox]):not([type=radio]),#app select,#app textarea,.modal input,.modal select,.modal textarea{min-height:40px;font-size:16px!important}
+  #app button,.modal button{min-height:40px}
+  .pay-undo{display:inline-flex;align-items:center;min-height:40px}
+  #app #pe-iban{padding-left:8px;padding-right:8px;font-size:15px!important}   /* счёт BY… (28 знаков) целиком виден на 360 px */
+  /* Агентика */
+  .dump-grid{grid-template-columns:minmax(0,1fr);padding:12px 1rem}
+  .dump-grid>*{grid-column:auto!important}
+  .dump-nums{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dump-nums .stat{padding:.7rem}
+  /* журнал сервера: время над строкой */
+  .lg-row{flex-direction:column;gap:0;padding:4px 1rem}
+  /* окна: в экран, прокрутка внутри */
+  .modal{width:calc(100% - 24px);max-height:calc(100vh - 24px);max-height:calc(100dvh - 24px);padding:16px}
+  .modal.wide{max-width:none}
+  .modal-btns{flex-wrap:wrap}
+  .modal-btn{flex:1 1 auto}
+  .detail-row{flex-wrap:wrap;column-gap:8px}
+  .detail-row b{min-width:110px}
+  .toast{left:16px;right:16px;bottom:16px}
+  /* календарь (шторка снизу) */
+  /* (селекторы с родителем — правила календаря стоят ниже по файлу) */
+  .zdp-pop .zdp-nav,.zdp-pop .zdp-nav-sp,.zdp-pop .zdp-close{width:40px;height:40px}
+  .zdp-pop .zdp-btn{min-height:40px}
+  .zdp-trig .zdp-x{width:40px;height:40px;margin:-9px -10px -9px auto;background:radial-gradient(circle,#efebe3 0 10px,transparent 10.5px)}
 }
 
 /* PAGES */
@@ -452,7 +534,7 @@ tr.pay-off td{opacity:.55}
     <div class="topbar">
       <div class="tb-title" id="pageTitle">Дашборд</div>
       <div class="tb-r">
-        <div style="position:relative;display:inline-block">
+        <div class="tb-bell" style="position:relative;display:inline-block">
           <button class="tb-btn" onclick="toggleBell()" style="position:relative" title="Уведомления">🔔<span id="bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;padding:0 4px;line-height:16px;text-align:center"></span></button>
           <div id="bell-drop" style="display:none;position:absolute;right:0;top:42px;width:320px;max-height:420px;overflow-y:auto;background:#fff;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.15);z-index:200">
             <div style="padding:12px 14px;border-bottom:1px solid var(--border);font-weight:700;font-size:13px;display:flex;justify-content:space-between;align-items:center">Уведомления<span onclick="markBellRead()" style="font-size:11px;color:var(--green);cursor:pointer;font-weight:600">Прочитать все</span></div>
@@ -623,7 +705,7 @@ tr.pay-off td{opacity:.55}
             </select>
             <button class="fbar-reset" id="ht-reset" onclick="resetHotelFilters()">Сбросить</button>
           </div>
-          <div style="display:flex;gap:8px;margin-bottom:16px;padding:14px 1.2rem 0">
+          <div class="m-wrap" style="display:flex;gap:8px;margin-bottom:16px;padding:14px 1.2rem 0">
             <button id="htab-direct" class="htab htab-on" onclick="switchHotelTab('direct')" style="padding:9px 16px;border:1.5px solid var(--green);border-radius:9px;background:var(--green);color:#fff;font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Мои объекты</button>
             <button id="htab-ostrovok" class="htab" onclick="switchHotelTab('ostrovok')" style="padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">Каталог Островка</button>
             <button id="recat-btn" onclick="runRecategorize()" title="Пересчитывает категории, теги удобств и ближайшее метро по данным в нашей базе (Островок не запрашивает)" style="margin-left:auto;padding:9px 16px;border:1.5px solid var(--faint);border-radius:9px;background:#fff;color:var(--muted);font-family:inherit;font-size:13px;font-weight:700;cursor:pointer">⚙ Пересчитать категории/теги</button>
@@ -643,7 +725,7 @@ tr.pay-off td{opacity:.55}
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Адрес</label><input id="inv-addr" placeholder="Минск, ул. Немига, 5" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Тип</label><select id="inv-cat" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;background:#fff"><option value="apart">Апартаменты / квартира</option><option value="guest">Усадьба / дом</option><option value="hotel">Отель / гостиница</option></select></div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Описание</label><textarea id="inv-desc" placeholder="Краткое описание объекта" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:80px;resize:vertical"></textarea></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+            <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Телефон хозяина</label><input id="inv-phone" placeholder="+375 __ ___-__-__" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Email хозяина</label><input id="inv-email" placeholder="host@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
@@ -654,7 +736,7 @@ tr.pay-off td{opacity:.55}
           <div id="inv-result" style="display:none;max-width:560px;margin-top:16px;background:rgba(26,92,56,.06);border:1.5px solid var(--green);border-radius:14px;padding:20px">
             <div style="font-weight:700;color:var(--green);margin-bottom:10px">✅ Ссылка-приглашение готова</div>
             <div style="font-size:12px;color:var(--muted);margin-bottom:8px">Отправьте её хозяину (Viber / Telegram / SMS):</div>
-            <div style="display:flex;gap:8px;align-items:center">
+            <div class="m-wrap" style="display:flex;gap:8px;align-items:center">
               <input id="inv-link" readonly style="flex:1;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:13px;font-family:inherit;background:#fff;color:var(--ink)">
               <button onclick="copyInvite()" style="background:var(--green);color:#fff;border:none;border-radius:10px;padding:11px 16px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;white-space:nowrap">Копировать</button>
             </div>
@@ -671,28 +753,28 @@ tr.pay-off td{opacity:.55}
           <div style="max-width:600px;background:var(--surf);border:1px solid var(--border);border-radius:14px;padding:22px">
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Название объекта *</label><input id="no-name" placeholder="Уютная квартира на Немиге" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Адрес</label><input id="no-addr" placeholder="Минск, ул. Немига, 5" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+            <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Город * <span style="color:var(--muted);font-weight:400">(без него не найдётся в поиске)</span></label><select id="no-city" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;background:#fff"><option value="">— выберите —</option></select></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Координаты <span style="color:var(--muted);font-weight:400">(для точки на карте, необязательно)</span></label><input id="no-latlng" placeholder="53.9006, 27.5590" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
-            <div style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:13px">
+            <div class="m-1col" style="display:grid;grid-template-columns:2fr 1fr;gap:10px;margin-bottom:13px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Тип</label><select id="no-cat" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;background:#fff"><option value="apart">Апартаменты / квартира</option><option value="guest">Усадьба / дом</option><option value="hotel">Отель / гостиница</option></select></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Звёзд</label><select id="no-stars" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;background:#fff"><option value="">—</option><option>1</option><option>2</option><option>3</option><option>4</option><option>5</option></select></div>
             </div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Описание</label><textarea id="no-desc" placeholder="Кратко об объекте" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:80px;resize:vertical"></textarea></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
+            <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:13px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Телефон</label><input id="no-phone" placeholder="+375 __ ___-__-__" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Email</label><input id="no-email" placeholder="host@mail.by" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
             <div style="font-size:12px;font-weight:600;color:var(--green);margin:4px 0 8px">Мессенджеры хозяина (попадут в ваучер гостю)</div>
-            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:13px">
+            <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:13px">
               <div class="fg"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px">Telegram</label><input id="no-tg" placeholder="@username или ссылка" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px">WhatsApp</label><input id="no-wa" placeholder="+375…" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:11px;color:var(--muted);margin-bottom:5px">Viber</label><input id="no-viber" placeholder="+375…" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:10px 12px;font-size:13px;font-family:inherit;outline:none"></div>
             </div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Правила дома</label><textarea id="no-rules" placeholder="Например: заезд с 14:00, тихий час с 23:00, без вечеринок" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:64px;resize:vertical"></textarea></div>
             <div class="fg" style="margin-bottom:13px"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Правила отмены <span style="color:var(--muted);font-weight:400">(покажутся гостю при отмене)</span></label><select id="no-cancel-pick" onchange="var t={flex:'Гибкие правила: бесплатная отмена до дня заезда.',d1:'Бесплатная отмена за 1 день до заезда. Позже — предоплата не возвращается.',d3:'Бесплатная отмена за 3 дня до заезда. Позже — предоплата не возвращается.',d7:'Бесплатная отмена за 7 дней до заезда. Позже — предоплата не возвращается.',nonref:'Невозвратный тариф: при отмене предоплата не возвращается.'};var ta=document.getElementById('no-cancel');if(this.value==='custom'){ta.style.display='block';}else{ta.value=t[this.value]||'';ta.style.display='none';}" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;background:#fff;margin-bottom:8px"><option value="flex">Гибкие — бесплатно до дня заезда</option><option value="d1">Бесплатно за 1 день до заезда</option><option value="d3">Бесплатно за 3 дня до заезда</option><option value="d7">Бесплатно за 7 дней до заезда</option><option value="nonref">Невозвратный тариф</option><option value="custom">Своя формулировка…</option></select><textarea id="no-cancel" placeholder="Например: бесплатная отмена за 3 дня до заезда; позже — удерживается стоимость 1 ночи" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none;min-height:64px;resize:vertical" data-preset="1"></textarea></div>
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+            <div class="m-1col" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Заезд с</label><input id="no-cin" value="14:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
               <div class="fg"><label style="display:block;font-size:12px;font-weight:600;color:var(--green);margin-bottom:5px">Выезд до</label><input id="no-cout" value="12:00" style="width:100%;border:1.5px solid var(--border2);border-radius:10px;padding:11px 13px;font-size:14px;font-family:inherit;outline:none"></div>
             </div>
@@ -2085,13 +2167,13 @@ function agRowHTML(x, paidList){
   const act = paidList
     ? '<button class="act-btn act-cancel" onclick="agMarkPaid(\''+escAttr(x.booking_num)+'\',false)">Снять отметку</button>'
     : '<button class="act-btn act-approve" onclick="agMarkPaid(\''+escAttr(x.booking_num)+'\',true)">✓ Оплачено</button>';
-  return '<tr class="'+cls+'"><td>'+due+'</td>'
-    +'<td><span class="ag-num">'+esc(x.booking_num)+'</span>'+st+'</td>'
-    +'<td>'+esc(x.hotel_name||'—')+'<div class="ag-sub">'+esc(x.check_in||'')+' → '+esc(x.check_out||'')+'</div></td>'
-    +'<td><b>'+agMoney(x.supplier_amount, x.supplier_currency||'')+'</b>'+(x.supplier_currency && x.supplier_currency!=='BYN' && x.net_byn!=null ? '<div class="ag-sub">≈ '+agMoney(x.net_byn,'BYN')+'</div>' : '')+'</td>'
-    +'<td>'+agMoney(x.guest_price_byn,'BYN')+'<div class="ag-sub">вознагр. '+agMoney(x.commission_byn,'BYN')+'</div></td>'
-    +'<td>'+(x.guest_paid?'<span class="badge badge-green">оплатил</span>':'<span class="badge badge-gray">нет оплаты</span>')+'</td>'
-    +'<td>'+tariff+'</td><td>'+act+'</td></tr>';
+  return '<tr class="'+cls+'"><td data-l="'+(paidList?'Оплачено':'Оплатить до (Минск)')+'">'+due+'</td>'
+    +'<td data-l="№ заказа"><span class="ag-num">'+esc(x.booking_num)+'</span>'+st+'</td>'
+    +'<td data-l="Объект и даты">'+esc(x.hotel_name||'—')+'<div class="ag-sub">'+esc(x.check_in||'')+' → '+esc(x.check_out||'')+'</div></td>'
+    +'<td data-l="Сумма Агентике"><b>'+agMoney(x.supplier_amount, x.supplier_currency||'')+'</b>'+(x.supplier_currency && x.supplier_currency!=='BYN' && x.net_byn!=null ? '<div class="ag-sub">≈ '+agMoney(x.net_byn,'BYN')+'</div>' : '')+'</td>'
+    +'<td data-l="Цена гостю">'+agMoney(x.guest_price_byn,'BYN')+'<div class="ag-sub">вознагр. '+agMoney(x.commission_byn,'BYN')+'</div></td>'
+    +'<td data-l="Гость">'+(x.guest_paid?'<span class="badge badge-green">оплатил</span>':'<span class="badge badge-gray">нет оплаты</span>')+'</td>'
+    +'<td data-l="Тариф">'+tariff+'</td><td>'+act+'</td></tr>';
 }
 function agTable(list, paidList){
   if(!list.length) return '<div class="empty">'+(paidList?'Пока нет оплаченных за 45 дней':'Неоплаченных броней Островка нет 👍')+'</div>';
@@ -2164,16 +2246,16 @@ function bnRowsHTML(run){
     // 02.10: 8 колонок вместо 14 — таблица помещается без прокрутки вбок
     const d2=function(v){ return String(v||'').slice(5).split('-').reverse().join('.'); };
     const kk=function(v){ return v!=null?esc(v):'—'; };
-    return '<tr><td>'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))
+    return '<tr><td data-l="Замер">'+esc(new Date(run.created_at||Date.now()).toLocaleString('ru-RU',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}))
       +'<div class="ag-sub">ключ '+esc(run.key_id||'—')+(resTxt?' · '+esc(resTxt.slice(3)):'')+'</div></td>'
-      +'<td><b>'+esc(x.city)+'</b><div class="ag-sub">'+esc(d2(p.checkin)+' → '+d2(p.checkout))+'</div>'
+      +'<td data-l="Город и даты"><b>'+esc(x.city)+'</b><div class="ag-sub">'+esc(d2(p.checkin)+' → '+d2(p.checkout))+'</div>'
       +(x.error?'<div style="color:#dc2626;font-size:11px">'+esc(x.error)+'</div>':'')+'</td>'
-      +'<td class="bn-num"><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b> / '+(x.total_hotels!=null?x.total_hotels:'—')
+      +'<td class="bn-num" data-l="Пришло / всего у Островка"><b>'+(x.hotels_returned!=null?x.hotels_returned:'—')+'</b> / '+(x.total_hotels!=null?x.total_hotels:'—')
       +(x.hit_limit?'<div><span class="badge badge-amber">упёрлись в предел '+esc(p.limit)+'</span></div>':'')+'</td>'
-      +'<td class="bn-num">'+(x.not_in_db!=null?(x.not_in_db?'<b style="color:#b45309">'+x.not_in_db+'</b>':'0'):'—')+'</td>'
-      +'<td class="bn-num">'+kk(k.hotels)+' · '+kk(k.apart)+' · '+kk(k.country)+'</td>'
-      +'<td>'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ'+(x.wire_kb!=null&&x.wire_kb<x.kb?' → по сети '+x.wire_kb+' КБ':'')+(p.limit?' · предел '+esc(p.limit):'')+'</div>':'')+'</td>'
-      +'<td>'+esc(cur)+'</td><td class="bn-num">'+esc(pr)+'</td></tr>';
+      +'<td class="bn-num" data-l="Нет в базе">'+(x.not_in_db!=null?(x.not_in_db?'<b style="color:#b45309">'+x.not_in_db+'</b>':'0'):'—')+'</td>'
+      +'<td class="bn-num" data-l="Отели · квартиры · загородные">'+kk(k.hotels)+' · '+kk(k.apart)+' · '+kk(k.country)+'</td>'
+      +'<td data-l="Ответ Островка">'+(x.ms!=null?(x.ms/1000).toFixed(1)+' с':'—')+(x.kb!=null?'<div class="ag-sub">'+x.kb+' КБ'+(x.wire_kb!=null&&x.wire_kb<x.kb?' → по сети '+x.wire_kb+' КБ':'')+(p.limit?' · предел '+esc(p.limit):'')+'</div>':'')+'</td>'
+      +'<td data-l="Валюта договора">'+esc(cur)+'</td><td class="bn-num" data-l="За ночь, BYN: мин / медиана / макс">'+esc(pr)+'</td></tr>';
   }).join('');
 }
 function bnTable(runs){
@@ -2225,7 +2307,7 @@ async function agLimits(refresh, btn){
     const show=window._limAll?rows:rows.filter(x=>x.key);
     const per=x=>!x.limited?'без лимита':(x.requests+' за '+(x.seconds>=86400?(x.seconds/86400)+' сут':x.seconds>=3600?(x.seconds/3600)+' ч':x.seconds>=60?(x.seconds/60)+' мин':x.seconds+' с'));
     box.innerHTML='<div class="tw-x"><table class="lim-tbl"><tr><th>Метод</th><th>Лимит</th><th>В минуту</th><th>Состояние</th></tr>'
-      +show.map(x=>'<tr class="'+(x.key?'lim-key':'')+'"><td>'+esc(x.endpoint)+'</td><td>'+esc(per(x))+'</td><td>'+(x.limited&&x.seconds?Math.round(x.requests*60/x.seconds*10)/10:'—')+'</td><td>'
+      +show.map(x=>'<tr class="'+(x.key?'lim-key':'')+'"><td data-l="Метод">'+esc(x.endpoint)+'</td><td data-l="Лимит">'+esc(per(x))+'</td><td data-l="В минуту">'+(x.limited&&x.seconds?Math.round(x.requests*60/x.seconds*10)/10:'—')+'</td><td data-l="Состояние">'
         +(x.active?'<span class="badge badge-green">работает</span>':'<span class="badge badge-red">закрыт</span>')+(x.debug?' <span class="badge badge-amber">отладка</span>':'')+'</td></tr>').join('')
       +'</table></div><div style="padding:8px 1.2rem"><button class="act-btn" onclick="window._limAll=!window._limAll;agLimits(false)">'+(window._limAll?'Только основные':'Показать все ('+rows.length+')')+'</button></div>';
   }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; if(refresh)showToast('Ошибка сети: '+e.message,true); }
@@ -2443,9 +2525,9 @@ async function loadModeration(){
       // страницы модерации — с доступом к токену администратора.
       // h.id тоже экранируем: он подставляется внутрь onclick, то есть в код.
       moderList.map(h=>`<tr style="border-top:1px solid var(--border)">
-        <td style="padding:12px 10px"><b>${esc(h.name_ru||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(h.address||'')}</span></td>
-        <td style="font-size:12px;color:var(--muted)">${esc(h.phone||'')} ${esc(h.email||'')}</td>
-        <td style="font-size:12px;color:var(--muted)">${h.claimed_at?esc(new Date(h.claimed_at).toLocaleDateString('ru')):'—'}</td>
+        <td data-l="Объект" style="padding:12px 10px"><b>${esc(h.name_ru||'')}</b><br><span style="font-size:12px;color:var(--muted)">${esc(h.address||'')}</span></td>
+        <td data-l="Контакты" style="font-size:12px;color:var(--muted)">${esc(h.phone||'')} ${esc(h.email||'')}</td>
+        <td data-l="Подтверждён" style="font-size:12px;color:var(--muted)">${h.claimed_at?esc(new Date(h.claimed_at).toLocaleDateString('ru')):'—'}</td>
         <td style="white-space:nowrap"><button onclick="approveModeration('${escAttr(h.id)}')" style="background:var(--green);color:#fff;border:none;border-radius:8px;padding:8px 14px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit;margin-right:6px">✓ Одобрить</button><button onclick="rejectModeration('${escAttr(h.id)}')" style="background:#fdecec;color:#dc2626;border:none;border-radius:8px;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit">Отклонить</button></td>
       </tr>`).join('')+'</tbody></table>';
   }catch(e){ box.innerHTML='<p style="color:#dc2626;padding:20px">Ошибка загрузки</p>'; }
@@ -2716,16 +2798,16 @@ function renderHotelsTable(hotels) {
       <tr><th>Название</th><th>Город</th><th>Тип</th><th>Звёзды</th><th>Рейтинг</th><th>Ostrovok HID</th><th>Владелец</th><th>Статус</th><th>Действия</th></tr>
       ${hotels.map(h => `
         <tr>
-          <td><b>${esc(h.name_ru||'—')}</b></td>
-          <td>${esc(h.city_ru||'—')}</td>
-          <td>${esc(h.category||'—')}</td>
-          <td>${h.stars ? '★'.repeat(Math.min(Number(h.stars)||0, 5)) : '—'}</td>
-          <td>${esc(h.rating||'—')}</td>
-          <td style="font-size:11px;color:var(--muted)">${esc(h.ostrovok_hid||'—')}</td>
-          <td>${h.source==='ostrovok' ? '<span style="font-size:11px;color:var(--muted)">—</span>' : (h.has_owner
+          <td data-l="Название"><b>${esc(h.name_ru||'—')}</b></td>
+          <td data-l="Город">${esc(h.city_ru||'—')}</td>
+          <td data-l="Тип">${esc(h.category||'—')}</td>
+          <td data-l="Звёзды">${h.stars ? '★'.repeat(Math.min(Number(h.stars)||0, 5)) : '—'}</td>
+          <td data-l="Рейтинг">${esc(h.rating||'—')}</td>
+          <td data-l="Ostrovok HID" style="font-size:11px;color:var(--muted)">${esc(h.ostrovok_hid||'—')}</td>
+          <td data-l="Владелец">${h.source==='ostrovok' ? '<span style="font-size:11px;color:var(--muted)">—</span>' : (h.has_owner
               ? '<span style="font-size:11px;color:#1a5c38;font-weight:700">есть</span>'
               : '<span style="font-size:11px;color:#c00;font-weight:700" title="Партнёр не видит этот объект в кабинете">НЕТ</span>')}</td>
-          <td>${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
+          <td data-l="Статус">${objStatusBadge(h.status || (h.is_active?'active':'paused'))}</td>
           <td style="display:flex;gap:4px;flex-wrap:wrap;align-items:center">
             ${currentHotelSource==='ostrovok' ? `
               <span style="font-size:11px;color:var(--muted)">справочник</span>
@@ -2898,12 +2980,12 @@ function renderDashboard() {
       <tr><th>Бронь</th><th>Гость</th><th>Отель</th><th>Даты</th><th>Сумма</th><th>Статус</th></tr>
       ${last5.map(b => `
         <tr onclick="showBooking('${escAttr(b.id)}')" style="cursor:pointer">
-          <td><b>${esc(b.booking_num)}</b></td>
-          <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
-          <td>${esc(b.hotel_name||'—')}</td>
-          <td style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
-          <td><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
-          <td>${statusBadge(b.status)}</td>
+          <td data-l="Бронь"><b>${esc(b.booking_num)}</b></td>
+          <td data-l="Гость">${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
+          <td data-l="Отель">${esc(b.hotel_name||'—')}</td>
+          <td data-l="Даты" style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
+          <td data-l="Сумма"><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
+          <td data-l="Статус">${statusBadge(b.status)}</td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней пока нет</div>';
 
@@ -2914,10 +2996,10 @@ function renderDashboard() {
       <tr><th>Отель</th><th>Город</th><th>Контакт</th><th>Email</th><th>Действие</th></tr>
       ${newApps.map(a => `
         <tr>
-          <td><b>${esc(a.hotel_name)}</b></td>
-          <td>${esc(a.city||'—')}</td>
-          <td>${esc(a.contact_name||'—')}</td>
-          <td>${esc(a.email)}</td>
+          <td data-l="Отель"><b>${esc(a.hotel_name)}</b></td>
+          <td data-l="Город">${esc(a.city||'—')}</td>
+          <td data-l="Контакт">${esc(a.contact_name||'—')}</td>
+          <td data-l="Email">${esc(a.email)}</td>
           <td>
             <button class="act-btn act-approve" onclick="approveApp('${escAttr(a.id)}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
             <button class="act-btn act-reject" onclick="rejectApp('${escAttr(a.id)}')" style="margin-left:4px">✗ Отклонить</button>
@@ -3216,11 +3298,11 @@ function renderJournal(d) {
     <table class="jr-t">
       <tr><th>Согласие</th><th>Время</th><th>Версия</th><th>IP</th><th>Отозвано</th></tr>
       ${cons.map(c => `<tr>
-        <td><b>${esc(CONSENT_LBL[c.kind] || c.kind)}</b></td>
-        <td>${fmtTs(c.accepted_at)}</td>
-        <td class="jr-mono">${esc(c.doc_version||'—')}</td>
-        <td class="jr-mono">${esc(c.ip||'—')}</td>
-        <td>${c.revoked_at ? '<span class="badge badge-red">'+fmtTs(c.revoked_at)+'</span>' : '<span style="color:var(--hint)">—</span>'}</td>
+        <td data-l="Согласие"><b>${esc(CONSENT_LBL[c.kind] || c.kind)}</b></td>
+        <td data-l="Время">${fmtTs(c.accepted_at)}</td>
+        <td class="jr-mono" data-l="Версия">${esc(c.doc_version||'—')}</td>
+        <td class="jr-mono" data-l="IP">${esc(c.ip||'—')}</td>
+        <td data-l="Отозвано">${c.revoked_at ? '<span class="badge badge-red">'+fmtTs(c.revoked_at)+'</span>' : '<span style="color:var(--hint)">—</span>'}</td>
       </tr>`).join('')}
     </table>` : '<div class="jr-none">Согласий не записано</div>';
 
@@ -3228,11 +3310,11 @@ function renderJournal(d) {
     <table class="jr-t">
       <tr><th>Событие</th><th>Время</th><th>Кому</th><th>Ответ</th><th>IP</th></tr>
       ${tr.map(e => `<tr>
-        <td><b>${esc(EVENT_LBL[e.event] || e.event)}</b>${e.note?`<br><span style="color:var(--muted);font-size:10px">${esc(e.note)}</span>`:''}</td>
-        <td>${fmtTs(e.event_at)}</td>
-        <td class="jr-mono">${esc(e.recipient||'—')}</td>
-        <td>${e.status_code==null?'—':(e.status_code>=200&&e.status_code<300?'<span class="badge badge-green">'+esc(e.status_code)+'</span>':'<span class="badge badge-red">'+esc(e.status_code)+'</span>')}</td>
-        <td class="jr-mono">${esc(e.ip||'—')}</td>
+        <td data-l="Событие"><b>${esc(EVENT_LBL[e.event] || e.event)}</b>${e.note?`<br><span style="color:var(--muted);font-size:10px">${esc(e.note)}</span>`:''}</td>
+        <td data-l="Время">${fmtTs(e.event_at)}</td>
+        <td class="jr-mono" data-l="Кому">${esc(e.recipient||'—')}</td>
+        <td data-l="Ответ">${e.status_code==null?'—':(e.status_code>=200&&e.status_code<300?'<span class="badge badge-green">'+esc(e.status_code)+'</span>':'<span class="badge badge-red">'+esc(e.status_code)+'</span>')}</td>
+        <td class="jr-mono" data-l="IP">${esc(e.ip||'—')}</td>
       </tr>`).join('')}
     </table>` : '<div class="jr-none">Событий не записано</div>';
 
@@ -3374,6 +3456,7 @@ function resetBookingFilters() {
   applyBookingFilters();
 }
 
+// 09.10: data-l у ячеек всех таблиц — подпись строки в карточке на телефоне (стили — @media до 760 px); на компьютере не видна
 function renderBookingsTable(bookings) {
   syncFilterBar(['bk-search','bk-fstatus','bk-fsource','bk-dfrom','bk-dto'],
                 'bk-reset', 'bookings-cnt', bookings.length, (allBookings||[]).length);
@@ -3382,15 +3465,15 @@ function renderBookingsTable(bookings) {
       <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
       ${bookings.map(b => `
         <tr>
-          <td><b>${esc(b.booking_num)}</b></td>
-          <td>${sourceBadge(b.source)}</td>
-          <td>${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
-          <td>${esc(b.hotel_name||'—')}</td>
-          <td>${fmtDate(b.check_in)}</td>
-          <td>${fmtDate(b.check_out)}</td>
-          <td>${esc(b.nights||1)}</td>
-          <td><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
-          <td>${statusBadge(b.status)}</td>
+          <td data-l="Бронь"><b>${esc(b.booking_num)}</b></td>
+          <td data-l="Источник">${sourceBadge(b.source)}</td>
+          <td data-l="Гость">${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
+          <td data-l="Отель">${esc(b.hotel_name||'—')}</td>
+          <td data-l="Заезд">${fmtDate(b.check_in)}</td>
+          <td data-l="Выезд">${fmtDate(b.check_out)}</td>
+          <td data-l="Ночей">${esc(b.nights||1)}</td>
+          <td data-l="Сумма"><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
+          <td data-l="Статус">${statusBadge(b.status)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${escAttr(b.id)}')">Детали</button>
             <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>
@@ -3472,15 +3555,15 @@ function renderAppsTable(apps, filter = 'all') {
       <tr><th>Отель</th><th>Город</th><th>Номеров</th><th>Контакт</th><th>Email</th><th>Телефон</th><th>Дата</th><th>Статус</th><th>Действие</th></tr>
       ${filtered.map(a => `
         <tr>
-          <td><b>${esc(a.hotel_name)}</b>${appLegalHTML(a)}</td>
-          <td>${esc(a.city||'—')}</td>
-          <td>${esc(a.rooms_count||'—')}</td>
-          <td>${esc(a.contact_name||'—')}</td>
-          <td>${esc(a.email)}</td>
-          <td>${esc(a.phone)}</td>
-          <td style="font-size:11px">${fmtDate(a.created_at)}</td>
-          <td>${appStatusBadge(a.status)}</td>
-          <td>
+          <td data-l="Отель"><b>${esc(a.hotel_name)}</b>${appLegalHTML(a)}</td>
+          <td data-l="Город">${esc(a.city||'—')}</td>
+          <td data-l="Номеров">${esc(a.rooms_count||'—')}</td>
+          <td data-l="Контакт">${esc(a.contact_name||'—')}</td>
+          <td data-l="Email">${esc(a.email)}</td>
+          <td data-l="Телефон">${esc(a.phone)}</td>
+          <td data-l="Дата" style="font-size:11px">${fmtDate(a.created_at)}</td>
+          <td data-l="Статус">${appStatusBadge(a.status)}</td>
+          <td data-l="Действие">
             ${a.status === 'new' ? `
               <button class="act-btn act-approve" onclick="approveApp('${escAttr(a.id)}','${escAttr(a.email)}','${escAttr(a.contact_name||'')}','${escAttr(a.hotel_name)}')">✓ Одобрить</button>
               <button class="act-btn act-reject" onclick="rejectApp('${escAttr(a.id)}')" style="margin-left:4px">✗</button>
@@ -3551,12 +3634,12 @@ function renderTouristsTable(users) {
       <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
       ${list.map(u => `
         <tr>
-          <td>${esc(u.name||u.first_name||'—')}</td>
-          <td>${esc(u.email)}</td>
-          <td>${ROLE_LABEL[u.role] || u.role || '—'}</td>
-          <td>${esc(u.phone||'—')}</td>
-          <td>${fmtDate(u.created_at)}</td>
-          <td>${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
+          <td data-l="Имя">${esc(u.name||u.first_name||'—')}</td>
+          <td data-l="Email">${esc(u.email)}</td>
+          <td data-l="Роль">${ROLE_LABEL[u.role] || u.role || '—'}</td>
+          <td data-l="Телефон">${esc(u.phone||'—')}</td>
+          <td data-l="Регистрация">${fmtDate(u.created_at)}</td>
+          <td data-l="Статус">${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
           <td style="white-space:nowrap">
             <button class="act-btn" onclick="resetUserPassword('${escAttr(u.id)}','${escAttr(u.email)}')"
               style="background:var(--blue-dim,#eff6ff);color:var(--blue,#2563eb);margin-right:4px">
