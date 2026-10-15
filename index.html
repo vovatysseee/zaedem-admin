@@ -251,6 +251,37 @@ tr.pay-off td{opacity:.55}
 .pp-meta{display:flex;justify-content:space-between;gap:8px;font-size:11px;color:var(--muted);margin-top:4px}
 .pp-done{padding:10px 12px;background:rgba(26,92,56,.08);color:var(--green);border-radius:8px;font-size:12px;line-height:1.5;margin-bottom:10px}
 #pp-err{font-size:12px;color:#dc2626}
+/* 15.10: история оплат («Агентика → Оплачено», «Оплаты → История») и «Журнал действий».
+   Вкладки «Агентики» — отдельной полосой над разделом; итог — строкой над таблицей. */
+.page-tabs{border:1px solid var(--border);border-radius:var(--rl);margin-bottom:1rem;overflow:hidden}
+#page-pay #pay-sec-rem,#page-pay #pay-sec-pe,#page-pay #pay-sec-hist{border-top-left-radius:0;border-top-right-radius:0}
+.hs-total{padding:10px 1.2rem;border-bottom:1px solid var(--border);font-size:12.5px;line-height:1.5;font-variant-numeric:tabular-nums}
+.hs-total:empty{display:none}
+.hs-total b{color:var(--text)}
+.hs-total .hs-sub{color:var(--muted)}
+.hs-tbl td{vertical-align:top}
+.hs-num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px}
+.hs-sum{white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
+.hs-off .fbar,.hs-off .hs-total,.hs-off .hs-csv{display:none}
+.au-tbl td{vertical-align:top}
+.au-tbl td.au-t{white-space:nowrap;font-variant-numeric:tabular-nums}
+.au-chg{font-size:11.5px;line-height:1.4;overflow-wrap:anywhere}
+.au-k{color:var(--muted)}
+.au-old{color:#b91c1c;text-decoration:line-through;text-decoration-color:rgba(185,28,28,.4)}
+.au-new{color:var(--green);font-weight:600}
+.au-ip{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11px;white-space:nowrap}
+tr.au-fail td{background:var(--red-dim)}
+tr.au-fail:hover td{background:var(--red-dim)}
+.au-pager{display:flex;align-items:center;justify-content:center;gap:12px;flex-wrap:wrap;padding:12px 1rem;border-top:1px solid var(--border);font-size:12px;color:var(--muted)}
+.au-pager:empty{display:none}
+.au-pager button{padding:7px 14px;border:1.5px solid var(--faint);border-radius:8px;background:var(--surf);color:var(--green);font-family:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.au-pager button:disabled{opacity:.4;cursor:default}
+@media(max-width:760px){
+  .page-tabs{margin-bottom:.8rem}
+  .hs-total{padding:10px 1rem}
+  #app tr.au-fail{background:var(--red-dim)}
+  .au-pager button{min-height:40px}
+}
 /* 09.10: узкий экран (телефон) — меню сверху, плашки по 2, таблицы «Оплат» карточками.
    Раньше на 390 px страница прокручивалась вбок: меню слева занимало 220 px. На компьютере (шире 760 px) ничего не меняется. */
 @media(max-width:760px){
@@ -571,6 +602,8 @@ tr.pay-off td{opacity:.55}
       <div class="ni" onclick="showPage('pay',this)"><span class="ni-ico">💳</span> Оплаты <span class="nb" id="nb-pay" style="display:none">0</span></div>
       <div class="sb-sec">Сервер</div>
       <div class="ni" onclick="showPage('logs',this)"><span class="ni-ico">🧾</span> Журнал сервера</div>
+      <!-- 15.10: журнал действий админов — кто, что и когда менял -->
+      <div class="ni" onclick="showPage('audit',this)"><span class="ni-ico">🗂️</span> Журнал действий</div>
     </div>
     <div class="sb-bottom">
       <button type="button" class="sb-pwa" id="sb-pwa" onclick="admPwaShow()">📲 Установить как приложение</button>
@@ -880,9 +913,12 @@ tr.pay-off td{opacity:.55}
       <div class="page" id="page-pay">
         <div class="stats" id="pay-stats"></div>
         <!-- 09.10: вкладки «Напоминания / Получатели» — только если сервер умеет платёжки (payments_file) -->
-        <div class="tabs pay-tabs" id="pay-tabs" style="display:none">
+        <!-- 15.10: вкладки видны всегда — «История» есть на любом сервере (старый ответит «Недоступно…»);
+             «Получатели», как и раньше, только когда сервер умеет платёжки -->
+        <div class="tabs pay-tabs" id="pay-tabs">
           <div class="tab on" id="pay-tab-rem" onclick="payTab('rem')">Напоминания</div>
-          <div class="tab" id="pay-tab-pe" onclick="payTab('pe')">Получатели <span class="sec-cnt" id="pe-cnt"></span></div>
+          <div class="tab" id="pay-tab-pe" onclick="payTab('pe')" style="display:none">Получатели <span class="sec-cnt" id="pe-cnt"></span></div>
+          <div class="tab" id="pay-tab-hist" onclick="payTab('hist')">История</div>
         </div>
         <div class="section" id="pay-sec-rem">
           <div class="sec-head">
@@ -952,6 +988,26 @@ tr.pay-off td{opacity:.55}
           </div>
           <div id="pe-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
+        <!-- 15.10: история оплат компании — только отметки «Оплачено» у напоминаний этого раздела.
+             Оплаты броней Агентике сюда не попадают: они — в «Агентика → Оплачено». -->
+        <div class="section" id="pay-sec-hist" style="display:none">
+          <div class="sec-head">
+            <div><span class="sec-title">История оплат компании</span> <span class="sec-cnt" id="ph-cnt"></span></div>
+            <div><button class="sec-btn hs-csv" onclick="phCsv()">⬇ CSV</button> <button class="sec-btn" onclick="admRefresh(this,'История обновлена',phLoad)">↻ Обновить</button></div>
+          </div>
+          <div class="fbar">
+            <div class="dbox"><input type="date" id="ph-from" onchange="hsSoon('ph')"><span class="dsep">—</span><input type="date" id="ph-to" onchange="hsSoon('ph')"></div>
+            <div class="seg dpre" id="ph-pre">
+              <button type="button" onclick="hsPreset('ph','month',this)">Этот месяц</button>
+              <button type="button" onclick="hsPreset('ph','prev',this)">Прошлый</button>
+              <button type="button" onclick="hsPreset('ph','90',this)">90 дн</button>
+              <button type="button" onclick="hsPreset('ph','year',this)">С начала года</button>
+            </div>
+            <select id="ph-payee" onchange="hsSoon('ph')" style="display:none"><option value="">Все получатели</option></select>
+          </div>
+          <div class="hs-total" id="ph-total"></div>
+          <div id="ph-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
       </div>
 
       <!-- ЖУРНАЛ СЕРВЕРА (03.10): последние строки лога API, очищенные от почты, телефонов и ключей -->
@@ -986,8 +1042,35 @@ tr.pay-off td{opacity:.55}
         </div>
       </div>
 
+      <!-- 15.10: ЖУРНАЛ ДЕЙСТВИЙ — кто, что и когда сделал в админке (на сервере — /api/admin/audit). Неуспешные входы — красным. -->
+      <div class="page" id="page-audit">
+        <div class="section" id="au-sec">
+          <div class="sec-head">
+            <div><span class="sec-title">Журнал действий</span> <span class="sec-cnt" id="au-cnt"></span></div>
+            <button class="sec-btn" onclick="admRefresh(this,'Журнал действий обновлён',auLoad)">↻ Обновить</button>
+          </div>
+          <div class="ag-note">Кто, что и когда сделал: входы, изменения броней, оплат, получателей. Время — по Минску. <b>Красным</b> — неуспешные входы.</div>
+          <div class="fbar">
+            <div class="dbox"><input type="date" id="au-from" onchange="auSoon()"><span class="dsep">—</span><input type="date" id="au-to" onchange="auSoon()"></div>
+            <input type="search" id="au-action" list="au-actions" placeholder="Действие" oninput="auSoon()" style="width:170px">
+            <input type="search" id="au-object" list="au-objects" placeholder="Объект" oninput="auSoon()" style="width:150px">
+            <input type="search" id="au-actor" placeholder="Кто" oninput="auSoon()" style="width:170px">
+            <button class="fbar-reset" onclick="auReset()">Сбросить</button>
+          </div>
+          <datalist id="au-actions"></datalist><datalist id="au-objects"></datalist>
+          <div id="au-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+          <div class="au-pager" id="au-pager"></div>
+        </div>
+      </div>
+
       <!-- АГЕНТИКА (01.10): оплата броней Островка, отчёт за месяц, замер выдачи -->
       <div class="page" id="page-agentika">
+        <!-- 15.10: вкладки «К оплате» (всё, что было в разделе) и «Оплачено» (история оплат Агентике) -->
+        <div class="tabs page-tabs" id="ag-tabs">
+          <div class="tab on" id="ag-tab-main" onclick="agTab('main')">К оплате</div>
+          <div class="tab" id="ag-tab-paid" onclick="agTab('paid')">Оплачено</div>
+        </div>
+        <div id="ag-main">
         <div class="stats" id="ag-stats"></div>
         <div class="section">
           <div class="sec-head">
@@ -1050,6 +1133,26 @@ tr.pay-off td{opacity:.55}
           </div>
           <div class="ag-note">Дамп — весь каталог Островка. Сервер скачивает его, отбирает объекты Беларуси и сохраняет фото, описания, удобства, бесконтактное заселение и правила объектов. Идёт долго, обычно до часа. <b>Пока дамп идёт, не заливайте файлы на сервер</b>: перезапуск оборвёт его, и придётся начинать заново.</div>
           <div id="dump-box"><div class="empty">Загрузка…</div></div>
+        </div>
+        </div><!-- /ag-main -->
+        <!-- 15.10: история оплат Агентике — только брони Островка; оплаты компании — в «Оплаты → История» -->
+        <div class="section" id="ag-sec-paid" style="display:none">
+          <div class="sec-head">
+            <div><span class="sec-title">Оплачено Агентике</span> <span class="sec-cnt" id="ah-cnt"></span></div>
+            <div><button class="sec-btn hs-csv" onclick="ahCsv()">⬇ CSV</button> <button class="sec-btn" onclick="admRefresh(this,'История обновлена',ahLoad)">↻ Обновить</button></div>
+          </div>
+          <div class="fbar">
+            <div class="dbox"><input type="date" id="ah-from" onchange="hsSoon('ah')"><span class="dsep">—</span><input type="date" id="ah-to" onchange="hsSoon('ah')"></div>
+            <div class="seg dpre" id="ah-pre">
+              <button type="button" onclick="hsPreset('ah','month',this)">Этот месяц</button>
+              <button type="button" onclick="hsPreset('ah','prev',this)">Прошлый</button>
+              <button type="button" onclick="hsPreset('ah','90',this)">90 дн</button>
+              <button type="button" onclick="hsPreset('ah','year',this)">С начала года</button>
+            </div>
+            <span class="ag-hint">По дате оплаты. «Снять отметку» — если отметили по ошибке: бронь снова станет неоплаченной.</span>
+          </div>
+          <div class="hs-total" id="ah-total"></div>
+          <div id="ah-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
         </div>
       </div>
 
@@ -1700,7 +1803,7 @@ function showPage(name, el, boot) {
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера',pay:'Оплаты и напоминания'};
+  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера',pay:'Оплаты и напоминания',audit:'Журнал действий'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
   try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
   // При старте данные ещё не загружены: таблицы нарисует loadAll (refreshCurrentPage),
@@ -1715,6 +1818,10 @@ function showPage(name, el, boot) {
   if (name === 'agentika') loadAgentika();
   if (name === 'logs') logsOpen();
   if (name === 'pay') payLoad();
+  // 15.10: открытые вкладки истории и журнал действий — перечитать при входе в раздел
+  if (name === 'agentika' && _agTab === 'paid') ahLoad();
+  if (name === 'pay' && _pay.tab === 'hist') phLoad();
+  if (name === 'audit') auLoad();
 }
 // Текущий раздел — перерисовать данными, НЕ переключая страницу (кнопка «Обновить», старт)
 function curAdmPage() { var on = document.querySelector('.page.on'); return on ? on.id.replace('page-', '') : 'dashboard'; }
@@ -1729,6 +1836,10 @@ function refreshCurrentPage(boot) {
     if (!boot && name === 'agentika') loadAgentika();
     if (!boot && name === 'logs') logsLoad();
     if (!boot && name === 'pay') payLoad();
+    // 15.10: история оплат и журнал действий
+    if (!boot && name === 'agentika' && _agTab === 'paid') ahLoad();
+    if (!boot && name === 'pay' && _pay.tab === 'hist') phLoad();
+    if (!boot && name === 'audit') auLoad();
   } catch (e) { console.error('refresh page:', e.message); }
 }
 
@@ -2047,8 +2158,10 @@ async function payPeLoad(flag) {
 function payOnUi() {
   var on = !!_pay.on;
   document.getElementById('page-pay').classList.toggle('pay-on', on);
-  document.getElementById('pay-tabs').style.display = on ? '' : 'none';
-  if (!on) payTab('rem');
+  // 15.10: вкладки видны всегда (есть «История»), без платёжек прячется только «Получатели»
+  document.getElementById('pay-tab-pe').style.display = on ? '' : 'none';
+  if (!on && _pay.tab === 'pe') payTab('rem');
+  phPayees();
   document.getElementById('pf-payee-box').style.display = on ? '' : 'none';
   document.getElementById('pay-acc-note').textContent = on
     ? 'Номера счетов — только в карточке получателя (вкладка «Получатели»), в название и заметку их не вписывайте.'
@@ -2072,6 +2185,10 @@ function payTab(t) {
   document.getElementById('pay-tab-pe').classList.toggle('on', t === 'pe');
   document.getElementById('pay-sec-rem').style.display = t === 'rem' ? '' : 'none';
   document.getElementById('pay-sec-pe').style.display = t === 'pe' ? '' : 'none';
+  // 15.10: вкладка «История»
+  document.getElementById('pay-tab-hist').classList.toggle('on', t === 'hist');
+  document.getElementById('pay-sec-hist').style.display = t === 'hist' ? '' : 'none';
+  if (t === 'hist') phLoad();
 }
 function peMask(iban) { var t = String(iban || '').replace(/\s+/g, ''); return t.length > 8 ? t.slice(0, 4) + '…' + t.slice(-4) : (t || '—'); }
 function peVatTxt(r) { return Number(r) > 0 ? Number(r) + '%' : 'без НДС'; }
@@ -2477,6 +2594,361 @@ async function agReport(){
     document.body.appendChild(a); a.click(); setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
   }catch(e){ showToast('Ошибка сети: '+e.message,true); }
 }
+// ══════════════════════════════════════════════════════
+// 15.10: ИСТОРИЯ ОПЛАТ — В КАЖДОМ РАЗДЕЛЕ СВОЯ, НЕ СМЕШИВАЕТСЯ
+// «Агентика → Оплачено» — оплаты броней Агентике (GET /api/admin/agentika/paid, снять — POST …/:номер/undo).
+// «Оплаты → История» — отметки «Оплачено» у напоминаний компании (GET /api/admin/reminders/paid).
+// Ответ 404 — сервер этой версии ещё не умеет: во вкладке «Недоступно на этой версии сервера»,
+// остальное в разделах работает как раньше. Итог считаем здесь по строкам ответа, по каждой валюте отдельно.
+// ══════════════════════════════════════════════════════
+var HS_NA = 'Недоступно на этой версии сервера';
+var HS_MON = ['январь','февраль','март','апрель','май','июнь','июль','август','сентябрь','октябрь','ноябрь','декабрь'];
+var _hs = { ah: { items: [], seq: 0, na: false }, ph: { items: [], seq: 0, na: false } };
+var _agTab = 'main';
+function agTab(t) {
+  _agTab = t;
+  document.getElementById('ag-tab-main').classList.toggle('on', t === 'main');
+  document.getElementById('ag-tab-paid').classList.toggle('on', t === 'paid');
+  document.getElementById('ag-main').style.display = t === 'main' ? '' : 'none';
+  document.getElementById('ag-sec-paid').style.display = t === 'paid' ? '' : 'none';
+  if (t === 'paid') ahLoad();
+}
+// Запрос к новым ручкам: {na} — 404, {err} — ошибка, {d} — ответ
+async function hsFetch(path) {
+  try {
+    var r = await fetch(API + path, { headers: authHeaders(), cache: 'no-store' });
+    if (r.status === 404) return { na: true };
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok) return { err: (d && d.error) || ('Ошибка ' + r.status) };
+    return { d: d };
+  } catch (e) { return { err: 'Сервер не отвечает: ' + e.message }; }
+}
+// Дата/время по Минску; дата без времени («2026-10-14») — как есть, без сдвига пояса
+function hsWhen(v, sec) {
+  if (v === null || v === undefined || v === '') return '—';
+  var s = String(v);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s.slice(8, 10) + '.' + s.slice(5, 7) + '.' + s.slice(0, 4);
+  var d = new Date(s); if (isNaN(d)) return s;
+  var o = { timeZone: 'Europe/Minsk', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+  if (sec) o.second = '2-digit';
+  try { return d.toLocaleString('ru-RU', o).replace(',', ''); } catch (e) { return s; }
+}
+function hsTime(v) { var t = Date.parse(v); return isNaN(t) ? 0 : t; }
+function hsKop(v) { var n = Number(v); return v === null || v === undefined || v === '' || isNaN(n) ? null : Math.round(n * 100); }
+// «Сентябрь 2026» из «2026-09»; разовое — «разово»
+function hsPeriod(p) {
+  var m = /^(\d{4})-(\d{2})/.exec(String(p || ''));
+  if (m && +m[2] >= 1 && +m[2] <= 12) { var n = HS_MON[+m[2] - 1]; return n.charAt(0).toUpperCase() + n.slice(1) + ' ' + m[1]; }
+  if (p === 'once') return 'разово';
+  return p ? String(p) : '—';
+}
+// Календари периода (тот же zdp, что в фильтре броней) — один раз на поле
+function hsCal(pre, title) {
+  var f = document.getElementById(pre + '-from'), t = document.getElementById(pre + '-to');
+  if (!f || !t || f._zdp || !window.zdpRange) return;
+  zdpRange(f, t, { hide: f.closest('.dbox'), clearable: true, minNights: 0, max: 'today', title: title,
+    placeholder: 'Любые даты', hintStart: 'Выберите первый день', hintEnd: 'выберите последний день', note: 'Один день — нажмите его дважды' });
+}
+// Пресеты периода; по умолчанию (первый вход) — 90 дней
+function hsRange(kind) {
+  var d = new Date(), y = d.getFullYear(), m = d.getMonth(), ymd = window.zdpYmd || function (x) { return x.toISOString().slice(0, 10); };
+  if (kind === 'month') return [ymd(new Date(y, m, 1)), ymd(d)];
+  if (kind === 'prev') return [ymd(new Date(y, m - 1, 1)), ymd(new Date(y, m, 0))];
+  if (kind === 'year') return [ymd(new Date(y, 0, 1)), ymd(d)];
+  var a = new Date(y, m, d.getDate() - 89); return [ymd(a), ymd(d)];
+}
+function hsSetRange(pre, kind) {
+  var r = hsRange(kind);
+  document.getElementById(pre + '-from').value = r[0];
+  document.getElementById(pre + '-to').value = r[1];
+  document.querySelectorAll('#' + pre + '-pre button').forEach(function (b) { b.classList.remove('on'); });
+}
+function hsPreset(pre, kind, btn) {
+  hsSetRange(pre, kind);
+  if (btn) btn.classList.add('on');
+  hsGo(pre);
+}
+// Смена фильтра: календарь меняет оба поля подряд — грузим один раз, чуть позже
+var _hsDeb = {};
+function hsSoon(pre) {
+  document.querySelectorAll('#' + pre + '-pre button').forEach(function (b) { b.classList.remove('on'); });
+  clearTimeout(_hsDeb[pre]); _hsDeb[pre] = setTimeout(function () { hsGo(pre); }, 250);
+}
+function hsGo(pre) { clearTimeout(_hsDeb[pre]); return pre === 'ah' ? ahLoad() : phLoad(); }
+function hsInit(pre, title) {
+  var x = _hs[pre];
+  if (x.inited) return;
+  x.inited = true;
+  hsSetRange(pre, '90');
+  hsCal(pre, title);
+}
+function hsQs(pre) {
+  var f = document.getElementById(pre + '-from').value, t = document.getElementById(pre + '-to').value;
+  return 'from=' + encodeURIComponent(f) + '&to=' + encodeURIComponent(t);
+}
+function hsNa(pre, box, na) {
+  _hs[pre].na = na;
+  var sec = document.getElementById(pre === 'ah' ? 'ag-sec-paid' : 'pay-sec-hist');
+  if (sec) sec.classList.toggle('hs-off', na);
+  if (na) { document.getElementById(pre + '-total').innerHTML = ''; document.getElementById(pre + '-cnt').textContent = ''; box.innerHTML = '<div class="empty">' + HS_NA + '</div>'; }
+}
+// Итог по валютам: { BYN: копейки, … } в порядке появления
+function hsSums(items, amt, cur) {
+  var s = {}, order = [];
+  items.forEach(function (x) {
+    var k = hsKop(x[amt]); if (k === null) return;
+    var c = cur ? (x[cur] || '') : '';
+    if (!(c in s)) { s[c] = 0; order.push(c); }
+    s[c] += k;
+  });
+  return order.map(function (c) { return { cur: c, kop: s[c] }; });
+}
+function hsSumTxt(list) {
+  return list.length ? list.map(function (x) { return payNum(x.kop / 100) + (x.cur ? ' ' + esc(x.cur) : ''); }).join(' + ') : '—';
+}
+function hsPlural(n) { return n + ' ' + agPl(n, 'оплата', 'оплаты', 'оплат'); }
+// CSV для Excel: «;», запятая в дробях, BOM; текст, похожий на формулу, — с апострофом
+function hsCsvCell(v) {
+  if (v === null || v === undefined) return '';
+  var s = String(v);
+  if (/^[=+\-@\t\r]/.test(s)) s = "'" + s;
+  return /[";\r\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+function hsCsvNum(v) { var k = hsKop(v); return k === null ? '' : (k / 100).toFixed(2).replace('.', ','); }
+function hsCsvSave(name, rows) {
+  var t = '﻿' + rows.map(function (r) { return r.join(';'); }).join('\r\n') + '\r\n';
+  var a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([t], { type: 'text/csv;charset=utf-8' }));
+  a.download = name;
+  document.body.appendChild(a); a.click();
+  setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+}
+function hsCsvName(pre, base) {
+  var f = document.getElementById(pre + '-from').value, t = document.getElementById(pre + '-to').value;
+  return base + (f || t ? '_' + (f || 'nachalo') + '_' + (t || 'segodnya') : '') + '.csv';
+}
+
+// ── «Агентика → Оплачено» ──
+async function ahLoad() {
+  hsInit('ah', 'Период оплат Агентике');
+  var x = _hs.ah, box = document.getElementById('ah-list'), my = ++x.seq;
+  if (!x.items.length && !x.na) box.innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  var res = await hsFetch('/api/admin/agentika/paid?' + hsQs('ah'));
+  if (my !== x.seq) return true;   // пока ждали, фильтр сменился — ответ устарел
+  if (res.na) { x.items = []; hsNa('ah', box, true); return false; }
+  hsNa('ah', box, false);
+  if (res.err) { box.innerHTML = '<div class="empty">' + esc(res.err) + '</div>'; return false; }
+  x.items = (res.d.items || []).slice().sort(function (a, b) { return hsTime(b.paid_at) - hsTime(a.paid_at); });
+  x.total = res.d.total;
+  ahRender();
+  return true;
+}
+function ahRender() {
+  var x = _hs.ah, box = document.getElementById('ah-list'), it = x.items;
+  document.getElementById('ah-cnt').textContent = it.length ? '· ' + it.length : '';
+  var more = typeof x.total === 'number' && x.total > it.length ? ' <span class="hs-sub">(показаны ' + it.length + ' из ' + x.total + ')</span>' : '';
+  document.getElementById('ah-total').innerHTML = it.length ? 'Итого за период: <b>' + hsPlural(it.length) + '</b> на <b>' + hsSumTxt(hsSums(it, 'amount', 'currency')) + '</b>' + more : '';
+  if (!it.length) { box.innerHTML = '<div class="empty">За этот период оплат Агентике нет</div>'; return; }
+  var shown = moreTake('ahp', it, hsQs('ah'), ahRender);
+  box.innerHTML = '<table class="hs-tbl"><thead><tr><th>№ брони</th><th>Сумма</th><th>Дата оплаты</th><th>№ платёжки</th><th>Кто отметил</th><th></th></tr></thead><tbody>'
+    + shown.map(function (r) {
+      return '<tr><td data-l="№ брони"><span class="hs-num">' + esc(r.booking_number) + '</span></td>'
+        + '<td data-l="Сумма"><span class="hs-sum">' + agMoney(r.amount, r.currency ? esc(r.currency) : '') + '</span></td>'
+        + '<td data-l="Дата оплаты" style="white-space:nowrap">' + esc(hsWhen(r.paid_at)) + '</td>'
+        + '<td data-l="№ платёжки">' + (r.payment_order_no ? esc(r.payment_order_no) : '—') + '</td>'
+        + '<td data-l="Кто отметил">' + (r.paid_by ? esc(r.paid_by) : '—') + '</td>'
+        + '<td class="pay-acts"><button class="act-btn act-cancel" onclick="ahUndo(\'' + escAttr(r.booking_number) + '\')">Снять отметку</button></td></tr>';
+    }).join('') + '</tbody></table>' + moreBtn('ahp');
+}
+async function ahUndo(num) {
+  var r0 = _hs.ah.items.find(function (r) { return String(r.booking_number) === String(num); });
+  var what = r0 ? ' (' + agMoney(r0.amount, r0.currency || '') + (r0.paid_at ? ', оплачено ' + hsWhen(r0.paid_at) : '') + ')' : '';
+  if (!confirm('Снять отметку «Оплачено Агентике» с брони ' + num + what + '?\n\nБронь снова будет считаться неоплаченной Агентике.')) return;
+  try {
+    var r = await fetch(API + '/api/admin/agentika/paid/' + encodeURIComponent(num) + '/undo', { method: 'POST', headers: authHeaders() });
+    if (r.status === 404) { showToast(HS_NA, true); return; }
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (!r.ok || !d || !d.ok) { showToast((d && d.error) || ('Ошибка ' + r.status), true); return; }
+    showToast('Отметка снята: бронь ' + num);
+    ahLoad();
+    loadAgentika();   // список «К оплате» и счётчик в меню
+  } catch (e) { showToast('Ошибка сети: ' + e.message, true); }
+}
+function ahCsv() {
+  var it = _hs.ah.items;
+  if (!it.length) { showToast('За период нет оплат — нечего выгружать', true); return; }
+  var rows = [['№ брони', 'Сумма', 'Валюта', 'Дата оплаты (Минск)', '№ платёжки', 'Кто отметил']];
+  it.forEach(function (r) { rows.push([hsCsvCell(r.booking_number), hsCsvNum(r.amount), hsCsvCell(r.currency), hsCsvCell(hsWhen(r.paid_at)), hsCsvCell(r.payment_order_no), hsCsvCell(r.paid_by)]); });
+  hsSums(it, 'amount', 'currency').forEach(function (s) { rows.push([hsCsvCell('Итого (' + hsPlural(it.length) + ')'), hsCsvNum(s.kop / 100), hsCsvCell(s.cur), '', '', '']); });
+  hsCsvSave(hsCsvName('ah', 'agentika_oplacheno'), rows);
+}
+
+// ── «Оплаты → История» ──
+// Получатели для фильтра — те же, что во вкладке «Получатели» (без платёжек фильтра нет)
+function phPayees() {
+  var sel = document.getElementById('ph-payee'); if (!sel) return;
+  var list = _pay.on ? (_pay.payees || []) : [], cur = sel.value;
+  sel.innerHTML = '<option value="">Все получатели</option>' + list.map(function (p) { return '<option value="' + esc(p.id) + '">' + esc(p.short_name) + '</option>'; }).join('');
+  sel.value = cur; if (sel.value !== cur) sel.value = '';
+  sel.style.display = list.length ? '' : 'none';
+}
+async function phLoad() {
+  hsInit('ph', 'Период оплат');
+  var x = _hs.ph, box = document.getElementById('ph-list'), my = ++x.seq;
+  if (!x.items.length && !x.na) box.innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  var pid = document.getElementById('ph-payee').value;
+  var res = await hsFetch('/api/admin/reminders/paid?' + hsQs('ph') + '&payee_id=' + encodeURIComponent(pid));
+  if (my !== x.seq) return true;
+  if (res.na) { x.items = []; hsNa('ph', box, true); return false; }
+  hsNa('ph', box, false);
+  if (res.err) { box.innerHTML = '<div class="empty">' + esc(res.err) + '</div>'; return false; }
+  x.items = (res.d.items || []).slice().sort(function (a, b) { return hsTime(b.paid_at) - hsTime(a.paid_at); });
+  x.total = res.d.total;
+  phRender();
+  return true;
+}
+function phRender() {
+  var x = _hs.ph, box = document.getElementById('ph-list'), it = x.items;
+  document.getElementById('ph-cnt').textContent = it.length ? '· ' + it.length : '';
+  var vat = hsSums(it, 'vat', null), vk = vat.length ? vat[0].kop : 0;
+  var more = typeof x.total === 'number' && x.total > it.length ? ' <span class="hs-sub">(показаны ' + it.length + ' из ' + x.total + ')</span>' : '';
+  document.getElementById('ph-total').innerHTML = it.length ? 'Итого за период: <b>' + hsPlural(it.length) + '</b> на <b>' + hsSumTxt(hsSums(it, 'total', null)) + '</b>'
+    + (vk ? ' <span class="hs-sub">в т.ч. НДС ' + payNum(vk / 100) + '</span>' : '') + more : '';
+  if (!it.length) { box.innerHTML = '<div class="empty">За этот период отметок «Оплачено» нет</div>'; return; }
+  var shown = moreTake('php', it, hsQs('ph') + '|' + document.getElementById('ph-payee').value, phRender);
+  box.innerHTML = '<table class="hs-tbl"><thead><tr><th>Что оплачено</th><th>За месяц</th><th>Получатель</th><th>Сумма</th><th>Дата оплаты</th><th>№ платёжки</th><th>Кто отметил</th></tr></thead><tbody>'
+    + shown.map(function (r) {
+      var v = hsKop(r.vat);
+      return '<tr><td data-l="Что оплачено"><b>' + esc(r.title || '—') + '</b></td>'
+        + '<td data-l="За месяц" style="white-space:nowrap">' + esc(hsPeriod(r.period)) + '</td>'
+        + '<td data-l="Получатель">' + (r.payee_short_name ? esc(r.payee_short_name) : '—') + '</td>'
+        + '<td data-l="Сумма"><span class="hs-sum">' + (hsKop(r.total) === null ? '—' : payNum(r.total)) + '</span>'
+        + (v ? '<div class="pay-vatline">в т.ч. НДС ' + payNum(v / 100) + '</div>' : (v === 0 ? '<div class="pay-vatline">без НДС</div>' : '')) + '</td>'
+        + '<td data-l="Дата оплаты" style="white-space:nowrap">' + esc(hsWhen(r.paid_at)) + '</td>'
+        + '<td data-l="№ платёжки">' + (r.payment_order_no ? esc(r.payment_order_no) : '—') + '</td>'
+        + '<td data-l="Кто отметил">' + (r.paid_by ? esc(r.paid_by) : '—') + '</td></tr>';
+    }).join('') + '</tbody></table>' + moreBtn('php');
+}
+function phCsv() {
+  var it = _hs.ph.items;
+  if (!it.length) { showToast('За период нет оплат — нечего выгружать', true); return; }
+  var rows = [['Что оплачено', 'За месяц', 'Получатель', 'Сумма', 'в т.ч. НДС', 'Дата оплаты (Минск)', '№ платёжки', 'Кто отметил']];
+  it.forEach(function (r) { rows.push([hsCsvCell(r.title), hsCsvCell(hsPeriod(r.period)), hsCsvCell(r.payee_short_name), hsCsvNum(r.total), hsCsvNum(r.vat), hsCsvCell(hsWhen(r.paid_at)), hsCsvCell(r.payment_order_no), hsCsvCell(r.paid_by)]); });
+  var t = hsSums(it, 'total', null), v = hsSums(it, 'vat', null);
+  rows.push([hsCsvCell('Итого (' + hsPlural(it.length) + ')'), '', '', t.length ? hsCsvNum(t[0].kop / 100) : '', v.length ? hsCsvNum(v[0].kop / 100) : '', '', '', '']);
+  hsCsvSave(hsCsvName('ph', 'oplaty_istoriya'), rows);
+}
+
+// ══════════════════════════════════════════════════════
+// 15.10: ЖУРНАЛ ДЕЙСТВИЙ (GET /api/admin/audit) — постранично, фильтры на сервере.
+// Неуспешный вход узнаём по названию действия (вход/login + fail/error/denied/неуспешн…) — строка красная.
+// details показываем как «было → стало», если сервер прислал пары (before/after, from/to, old/new), иначе как есть.
+// ══════════════════════════════════════════════════════
+var _au = { page: 1, seq: 0, inited: false, acts: {}, objs: {} };
+function auFailed(x) {
+  var a = String((x && x.action) || '').toLowerCase();
+  return /(login|log_in|signin|sign_in|auth|вход)/.test(a) && /(fail|error|denied|invalid|wrong|bad|reject|неуд|неусп|ошиб|невер|отказ)/.test(a);
+}
+function auVal(v) {
+  if (v === null || v === undefined || v === '') return '—';
+  if (typeof v === 'object') { try { return JSON.stringify(v); } catch (e) { return String(v); } }
+  return String(v);
+}
+function auPick(o, keys) { for (var i = 0; i < keys.length; i++) if (Object.prototype.hasOwnProperty.call(o, keys[i])) return keys[i]; return null; }
+var AU_B = ['before', 'old', 'from', 'was'], AU_A = ['after', 'new', 'to', 'now'];
+function auPair(k, a, b) {
+  return '<div class="au-chg">' + (k ? '<span class="au-k">' + esc(k) + ':</span> ' : '') + '<span class="au-old">' + esc(auVal(a)) + '</span> → <span class="au-new">' + esc(auVal(b)) + '</span></div>';
+}
+function auLine(k, v) { return '<div class="au-chg"><span class="au-k">' + esc(k) + ':</span> ' + esc(auVal(v)) + '</div>'; }
+function auDetails(d) {
+  if (d === null || d === undefined || d === '') return '<span style="color:var(--muted)">—</span>';
+  if (typeof d === 'string') {
+    var j = null; try { j = JSON.parse(d); } catch (e) {}
+    if (!j || typeof j !== 'object') return '<div class="au-chg">' + esc(d) + '</div>';
+    d = j;
+  }
+  if (typeof d !== 'object' || Array.isArray(d)) return '<div class="au-chg">' + esc(auVal(d)) + '</div>';
+  var kb = auPick(d, AU_B), ka = auPick(d, AU_A), out = '';
+  if (kb && ka) {
+    var a = d[kb], b = d[ka];
+    if (a && b && typeof a === 'object' && typeof b === 'object' && !Array.isArray(a) && !Array.isArray(b)) {
+      var keys = Object.keys(a).concat(Object.keys(b).filter(function (k) { return !(k in a); }));
+      out = keys.filter(function (k) { return auVal(a[k]) !== auVal(b[k]); }).map(function (k) { return auPair(k, a[k], b[k]); }).join('') || '<div class="au-chg au-k">без изменений</div>';
+    } else out = auPair('', a, b);
+    return out + Object.keys(d).filter(function (k) { return k !== kb && k !== ka; }).map(function (k) { return auLine(k, d[k]); }).join('');
+  }
+  return Object.keys(d).map(function (k) {
+    var v = d[k];
+    if (v && typeof v === 'object' && !Array.isArray(v)) {
+      var b2 = auPick(v, AU_B), a2 = auPick(v, AU_A);
+      if (b2 && a2) return auPair(k, v[b2], v[a2]);
+    }
+    return auLine(k, v);
+  }).join('') || '<span style="color:var(--muted)">—</span>';
+}
+function auInit() {
+  if (_au.inited) return;
+  _au.inited = true;
+  var d = new Date(), ymd = window.zdpYmd || function (x) { return x.toISOString().slice(0, 10); };
+  document.getElementById('au-from').value = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 6));   // по умолчанию — неделя
+  document.getElementById('au-to').value = ymd(d);
+  var f = document.getElementById('au-from'), t = document.getElementById('au-to');
+  if (window.zdpRange && !f._zdp) zdpRange(f, t, { hide: f.closest('.dbox'), clearable: true, minNights: 0, max: 'today', title: 'Период журнала',
+    placeholder: 'Любые даты', hintStart: 'Выберите первый день', hintEnd: 'выберите последний день', note: 'Один день — нажмите его дважды' });
+}
+var _auDeb = null;
+function auSoon() { clearTimeout(_auDeb); _auDeb = setTimeout(function () { auLoad(1); }, 350); }
+function auReset() {
+  ['au-action', 'au-object', 'au-actor'].forEach(function (id) { document.getElementById(id).value = ''; });
+  var d = new Date(), ymd = window.zdpYmd || function (x) { return x.toISOString().slice(0, 10); };
+  document.getElementById('au-from').value = ymd(new Date(d.getFullYear(), d.getMonth(), d.getDate() - 6));
+  document.getElementById('au-to').value = ymd(d);
+  auLoad(1);
+}
+function auGo(p) { auLoad(p); var s = document.getElementById('au-sec'); if (s && s.scrollIntoView) s.scrollIntoView({ block: 'start' }); }
+function auDl(id, map) {
+  var el = document.getElementById(id); if (!el) return;
+  el.innerHTML = Object.keys(map).sort().slice(0, 200).map(function (v) { return '<option value="' + esc(v) + '"></option>'; }).join('');
+}
+async function auLoad(page) {
+  auInit();
+  clearTimeout(_auDeb);
+  if (page) _au.page = page;
+  var box = document.getElementById('au-list'), pg = document.getElementById('au-pager'), my = ++_au.seq;
+  var v = function (id) { return document.getElementById(id).value.trim(); };
+  var qs = 'from=' + encodeURIComponent(v('au-from')) + '&to=' + encodeURIComponent(v('au-to'))
+    + '&action=' + encodeURIComponent(v('au-action')) + '&actor=' + encodeURIComponent(v('au-actor'))
+    + '&object=' + encodeURIComponent(v('au-object')) + '&page=' + _au.page;
+  if (!_au.loaded) box.innerHTML = '<div class="loading"><div class="spin"></div><br>Загрузка...</div>';
+  var res = await hsFetch('/api/admin/audit?' + qs);
+  if (my !== _au.seq) return true;
+  document.getElementById('au-sec').classList.toggle('hs-off', !!res.na);
+  if (res.na) { _au.loaded = false; pg.innerHTML = ''; document.getElementById('au-cnt').textContent = ''; box.innerHTML = '<div class="empty">' + HS_NA + '</div>'; return false; }
+  if (res.err) { pg.innerHTML = ''; box.innerHTML = '<div class="empty">' + esc(res.err) + '</div>'; return false; }
+  _au.loaded = true;
+  var d = res.d, it = d.items || [], total = Number(d.total) || 0, page2 = Number(d.page) || _au.page, pages = Math.max(1, Number(d.pages) || 1);
+  _au.page = page2;
+  it.forEach(function (x) { if (x.action) _au.acts[x.action] = 1; if (x.object_type) _au.objs[x.object_type] = 1; });
+  auDl('au-actions', _au.acts); auDl('au-objects', _au.objs);
+  document.getElementById('au-cnt').textContent = total ? '· ' + total + ' ' + agPl(total, 'запись', 'записи', 'записей') : '';
+  box.innerHTML = it.length ? '<table class="au-tbl"><thead><tr><th>Время (Минск)</th><th>Кто</th><th>Действие</th><th>Объект</th><th>Было → стало</th><th>IP</th></tr></thead><tbody>'
+    + it.map(function (x) {
+      var fail = auFailed(x);
+      var obj = [x.object_type, x.object_id !== null && x.object_id !== undefined && x.object_id !== '' ? '№ ' + x.object_id : ''].filter(Boolean).join(' ');
+      return '<tr class="' + (fail ? 'au-fail' : '') + '"><td data-l="Время (Минск)" class="au-t">' + esc(hsWhen(x.at, true)) + '</td>'
+        + '<td data-l="Кто">' + (x.actor ? esc(x.actor) : '—') + '</td>'
+        + '<td data-l="Действие">' + esc(x.action || '—') + (fail ? ' <span class="badge badge-red">неуспешный вход</span>' : '') + '</td>'
+        + '<td data-l="Объект">' + (obj ? esc(obj) : '—') + '</td>'
+        + '<td data-l="Было → стало">' + auDetails(x.details) + '</td>'
+        + '<td data-l="IP"><span class="au-ip">' + (x.ip ? esc(x.ip) : '—') + '</span></td></tr>';
+    }).join('') + '</tbody></table>'
+    : '<div class="empty">' + (v('au-action') || v('au-actor') || v('au-object') ? 'Под фильтры ничего не подошло — измените или «Сбросить»' : 'За этот период событий нет') + '</div>';
+  pg.innerHTML = pages > 1 ? '<button type="button" ' + (page2 <= 1 ? 'disabled' : '') + ' onclick="auGo(' + (page2 - 1) + ')">← Назад</button>'
+    + '<span>Страница ' + page2 + ' из ' + pages + '</span>'
+    + '<button type="button" ' + (page2 >= pages ? 'disabled' : '') + ' onclick="auGo(' + (page2 + 1) + ')">Вперёд →</button>' : '';
+  return true;
+}
+
 function bnRowsHTML(run){
   const p=run.params||{};
   const resTxt=(p.residency&&p.residency!=='by')?' · гости '+p.residency.toUpperCase():'';
