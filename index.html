@@ -140,6 +140,18 @@ tr:hover td{background:var(--surf2)}
 .badge-red{background:var(--red-dim);color:#dc2626}
 .badge-blue{background:var(--blue-dim);color:var(--blue)}
 .badge-gray{background:var(--surf3);color:var(--muted)}
+/* 15.10: «Требует проверки» — заливка оранжевым, чтобы не путать с «Ожидает» (жёлтый) и «Отменено» (красный) */
+.badge-ncheck{background:#ea580c;color:#fff}
+.ncheck-bar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 14px;margin-bottom:14px;background:#fff7ed;border:1.5px solid #ea580c;border-radius:10px;font-size:13px;color:#9a3412}
+.ncheck-bar b{font-size:15px}
+.section .ncheck-bar{margin:12px 1.2rem}
+@media(max-width:760px){ .section .ncheck-bar{margin:10px 1rem} }
+.ncheck-bar button{margin-left:auto;padding:6px 14px;background:#ea580c;color:#fff;border:none;border-radius:7px;font-size:12px;font-weight:700;cursor:pointer}
+.ncheck-box{margin:4px 0 12px;padding:12px 14px;background:#fff7ed;border:1.5px solid #ea580c;border-radius:10px;font-size:12px;color:#9a3412;line-height:1.5}
+.ncheck-acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.ncheck-acts .act-btn{padding:6px 12px;font-size:11px}
+.ncheck-res{margin-top:10px;font-size:12px;color:var(--text)}
+.ncheck-res pre{max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--surf2);padding:8px;border-radius:8px;font-size:10px;margin-top:6px}
 .act-btn{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;border:none;cursor:pointer}
 .act-approve{background:rgba(26,92,56,.1);color:var(--green)}
 .act-approve:hover{background:var(--green);color:#fff}
@@ -586,6 +598,8 @@ tr.pay-off td{opacity:.55}
 
       <!-- DASHBOARD -->
       <div class="page on" id="page-dashboard">
+        <!-- 15.10: брони «Требует проверки» — плашка видна, только если такие есть -->
+        <div class="ncheck-bar" id="ncheck-dash" style="display:none"></div>
         <div class="stats">
           <div class="stat">
             <div class="stat-label">Брони всего</div>
@@ -667,6 +681,8 @@ tr.pay-off td{opacity:.55}
             <div><span class="sec-title">Все брони</span> <span class="sec-cnt" id="bookings-cnt"></span></div>
             <button class="sec-btn" onclick="exportBookingsCSV()">⬇ Экспорт CSV</button>
           </div>
+          <!-- 15.10: счётчик броней «Требует проверки» — чтобы такие брони не терялись в общем списке -->
+          <div class="ncheck-bar" id="ncheck-bk" style="display:none"></div>
           <div class="fbar">
             <input type="search" id="bk-search" class="grow" oninput="applyBookingFilters()"
               placeholder="Поиск: номер ZB, имя, email, телефон, отель, номер…" title="Поиск идёт сразу, по мере набора">
@@ -674,6 +690,7 @@ tr.pay-off td{opacity:.55}
               <option value="">Все статусы</option>
               <option value="confirmed">Подтверждённые</option>
               <option value="pending">В обработке</option>
+              <option value="needs_check">⚠️ Требует проверки</option>
               <option value="cancelled">Отменённые</option>
               <option value="completed">Завершённые</option>
             </select>
@@ -3165,6 +3182,44 @@ async function loadBookings() {
     allBookings = d.bookings || [];
     document.getElementById('nb-bookings').textContent = allBookings.filter(b => b.status === 'confirmed').length;
   } catch(e) { allBookings = []; }
+  // 15.10: брони «Требует проверки» могут быть старше последних 100 — дотягиваем их отдельным
+  // запросом и добавляем в список. Старый бэкенд такого статуса не знает и вернёт пустой список.
+  try {
+    const r2 = await fetch(`${API}/api/bookings?status=needs_check&limit=100`, { headers: authHeaders() });
+    if (r2.ok) {
+      const d2 = await r2.json().catch(() => ({}));
+      const have = new Set(allBookings.map(b => b.id));
+      (d2.bookings || []).forEach(b => { if (b && !have.has(b.id)) allBookings.push(b); });
+    }
+  } catch(e) { /* не критично: без этого запроса видны брони из последних 100 */ }
+  renderNeedsCheckBars();
+}
+
+// 15.10: «Требует проверки» — Островок за 15 минут не подтвердил и не отклонил бронь.
+// Признак — статус 'needs_check'; на всякий случай понимаем и флаг needs_check: true.
+// Старый бэкенд не отдаёт ни того, ни другого — тогда всё выглядит как раньше.
+function isNeedsCheck(b) { return !!b && (b.status === 'needs_check' || b.needs_check === true); }
+function bkStatusBadge(b) { return isNeedsCheck(b) ? statusBadge('needs_check') : statusBadge(b.status); }
+function renderNeedsCheckBars() {
+  const n = (allBookings || []).filter(isNeedsCheck).length;
+  const html = n ? `<span>⚠️ Требуют проверки: <b>${n}</b> ${agPl(n, 'бронь', 'брони', 'броней')} — Островок не дал ясного ответа</span>` : '';
+  const dash = document.getElementById('ncheck-dash');
+  if (dash) { dash.style.display = n ? 'flex' : 'none'; dash.innerHTML = n ? html + `<button onclick="openNeedsCheckList()">Показать</button>` : ''; }
+  const bk = document.getElementById('ncheck-bk');
+  if (bk) {
+    const on = (document.getElementById('bk-fstatus') || {}).value === 'needs_check';
+    bk.style.display = n ? 'flex' : 'none';
+    bk.innerHTML = n ? html + (on ? `<button onclick="showAllBookingStatuses()">Все брони</button>` : `<button onclick="openNeedsCheckList()">Показать только их</button>`) : '';
+  }
+}
+function openNeedsCheckList() {
+  if (curAdmPage() !== 'bookings') showPage('bookings');
+  const fs = document.getElementById('bk-fstatus'); if (fs) fs.value = 'needs_check';
+  applyBookingFilters();
+}
+function showAllBookingStatuses() {
+  const fs = document.getElementById('bk-fstatus'); if (fs) fs.value = '';
+  applyBookingFilters();
 }
 
 async function loadApps() {
@@ -3219,7 +3274,7 @@ function renderDashboard() {
           <td data-l="Отель">${esc(b.hotel_name||'—')}</td>
           <td data-l="Даты" style="font-size:11px">${fmtDate(b.check_in)} → ${fmtDate(b.check_out)}</td>
           <td data-l="Сумма"><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
-          <td data-l="Статус">${statusBadge(b.status)}</td>
+          <td data-l="Статус">${bkStatusBadge(b)}</td>
         </tr>`).join('')}
     </table>` : '<div class="empty">Броней пока нет</div>';
 
@@ -3684,7 +3739,9 @@ function getBookingFilters() {
 function filterBookingList() {
   const f = getBookingFilters();
   let list = allBookings || [];
-  if (f.fs) list = list.filter(b => b.status === f.fs);
+  // 15.10: «Требует проверки» — по статусу или по флагу (см. isNeedsCheck)
+  if (f.fs === 'needs_check') list = list.filter(isNeedsCheck);
+  else if (f.fs) list = list.filter(b => b.status === f.fs);
   if (f.fsrc) list = list.filter(b => (b.source || 'direct') === f.fsrc);
   // Дата приводится к YYYY-MM-DD: check_in обычно уже такой, а created_at —
   // полная метка времени. Сравнение строк без обрезки давало осечку:
@@ -3706,6 +3763,7 @@ function filterBookingList() {
 
 function applyBookingFilters() {
   renderBookingsTable(filterBookingList());
+  renderNeedsCheckBars();   // 15.10: кнопка на плашке зависит от выбранного фильтра
 }
 
 function resetBookingFilters() {
@@ -3736,7 +3794,7 @@ function renderBookingsTable(bookings) {
           <td data-l="Выезд">${fmtDate(b.check_out)}</td>
           <td data-l="Ночей">${esc(b.nights||1)}</td>
           <td data-l="Сумма"><b>${parseFloat(b.total_price||0).toFixed(0)} ${esc(b.currency||'BYN')}</b></td>
-          <td data-l="Статус">${statusBadge(b.status)}</td>
+          <td data-l="Статус">${bkStatusBadge(b)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${escAttr(b.id)}')">Детали</button>
             <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>
@@ -3769,7 +3827,7 @@ function exportBookingsCSV() {
     b.guest_name||'', b.guest_email||'', b.guest_phone||'',
     b.hotel_name||'', b.room_name||'',
     b.check_in||'', b.check_out||'', b.nights||'', b.guests_count||'',
-    parseFloat(b.total_price||0).toFixed(2), b.status||'', (b.created_at||'').slice(0,10)
+    parseFloat(b.total_price||0).toFixed(2), (isNeedsCheck(b) ? 'needs_check' : (b.status||'')), (b.created_at||'').slice(0,10)
   ]);
   const csv = [headers, ...rows].map(r =>
     r.map(csvCell).join(',')
@@ -4075,9 +4133,11 @@ function showBooking(id) {
     <div class="detail-row"><b>Выезд:</b> ${fmtDate(b.check_out)}</div>
     <div class="detail-row"><b>Ночей:</b> ${esc(b.nights||1)}</div>
     <div class="detail-row"><b>Гостей:</b> ${esc(b.guests_count||1)}</div>
+    ${mealRowHTML(b)}
     <div class="detail-row"><b>Сумма с гостя:</b> ${parseFloat(b.total_price||0).toFixed(2)} ${esc(b.currency||'BYN')}</div>
     ${moneySplitHTML(b)}
-    <div class="detail-row"><b>Статус:</b> ${statusBadge(b.status)}</div>
+    <div class="detail-row"><b>Статус:</b> ${bkStatusBadge(b)}</div>
+    ${needsCheckBoxHTML(b)}
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
     <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue);padding:6px 14px">Открыть журнал брони →</button>
@@ -4085,6 +4145,104 @@ function showBooking(id) {
   `;
   document.getElementById('modal-action').style.display = 'none';
   openModal();
+}
+
+// 15.10: питание (поле meal) — строка в карточке брони, только если бэкенд его прислал.
+// Коды — как у Островка (nomeal, breakfast, half-board…); незнакомый код показываем как есть.
+const MEAL_RU = {
+  'nomeal':'Без питания', 'breakfast':'Завтрак', 'breakfast-buffet':'Завтрак «шведский стол»',
+  'continental-breakfast':'Континентальный завтрак', 'english-breakfast':'Английский завтрак',
+  'american-breakfast':'Американский завтрак', 'asian-breakfast':'Азиатский завтрак',
+  'chinese-breakfast':'Китайский завтрак', 'israeli-breakfast':'Израильский завтрак',
+  'scandinavian-breakfast':'Скандинавский завтрак', 'irish-breakfast':'Ирландский завтрак',
+  'full-breakfast':'Полный завтрак', 'breakfast-for-1':'Завтрак на 1 гостя', 'breakfast-for-2':'Завтрак на 2 гостей',
+  'lunch':'Обед', 'dinner':'Ужин', 'half-board':'Полупансион', 'half-board-lunch':'Полупансион (завтрак и обед)',
+  'half-board-dinner':'Полупансион (завтрак и ужин)', 'full-board':'Полный пансион',
+  'all-inclusive':'Всё включено', 'super-all-inclusive':'Всё включено (расширенное)',
+  'soft-all-inclusive':'Всё включено (облегчённое)', 'ultra-all-inclusive':'Всё включено (ультра)'
+};
+function mealText(m) {
+  if (m && typeof m === 'object') m = m.value || m.name || m.meal || '';
+  m = String(m == null ? '' : m).trim();
+  if (!m) return '';
+  const ru = MEAL_RU[m.toLowerCase()];
+  return ru ? esc(ru) + ' <span style="color:var(--hint);font-size:11px">' + esc(m) + '</span>' : esc(m);
+}
+function mealRowHTML(b) {
+  const t = mealText(b && b.meal);
+  return t ? `<div class="detail-row"><b>Питание:</b> <span>${t}</span></div>` : '';
+}
+
+// 15.10: блок «Требует проверки» в карточке брони: проверка у Островка (только чтение)
+// и ручное решение — подтвердить или отменить через обычную смену статуса.
+function needsCheckBoxHTML(b) {
+  if (!isNeedsCheck(b)) return '';
+  const num = escAttr(b.booking_num);
+  const ask = b.source === 'ostrovok'
+    ? `<button class="act-btn" style="background:var(--blue-dim);color:var(--blue)" onclick="ncheckAsk('${num}')">🔎 Проверить у Островка</button>` : '';
+  return `<div class="ncheck-box">
+    <b>⚠️ Требует проверки.</b> Островок за 15 минут не подтвердил и не отклонил бронь.
+    Проверьте её у Островка и решите вручную: подтвердить или отменить.
+    <div class="ncheck-acts">
+      ${ask}
+      <button class="act-btn act-approve" onclick="ncheckSetStatus('${num}','confirmed')">✓ Подтвердить</button>
+      <button class="act-btn act-reject" onclick="ncheckSetStatus('${num}','cancelled')">✗ Отменить</button>
+    </div>
+    <div class="ncheck-res" id="ncheck-res"></div>
+  </div>`;
+}
+const OST_ORDER_ST = { completed:'оформлена (completed)', cancelled:'отменена (cancelled)', rejected:'отклонена (rejected)',
+  failed:'не оформлена (failed)', processing:'в обработке (processing)', noshow:'незаезд (noshow)' };
+async function ncheckAsk(num) {
+  const box = document.getElementById('ncheck-res'); if (!box) return;
+  box.innerHTML = '<span style="color:var(--muted)">Спрашиваю Островок…</span>';
+  try {
+    const r = await fetch(`${API}/api/ostrovok/order/details`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ partner_order_id: num })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (!document.getElementById('ncheck-res')) return;   // окно уже закрыли
+    if (!r.ok || !d.ok || !d.order) {
+      box.innerHTML = '<b style="color:#dc2626">Ответа нет:</b> ' + esc(d.error || ('ошибка ' + r.status))
+        + (d.debug ? ' <span style="color:var(--muted)">(' + esc(typeof d.debug === 'string' ? d.debug : JSON.stringify(d.debug)) + ')</span>' : '');
+      return;
+    }
+    const o = d.order, st = String(o.status || '').toLowerCase();
+    const hint = st === 'completed' ? 'У Островка бронь оформлена — её можно подтвердить.'
+      : (st === 'cancelled' || st === 'rejected' || st === 'failed') ? 'У Островка брони нет — её можно отменить у нас.'
+      : 'Ясного ответа по-прежнему нет — повторите позже или уточните у Островка.';
+    const row = (k, v) => (v == null || v === '') ? '' : `<div class="detail-row"><b>${k}:</b> <span>${esc(v)}</span></div>`;
+    box.innerHTML = row('Статус у Островка', OST_ORDER_ST[st] || o.status || '—')
+      + row('Номер заказа Островка', o.order_id)
+      + row('Заезд / выезд', (o.checkin_at || '') + (o.checkout_at ? ' → ' + o.checkout_at : ''))
+      + `<div style="margin:4px 0 2px;font-weight:600">${esc(hint)}</div>`
+      + `<details><summary style="cursor:pointer;color:var(--muted)">Полный ответ Островка</summary><pre>${esc(JSON.stringify(o, null, 2))}</pre></details>`;
+  } catch (e) {
+    const b2 = document.getElementById('ncheck-res');
+    if (b2) b2.innerHTML = '<b style="color:#dc2626">Сервис недоступен.</b> Попробуйте через минуту.';
+  }
+}
+async function ncheckSetStatus(num, status) {
+  if (status === 'cancelled') { await adminCancelBooking(num); refreshAfterNcheck(); return; }
+  if (!confirm('Подтвердить бронь ' + num + '?\n\nДелайте это, только если убедились, что у Островка бронь оформлена (статус completed).')) return;
+  try {
+    const r = await fetch(`${API}/api/bookings/${encodeURIComponent(num)}/status`, {
+      method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ status: 'confirmed' })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { showToast('Бронь подтверждена'); await loadBookings(); applyBookingFilters(); refreshAfterNcheck(); return; }
+    alert(d.error || 'Не удалось подтвердить бронь');
+    showToast('Бронь НЕ подтверждена', true);
+  } catch (e) {
+    showToast('Сервис недоступен', true);
+  }
+}
+// После решения: карточку закрываем, если статус сменился; дашборд — перерисовываем
+function refreshAfterNcheck() {
+  try { renderDashboard(); } catch (e) {}
+  const t = document.getElementById('modal-title');
+  const b = (allBookings || []).find(x => t && t.textContent === 'Бронь ' + x.booking_num);
+  if (b && !isNeedsCheck(b)) closeModal();
 }
 
 // ── ADMIN ACTIONS ──
@@ -4124,8 +4282,9 @@ function fmtDate(d) {
 }
 
 function statusBadge(s) {
-  const map = {confirmed:'badge-green',pending:'badge-amber',cancelled:'badge-red',completed:'badge-blue'};
-  const labels = {confirmed:'Подтверждено',pending:'Ожидает',cancelled:'Отменено',completed:'Завершено'};
+  // 15.10: needs_check — «Требует проверки» (Островок за 15 минут не дал ясного ответа)
+  const map = {confirmed:'badge-green',pending:'badge-amber',cancelled:'badge-red',completed:'badge-blue',needs_check:'badge-ncheck'};
+  const labels = {confirmed:'Подтверждено',pending:'Ожидает',cancelled:'Отменено',completed:'Завершено',needs_check:'⚠️ Требует проверки'};
   return `<span class="badge ${map[s]||'badge-gray'}">${labels[s]||s}</span>`;
 }
 
