@@ -129,6 +129,8 @@ button{cursor:pointer;font-family:inherit}
 .sec-title{font-size:13px;font-weight:700}
 .sec-cnt{font-size:11px;color:var(--muted);margin-left:8px}
 .sec-btn{padding:5px 14px;background:var(--green);color:#fff;border:none;border-radius:7px;font-size:11px;font-weight:700}
+/* 16.10: «Отзывы Островка» — неактивные кнопки (идёт загрузка, выключено, понедельник 10:00–10:30) видно сразу */
+#rv-sec .sec-btn:disabled{opacity:.45;cursor:not-allowed}
 table{width:100%;border-collapse:collapse}
 th{padding:10px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);font-weight:700;border-bottom:1px solid var(--border);background:var(--surf2)}
 td{padding:10px 12px;font-size:12px;border-bottom:1px solid var(--border)}
@@ -645,7 +647,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
             <div class="stat-sub">ожидают проверки</div>
           </div>
           <div class="stat">
-            <div class="stat-label">Туристов</div>
+            <div class="stat-label">Гостей</div><!-- 16.10: подпись «Гостей» (считает пользователей с ролью гостя; ключ роли на сервере прежний) -->
             <div class="stat-val c-blue" id="s-tourists">—</div>
             <div class="stat-sub">зарегистрировано</div>
           </div>
@@ -892,7 +894,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
             <div style="display:flex;gap:6px">
               <button class="act-btn urole-chip" data-urole="all"        onclick="setUserFilter('all',this)">Все</button>
               <button class="act-btn urole-chip" data-urole="hotelowner" onclick="setUserFilter('hotelowner',this)">Партнёры</button>
-              <button class="act-btn urole-chip" data-urole="tourist"    onclick="setUserFilter('tourist',this)">Туристы</button>
+              <button class="act-btn urole-chip" data-urole="tourist"    onclick="setUserFilter('tourist',this)">Гости</button><!-- 16.10: подпись «Гости»; значение роли для сервера прежнее -->
             </div>
           </div>
           <div class="fbar">
@@ -1133,6 +1135,15 @@ tr.au-fail:hover td{background:var(--red-dim)}
           </div>
           <div class="ag-note">Дамп — весь каталог Островка. Сервер скачивает его, отбирает объекты Беларуси и сохраняет фото, описания, удобства, бесконтактное заселение и правила объектов. Идёт долго, обычно до часа. <b>Пока дамп идёт, не заливайте файлы на сервер</b>: перезапуск оборвёт его, и придётся начинать заново.</div>
           <div id="dump-box"><div class="empty">Загрузка…</div></div>
+        </div>
+        <!-- 16.10: отзывы Островка из дампа (порция 31 бэкенда) — ручной запуск и ход. Выключено на сервере — 404, блок так и пишет -->
+        <div class="section" id="rv-sec">
+          <div class="sec-head">
+            <div><span class="sec-title">Отзывы Островка</span> <span class="sec-cnt" id="rv-at"></span></div>
+            <div><button class="sec-btn" id="rv-btn-full" onclick="agRvStart('full',this)">⬇ Загрузить все отзывы</button> <button class="sec-btn" id="rv-btn-inc" onclick="agRvStart('incremental',this)">↻ Обновить</button></div>
+          </div>
+          <div class="ag-note">«Загрузить все отзывы» — полный дамп отзывов Островка, «Обновить» — только изменения. Сохраняются отзывы объектов Беларуси, которые есть у нас: оценка, число отзывов и последние отзывы, без имён авторов. По расписанию сервер делает это сам. <span id="rv-hint"></span></div>
+          <div id="rv-box"><div class="empty">Загрузка…</div></div>
         </div>
         </div><!-- /ag-main -->
         <!-- 15.10: история оплат Агентике — только брони Островка; оплаты компании — в «Оплаты → История» -->
@@ -1667,9 +1678,24 @@ document.getElementById('loginPass').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
 
-function doLogout() {
+// 16.10: выход — сначала POST /api/users/logout (порция 31 бэкенда), чтобы выход попал в журнал действий,
+// потом, как раньше, стираем вход. Ручки нет (404), сервер не ответил за 4 с или ошибка сети — выходим всё равно,
+// без сообщений. Вход стираем сразу после отправки запроса: ответ 401 (токен уже не действует)
+// не должен показывать «Срок входа истёк».
+async function doLogout(skipServer) {
+  const tok = adminToken;
+  let req = null;
+  if (tok && !skipServer) {
+    try {
+      const ctl = typeof AbortController === 'function' ? new AbortController() : null;
+      if (ctl) setTimeout(() => { try { ctl.abort(); } catch (e) {} }, 4000);
+      req = fetch(`${API}/api/users/logout`, { method:'POST', headers: authHeaders(), body: '{}', keepalive: true,
+        signal: ctl ? ctl.signal : undefined }).catch(() => null);
+    } catch (e) { req = null; }
+  }
   admTokenClear();   // 09.10: стираем вход на этом устройстве
   adminToken = '';
+  if (req) { try { await req; } catch (e) {} }
   location.reload();
 }
 // 09.10: «Выйти на всех устройствах» — сервер отзывает все выданные токены, включая этот.
@@ -1684,7 +1710,7 @@ async function doLogoutAll() {
       return;
     }
     if (!r.ok) { let e=''; try{ e=(await r.json()).error; }catch(_){} showToast(e || ('Ошибка ' + r.status), true); return; }
-    doLogout();
+    doLogout(true);   // 16.10: токены уже отозваны сервером — /logout не зовём
   } catch (e) { showToast('Ошибка соединения', true); }
 }
 function admLogoutAllHide(set) {
@@ -2063,7 +2089,9 @@ async function payUnpaid(id, period) {
 }
 async function payDelete(id) {
   var x = _pay.items.find(function (i) { return i.id === id; }); if (!x) return;
-  if (!confirm('Удалить напоминание «' + x.title + '» вместе с отметками об оплате?\n\nЧтобы просто приостановить — «✎» и снять галочку «напоминать».')) return;
+  // 16.10: предупреждение об истории оплат — на сервере отметки удаляются вместе с напоминанием (ON DELETE CASCADE).
+  // Когда бэкенд сделает удаление в архив — текст поменять.
+  if (!confirm('Удалить напоминание «' + x.title + '» вместе с отметками об оплате?\n\nИстория оплат этого напоминания будет удалена. Если напоминание больше не нужно — лучше выключить ✎ (снять галочку «напоминать»).')) return;
   var r = await fetch(API + '/api/admin/reminders/' + id, { method: 'DELETE', headers: authHeaders() });
   if (!r.ok) { showToast('Не удалилось', true); return; }
   if (_pay.edit === id) payFormClose();
@@ -2545,6 +2573,7 @@ async function loadAgentika(){
   agBenchHistory();
   agLimits(false);
   agDump();
+  agRvStatus();   // 16.10: отзывы Островка
   const box=document.getElementById('ag-unpaid');
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
@@ -3090,6 +3119,77 @@ async function agDumpStart(btn){
   }catch(e){ showToast('Ошибка сети: '+e.message,true); }
   finally{ btn._busy=false; agDump(); }
 }
+// ═ 16.10 ОТЗЫВЫ ОСТРОВКА ИЗ ДАМПА: запуск и ход ═
+// POST /api/ostrovok/reviews/dump/start {type:'full'|'incremental'}, GET /api/ostrovok/reviews/dump/status — только админ.
+// 404 — функция выключена (OST_REVIEWS≠1), нет таблицы или старый сервер. Пока идёт — статус раз в 10 с.
+// В понедельник 10:00–10:30 по Минску сервер дамп не запускает — кнопки неактивны (так же считает и сервер: UTC+3).
+var _rvPoll=null, _rvState={ off:false, running:false };
+function agRvBlackout(){ var m=new Date(Date.now()+3*3600*1000); var mins=m.getUTCHours()*60+m.getUTCMinutes(); return m.getUTCDay()===1&&mins>=600&&mins<630; }
+function agRvButtons(){
+  var bo=agRvBlackout(), hint=document.getElementById('rv-hint');
+  ['rv-btn-full','rv-btn-inc'].forEach(function(id){
+    var b=document.getElementById(id); if(!b||b._busy) return;
+    b.disabled=bo||_rvState.off||_rvState.running;
+    b.title=bo?'В понедельник с 10:00 до 10:30 по Минску дамп отзывов не запускается':(_rvState.off?'Отзывы выключены на сервере':(_rvState.running?'Загрузка уже идёт':''));
+  });
+  if(hint) hint.innerHTML=bo?'<b>Сейчас понедельник 10:00–10:30 по Минску — в это время дамп отзывов не запускается, кнопки неактивны.</b>':'';
+}
+async function agRvStatus(){
+  const box=document.getElementById('rv-box'); if(!box) return;
+  clearTimeout(_rvPoll);
+  try{
+    const r=await fetch(API+'/api/ostrovok/reviews/dump/status',{headers:authHeaders()});
+    const d=await r.json().catch(function(){ return {}; });
+    if(r.status===404){
+      _rvState={ off:true, running:false };
+      box.innerHTML='<div class="empty">Отзывы выключены (OST_REVIEWS) или старый сервер'+(d.error?'<div class="ag-sub">'+esc(d.error)+'</div>':'')+'</div>';
+      return;
+    }
+    if(!r.ok||!d.ok){ _rvState={ off:false, running:false }; box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    const j=d.job||{}, so=d.stored||null;
+    _rvState={ off:false, running:j.state==='running' };
+    const st=({idle:[j.last_try?'не идёт':'не запускался после перезапуска сервера','badge-gray'],running:['идёт','badge-amber'],done:['готово','badge-green'],error:['ошибка','badge-red']})[j.state]||[String(j.state||'—'),'badge-gray'];
+    const kind=j.type==='incremental'?'обновление (изменения)':(j.type==='full'?'все отзывы (полный)':'');
+    const n=function(v){ return Number(v||0).toLocaleString('ru-RU'); };
+    let prog='—';
+    if(j.state==='running') prog=(j.phase==='save'?'Сохраняем':'Скачиваем')+': просмотрено <b>'+n(j.processed)+'</b>, объектов Беларуси сохранено <b>'+n(j.saved)+'</b>';
+    else if(j.state==='done') prog='Сохранено объектов Беларуси: <b>'+n(j.saved)+'</b> · просмотрено '+n(j.processed)+(j.type==='full'&&j.removed?' · без отзывов стало '+n(j.removed):'')+(j.finished_at?' · закончен '+esc(agDumpFmt(j.finished_at)):'');
+    else if(j.state==='error') prog='<span style="color:#dc2626">Ошибка: '+esc(j.error||'')+'</span>';
+    if(j.state!=='error'&&j.error) prog+='<div style="color:#dc2626;margin-top:4px">Ошибка: '+esc(j.error)+'</div>';
+    // формат файла и первые поля — чтобы понять, почему ничего не сопоставилось (значений сервер не отдаёт, только имена полей)
+    const fk=Array.isArray(j.first_keys)?j.first_keys.join(', '):(j.first_keys?String(j.first_keys):'');
+    const fmt=(j.format||j.compression||fk)
+      ? '<div class="ag-sub" style="margin-top:6px">'+(j.format?'Формат: '+esc(j.format):'')+(j.compression?(j.format?' · ':'')+'сжатие: '+esc(j.compression):'')+(fk?((j.format||j.compression)?' · ':'')+'первые поля: '+esc(fk):'')+'</div>' : '';
+    const lt=j.last_try;
+    const ltTxt=lt
+      ? 'Последний запуск: '+(lt.by==='admin'?'из админки':'по расписанию')+', '+esc(agDumpFmt(lt.at))+' — '+(lt.ok?esc(lt.detail):'<b style="color:#dc2626">'+esc(lt.detail)+'</b>')
+      : 'После перезапуска сервера запусков ещё не было';
+    box.innerHTML='<div class="dump-grid">'
+      +'<div><div class="ag-sub">Состояние</div><span class="badge '+st[1]+'">'+esc(st[0])+'</span>'+(kind&&j.state!=='idle'?'<div class="ag-sub">'+esc(kind)+'</div>':'')+(j.started_at&&j.state!=='idle'?'<div class="ag-sub">начат '+esc(agDumpFmt(j.started_at))+'</div>':'')+'</div>'
+      +'<div style="grid-column:span 2"><div class="ag-sub">Ход</div>'+prog+fmt+'<div class="ag-sub" style="margin-top:6px">'+ltTxt+'</div>'
+      +(so?'<div class="ag-sub" style="margin-top:6px">В базе: объектов с отзывами — <b>'+n(so.n)+'</b>'+(so.last?', обновлено '+esc(agDumpFmt(so.last)):'')+'</div>':'')
+      +'</div></div>';
+    const at=document.getElementById('rv-at'); if(at) at.textContent=_rvState.running?'· обновляется каждые 10 с':'';
+    if(_rvState.running && curAdmPage()==='agentika') _rvPoll=setTimeout(agRvStatus,10000);
+  }catch(e){ box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+  finally{ agRvButtons(); }
+}
+async function agRvStart(type,btn){
+  if(agRvBlackout()){ showToast('В понедельник 10:00–10:30 по Минску дамп отзывов не запускается',true); agRvButtons(); return; }
+  if(type==='full' && !confirm('Загрузить все отзывы Островка (полный дамп)?\n\nПока загрузка идёт, не заливайте файлы на сервер: перезапуск оборвёт её.')) return;
+  const bt=btn.textContent;
+  btn._busy=true; btn.disabled=true; btn.textContent='Запускаем…';
+  try{
+    const r=await fetch(API+'/api/ostrovok/reviews/dump/start',{method:'POST',headers:authHeaders(),body:JSON.stringify({type:type})});
+    const d=await r.json().catch(function(){ return {}; });
+    if(r.status===404) showToast('Отзывы выключены (OST_REVIEWS) или старый сервер',true);
+    else if(!r.ok||!d.ok) showToast(d.error||('Ошибка '+r.status),true);
+    else showToast(type==='full'?'Загрузка всех отзывов запущена — ход виден в блоке':'Обновление отзывов запущено — ход виден в блоке');
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+  finally{ btn._busy=false; btn.textContent=bt; agRvStatus(); }
+}
+// окно «понедельник 10:00–10:30» начинается и кончается, пока страница открыта, — кнопки пересчитываем раз в 30 с (без запросов к серверу)
+setInterval(function(){ if(curAdmPage()==='agentika') agRvButtons(); },30000);
 async function agBench(){
   const btn=document.getElementById('bn-btn');
   const body={ cities:document.getElementById('bn-cities').value, checkin:document.getElementById('bn-in').value, checkout:document.getElementById('bn-out').value, residency:(document.getElementById('bn-res')||{}).value||'by' };
@@ -4394,9 +4494,10 @@ function setUserFilter(role, el) {
   renderTouristsTable(allUsers);
 }
 
-const ROLE_LABEL = { hotelowner:'Партнёр', hotel_owner:'Партнёр', tourist:'Турист', admin:'Админ' };
+// 16.10: подпись роли — «Гость»; ключ роли (как его хранит сервер) не меняется
+const ROLE_LABEL = { hotelowner:'Партнёр', hotel_owner:'Партнёр', tourist:'Гость', admin:'Админ' };
 
-// Раньше таблица показывала ТОЛЬКО туристов — отельеры не отображались нигде,
+// Раньше таблица показывала ТОЛЬКО гостей — отельеры не отображались нигде,
 // и сбросить им пароль было негде.
 function resetUserFilters() {
   ['us-search','us-factive'].forEach(id => { const e=document.getElementById(id); if(e) e.value=''; });
@@ -4477,7 +4578,7 @@ async function approveApp(id, email, name, hotelName) {
     // 1. Создаём аккаунт отельера
     // ═ ИСПРАВЛЕНО ═ Запрос шёл БЕЗ админского токена. Бэкенд разрешает задавать роль
     // только админу, поэтому role:'hotelowner' молча отбрасывался и аккаунт создавался
-    // ТУРИСТОМ — отельер не мог войти в кабинет.
+    // ГОСТЕМ — отельер не мог войти в кабинет.
     const ur = await fetch(`${API}/api/users/register`, {
       method: 'POST',
       headers: authHeaders(),
@@ -4652,6 +4753,9 @@ function needsCheckBoxHTML(b) {
   const num = escAttr(b.booking_num);
   const ask = b.source === 'ostrovok'
     ? `<button class="act-btn" style="background:var(--blue-dim);color:var(--blue)" onclick="ncheckAsk('${num}')">🔎 Проверить у Островка</button>` : '';
+  // 16.10: «Отменить только у нас» — бронь, которой у Островка нет (порция 30 бэкенда: только брони Островка)
+  const localOnly = b.source === 'ostrovok'
+    ? `<button class="act-btn act-reject" style="background:transparent;border:1.5px solid #dc2626" onclick="ncheckCancelLocal('${num}')">✗ Отменить только у нас (у Островка заказа нет)</button>` : '';
   return `<div class="ncheck-box">
     <b>⚠️ Требует проверки.</b> Островок за 15 минут не подтвердил и не отклонил бронь.
     Проверьте её у Островка и решите вручную: подтвердить или отменить.
@@ -4659,6 +4763,7 @@ function needsCheckBoxHTML(b) {
       ${ask}
       <button class="act-btn act-approve" onclick="ncheckSetStatus('${num}','confirmed')">✓ Подтвердить</button>
       <button class="act-btn act-reject" onclick="ncheckSetStatus('${num}','cancelled')">✗ Отменить</button>
+      ${localOnly}
     </div>
     <div class="ncheck-res" id="ncheck-res"></div>
   </div>`;
@@ -4705,6 +4810,24 @@ async function ncheckSetStatus(num, status) {
     if (r.ok) { showToast('Бронь подтверждена'); await loadBookings(); applyBookingFilters(); refreshAfterNcheck(); return; }
     alert(d.error || 'Не удалось подтвердить бронь');
     showToast('Бронь НЕ подтверждена', true);
+  } catch (e) {
+    showToast('Сервис недоступен', true);
+  }
+}
+// 16.10: отмена «только у нас» — PATCH /api/bookings/:num/status { status:'cancelled', local_only:true, confirm:<номер> }.
+// Сервер сам спрашивает Островок (order/info): заказ есть — 409, Островок не ответил — 502, статус тогда не меняется.
+async function ncheckCancelLocal(num) {
+  if (!confirm('Отменить бронь ' + num + ' только у нас?\n\nСервер сам проверит у Островка, что заказа нет. Если заказ есть — отмена не пройдёт.')) return;
+  try {
+    const r = await fetch(`${API}/api/bookings/${encodeURIComponent(num)}/status`, {
+      method: 'PATCH', headers: authHeaders(), body: JSON.stringify({ status: 'cancelled', local_only: true, confirm: num })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.ok) { showToast('Бронь отменена только у нас'); await loadBookings(); applyBookingFilters(); refreshAfterNcheck(); return; }
+    if (r.status === 409 && (d.ostrovok_order || !d.error)) alert('У Островка заказ есть — отменяйте обычной кнопкой');
+    else if (r.status === 502) alert('Островок не ответил, попробуйте позже');
+    else alert(d.error || ('Не удалось отменить бронь (ошибка ' + r.status + ')'));
+    showToast('Бронь НЕ отменена', true);
   } catch (e) {
     showToast('Сервис недоступен', true);
   }
