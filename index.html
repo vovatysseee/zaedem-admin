@@ -261,6 +261,8 @@ tr.pay-off td{opacity:.55}
 .hs-total:empty{display:none}
 .hs-total b{color:var(--text)}
 .hs-total .hs-sub{color:var(--muted)}
+/* 16.10: пометка «(архив)» в «Оплаты → История» — напоминание удалено в архив */
+.ph-arch{color:var(--muted);font-weight:400;font-size:12px}
 .hs-tbl td{vertical-align:top}
 .hs-num{font-family:ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;font-size:11.5px}
 .hs-sum{white-space:nowrap;font-weight:700;font-variant-numeric:tabular-nums}
@@ -1145,6 +1147,15 @@ tr.au-fail:hover td{background:var(--red-dim)}
           <div class="ag-note">«Загрузить все отзывы» — полный дамп отзывов Островка, «Обновить» — только изменения. Сохраняются отзывы объектов Беларуси, которые есть у нас: оценка, число отзывов и последние отзывы, без имён авторов. По расписанию сервер делает это сам. <span id="rv-hint"></span></div>
           <div id="rv-box"><div class="empty">Загрузка…</div></div>
         </div>
+        <!-- 16.10: места рядом с объектами из OpenStreetMap (порция 33 бэкенда) — ручной импорт и ход. Старый сервер — 404, блок так и пишет -->
+        <div class="section" id="nb-sec">
+          <div class="sec-head">
+            <div><span class="sec-title">Места рядом (OpenStreetMap)</span> <span class="sec-cnt" id="nb-at"></span></div>
+            <button class="sec-btn" id="nb-btn" onclick="agNbStart(this)">↻ Обновить места</button>
+          </div>
+          <div class="ag-note">«Обновить места» — сервер загружает свежую выгрузку OpenStreetMap и обновляет места рядом с объектами: парки, вода, магазины, аптеки, кафе, остановки. Импорт занимает несколько минут. <b>Пока он идёт, сервер не перезапускайте</b>. <span id="nb-hint"></span></div>
+          <div id="nb-box"><div class="empty">Загрузка…</div></div>
+        </div>
         </div><!-- /ag-main -->
         <!-- 15.10: история оплат Агентике — только брони Островка; оплаты компании — в «Оплаты → История» -->
         <div class="section" id="ag-sec-paid" style="display:none">
@@ -1925,6 +1936,9 @@ async function payLoad() {
       return false;
     }
     _pay.items = d.items || [];
+    // 16.10: delete_archive: true (порция 32 бэкенда) — «✕» убирает напоминание в архив, история оплат остаётся.
+    // Нет поля или false — подпись и подтверждение у «✕» прежние.
+    _pay.archive = d.delete_archive === true;
     // 09.10: получатели и платёжки — только если сервер их включил (payments_file) и отдаёт получателей (404 — выключено)
     await payPeLoad(d.payments_file === true);
     document.getElementById('pay-tgh').textContent = String(d.tg_hour).padStart(2, '0') + ':00' + (d.alerts ? '' : ' (Telegram сейчас выключен)');
@@ -1965,7 +1979,7 @@ function payRender() {
         + '<td class="pay-acts">' + (canPay ? '<button class="act-btn act-approve" onclick="payPaid(' + x.id + ')">✓ Оплачено</button>' : '')
         + (_pay.on && x.payee ? '<button class="act-btn act-approve" title="Файл платёжного поручения для eParitet" onclick="ppOpen(' + x.id + ')">📄 Платёжка</button>' : '')
         + '<button class="act-btn act-cancel" title="Изменить" onclick="payForm(' + x.id + ')">✎</button>'
-        + '<button class="act-btn act-reject" title="Удалить" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';
+        + '<button class="act-btn act-reject" title="' + (_pay.archive ? 'Удалить (в архив, история оплат сохранится)' : 'Удалить') + '" onclick="payDelete(' + x.id + ')">✕</button></td></tr>';   // 16.10: подпись по delete_archive
     }).join('') + '</tbody></table>' + moreBtn('pay');
 }
 // 04.10 (порция 20): общий отклик для кнопок «↻ Обновить» в разделах (график броней на главной, Журнал, Агентика).
@@ -2091,11 +2105,16 @@ async function payDelete(id) {
   var x = _pay.items.find(function (i) { return i.id === id; }); if (!x) return;
   // 16.10: предупреждение об истории оплат — на сервере отметки удаляются вместе с напоминанием (ON DELETE CASCADE).
   // Когда бэкенд сделает удаление в архив — текст поменять.
-  if (!confirm('Удалить напоминание «' + x.title + '» вместе с отметками об оплате?\n\nИстория оплат этого напоминания будет удалена. Если напоминание больше не нужно — лучше выключить ✎ (снять галочку «напоминать»).')) return;
+  // 16.10: сервер с порцией 32 (delete_archive: true) удаляет в архив — история оплат остаётся во вкладке «История».
+  var arch = _pay.archive;
+  if (!confirm(arch
+    ? 'Напоминание уйдёт в архив. История оплат останется во вкладке «История»'
+    : 'Удалить напоминание «' + x.title + '» вместе с отметками об оплате?\n\nИстория оплат этого напоминания будет удалена. Если напоминание больше не нужно — лучше выключить ✎ (снять галочку «напоминать»).')) return;
   var r = await fetch(API + '/api/admin/reminders/' + id, { method: 'DELETE', headers: authHeaders() });
   if (!r.ok) { showToast('Не удалилось', true); return; }
+  var d = null; try { d = await r.json(); } catch (e) {}
   if (_pay.edit === id) payFormClose();
-  showToast('Удалено'); payLoad();
+  showToast(arch && d && d.archived === true ? 'Удалено в архив, история оплат сохранена' : 'Удалено'); payLoad();
 }
 
 // ══ ПОЛУЧАТЕЛИ И ПЛАТЁЖКИ (09.10): реквизиты с НДС, «📄 Платёжка» для eParitet (на сервере — /api/admin/payees и /reminders/:id/payment-file) ══
@@ -2574,6 +2593,7 @@ async function loadAgentika(){
   agLimits(false);
   agDump();
   agRvStatus();   // 16.10: отзывы Островка
+  agNbStatus();   // 16.10: места рядом (OpenStreetMap)
   const box=document.getElementById('ag-unpaid');
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
@@ -2848,7 +2868,8 @@ function phRender() {
   box.innerHTML = '<table class="hs-tbl"><thead><tr><th>Что оплачено</th><th>За месяц</th><th>Получатель</th><th>Сумма</th><th>Дата оплаты</th><th>№ платёжки</th><th>Кто отметил</th></tr></thead><tbody>'
     + shown.map(function (r) {
       var v = hsKop(r.vat);
-      return '<tr><td data-l="Что оплачено"><b>' + esc(r.title || '—') + '</b></td>'
+      // 16.10: archived: true — напоминание удалено в архив (порция 32 бэкенда), запись истории осталась
+      return '<tr><td data-l="Что оплачено"><b>' + esc(r.title || '—') + '</b>' + (r.archived === true ? ' <span class="ph-arch">(архив)</span>' : '') + '</td>'
         + '<td data-l="За месяц" style="white-space:nowrap">' + esc(hsPeriod(r.period)) + '</td>'
         + '<td data-l="Получатель">' + (r.payee_short_name ? esc(r.payee_short_name) : '—') + '</td>'
         + '<td data-l="Сумма"><span class="hs-sum">' + (hsKop(r.total) === null ? '—' : payNum(r.total)) + '</span>'
@@ -2862,7 +2883,8 @@ function phCsv() {
   var it = _hs.ph.items;
   if (!it.length) { showToast('За период нет оплат — нечего выгружать', true); return; }
   var rows = [['Что оплачено', 'За месяц', 'Получатель', 'Сумма', 'в т.ч. НДС', 'Дата оплаты (Минск)', '№ платёжки', 'Кто отметил']];
-  it.forEach(function (r) { rows.push([hsCsvCell(r.title), hsCsvCell(hsPeriod(r.period)), hsCsvCell(r.payee_short_name), hsCsvNum(r.total), hsCsvNum(r.vat), hsCsvCell(hsWhen(r.paid_at)), hsCsvCell(r.payment_order_no), hsCsvCell(r.paid_by)]); });
+  // 16.10: «(архив)» — и в CSV, как в таблице
+  it.forEach(function (r) { rows.push([hsCsvCell((r.title || '') + (r.archived === true ? ' (архив)' : '')), hsCsvCell(hsPeriod(r.period)), hsCsvCell(r.payee_short_name), hsCsvNum(r.total), hsCsvNum(r.vat), hsCsvCell(hsWhen(r.paid_at)), hsCsvCell(r.payment_order_no), hsCsvCell(r.paid_by)]); });
   var t = hsSums(it, 'total', null), v = hsSums(it, 'vat', null);
   rows.push([hsCsvCell('Итого (' + hsPlural(it.length) + ')'), '', '', t.length ? hsCsvNum(t[0].kop / 100) : '', v.length ? hsCsvNum(v[0].kop / 100) : '', '', '', '']);
   hsCsvSave(hsCsvName('ph', 'oplaty_istoriya'), rows);
@@ -3190,6 +3212,79 @@ async function agRvStart(type,btn){
 }
 // окно «понедельник 10:00–10:30» начинается и кончается, пока страница открыта, — кнопки пересчитываем раз в 30 с (без запросов к серверу)
 setInterval(function(){ if(curAdmPage()==='agentika') agRvButtons(); },30000);
+// ═ 16.10 МЕСТА РЯДОМ (OpenStreetMap): импорт выгрузки на сервер — запуск и ход ═
+// POST /api/admin/nearby/import, GET /api/admin/nearby/import/status — только админ (порция 33 бэкенда).
+// Статус: состояние (idle/running/done/error), дата выгрузки, сколько мест по видам, ошибка —
+// поля берём из job или из корня ответа: state, dump_date (или osm_date), counts {вид: число}, error.
+// 404 — «Недоступно на этой версии сервера». Пока импорт идёт — статус раз в 10 с.
+// В понедельник 10:00–10:30 по Минску кнопка неактивна — то же окно, что у дампа отзывов (agRvBlackout).
+var _nbPoll=null, _nbState={ na:false, running:false };
+var NB_KIND={ water:'Вода, озёра', park:'Парки', beach:'Пляжи', supermarket:'Магазины', pharmacy:'Аптеки', cafe:'Кафе', restaurant:'Рестораны', bus_stop:'Остановки', wood:'Лес' };
+function agNbButton(){
+  var b=document.getElementById('nb-btn'), hint=document.getElementById('nb-hint'), bo=agRvBlackout();
+  if(b&&!b._busy){
+    b.disabled=bo||_nbState.na||_nbState.running;
+    b.textContent=_nbState.running?'Импорт идёт…':'↻ Обновить места';
+    b.title=bo?'В понедельник с 10:00 до 10:30 по Минску импорт мест не запускается':(_nbState.na?HS_NA:(_nbState.running?'Импорт уже идёт':''));
+  }
+  if(hint) hint.innerHTML=bo?'<b>Сейчас понедельник 10:00–10:30 по Минску — в это время импорт мест не запускается, кнопка неактивна.</b>':'';
+}
+// counts — {вид: число} или [{kind|label, count|n}]; неизвестный вид показываем как прислал сервер
+function agNbCounts(c){
+  var list=[];
+  if(Array.isArray(c)) c.forEach(function(x){ if(x&&typeof x==='object') list.push([x.label||NB_KIND[x.kind]||x.kind||'—', x.count!=null?x.count:x.n]); });
+  else if(c&&typeof c==='object') Object.keys(c).forEach(function(k){ list.push([NB_KIND[k]||k, c[k]]); });
+  return list.filter(function(x){ return x[1]!=null&&!isNaN(Number(x[1])); });
+}
+async function agNbStatus(){
+  const box=document.getElementById('nb-box'); if(!box) return;
+  clearTimeout(_nbPoll);
+  try{
+    const r=await fetch(API+'/api/admin/nearby/import/status',{headers:authHeaders(),cache:'no-store'});
+    if(r.status===404){ _nbState={ na:true, running:false }; box.innerHTML='<div class="empty">'+HS_NA+'</div>'; return; }
+    const d=await r.json().catch(function(){ return {}; });
+    if(!r.ok||d.ok===false){ _nbState={ na:false, running:false }; box.innerHTML='<div class="empty">'+esc(d.error||('Ошибка '+r.status))+'</div>'; return; }
+    const j=(d.job&&typeof d.job==='object')?d.job:d;
+    const state=j.state||j.status||'idle';
+    _nbState={ na:false, running:state==='running' };
+    const st=({idle:['не идёт','badge-gray'],running:['идёт','badge-amber'],done:['готово','badge-green'],error:['ошибка','badge-red']})[state]||[String(state),'badge-gray'];
+    const n=function(v){ return Number(v||0).toLocaleString('ru-RU'); };
+    const dumpDate=j.dump_date||j.osm_date||d.dump_date||d.osm_date||null;
+    const err=j.error||(j!==d?d.error:null)||'';
+    const cnt=agNbCounts(j.counts||d.counts);
+    const total=cnt.reduce(function(a,x){ return a+Number(x[1]); },0);
+    const started=j.started_at||j.startedAt, finished=j.finished_at||j.finishedAt;
+    let prog='—';
+    if(state==='running') prog='Импорт идёт'+(started?' с '+esc(agDumpFmt(started)):'')+' — обычно несколько минут';
+    else if(state==='done') prog='Готово'+(finished?' · закончен '+esc(agDumpFmt(finished)):'')+(cnt.length?' · всего мест <b>'+n(total)+'</b>':'');
+    else if(state==='error') prog='<span style="color:#dc2626">Ошибка: '+esc(err)+'</span>';
+    if(state!=='error'&&err) prog+='<div style="color:#dc2626;margin-top:4px">Ошибка: '+esc(err)+'</div>';
+    box.innerHTML='<div class="dump-grid">'
+      +'<div><div class="ag-sub">Состояние</div><span class="badge '+st[1]+'">'+esc(st[0])+'</span></div>'
+      +'<div><div class="ag-sub">Дата выгрузки OpenStreetMap</div><b>'+esc(dumpDate?hsWhen(dumpDate):'—')+'</b></div>'
+      +'<div><div class="ag-sub">Ход</div>'+prog+'</div></div>'
+      +(cnt.length?'<div class="dump-grid dump-nums">'+cnt.map(function(x){ return agDumpNum(x[0],n(x[1])); }).join('')+'</div>'
+        :'<div class="ag-sub" style="padding:0 1.2rem 12px">Сколько мест по видам — сервер пока не прислал</div>');
+    const at=document.getElementById('nb-at'); if(at) at.textContent=_nbState.running?'· обновляется каждые 10 с':'';
+    if(_nbState.running && curAdmPage()==='agentika') _nbPoll=setTimeout(agNbStatus,10000);
+  }catch(e){ _nbState={ na:false, running:false }; box.innerHTML='<div class="empty">Ошибка сети: '+esc(e.message)+'</div>'; }
+  finally{ agNbButton(); }
+}
+async function agNbStart(btn){
+  if(agRvBlackout()){ showToast('В понедельник 10:00–10:30 по Минску импорт мест не запускается',true); agNbButton(); return; }
+  if(!confirm('Импорт займёт несколько минут; пока он идёт, сервер не перезапускать')) return;
+  btn._busy=true; btn.disabled=true; btn.textContent='Запускаем…';
+  try{
+    const r=await fetch(API+'/api/admin/nearby/import',{method:'POST',headers:authHeaders(),body:'{}'});
+    const d=await r.json().catch(function(){ return {}; });
+    if(r.status===404) showToast(HS_NA,true);
+    else if(!r.ok||d.ok===false) showToast(d.error||(r.status===409?'Импорт уже идёт':'Ошибка '+r.status),true);
+    else showToast('Импорт мест запущен — ход виден в блоке');
+  }catch(e){ showToast('Ошибка сети: '+e.message,true); }
+  finally{ btn._busy=false; agNbStatus(); }
+}
+// окно «понедельник 10:00–10:30» — кнопку пересчитываем раз в 30 с без запросов к серверу
+setInterval(function(){ if(curAdmPage()==='agentika') agNbButton(); },30000);
 async function agBench(){
   const btn=document.getElementById('bn-btn');
   const body={ cities:document.getElementById('bn-cities').value, checkin:document.getElementById('bn-in').value, checkout:document.getElementById('bn-out').value, residency:(document.getElementById('bn-res')||{}).value||'by' };
