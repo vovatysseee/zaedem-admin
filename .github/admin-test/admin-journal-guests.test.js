@@ -1,15 +1,21 @@
-// 19.10: проверка порции «журнал брони у Островка, брони гостей в «Пользователях», даты без GMT».
-// Запуск: node tests/admin-journal-guests.test.js  (нужны playwright и Chromium; API — заглушки, в сеть не ходит).
+// 19.10: проверка порции «журнал брони у Островка, брони гостей в «Пользователях», даты без GMT, подпись платформы».
+// Лежит в .github/ — GitHub Pages эту папку не публикует (на сайт не попадает).
+// Запуск из корня репозитория: node .github/admin-test/admin-journal-guests.test.js
+// Нужны playwright и Chromium; API — заглушки, в сеть не ходит.
+// Три режима бэкенда: old3 — старый бэкенд, все брони загружены; old250 — старый, загружены не все («≥»);
+// new — бэкенд порции 39 (bookings_count, last_booking_at, source, source_ru в GET /api/users).
 const http = require('http'), fs = require('fs'), path = require('path');
 let chromium; try { ({ chromium } = require('playwright')); } catch (e) { ({ chromium } = require('/node-tools/node_modules/playwright')); }
 
-const ROOT = path.join(__dirname, '..');
+const ROOT = path.join(__dirname, '..', '..');
 const bk = (o) => Object.assign({ status: 'confirmed', currency: 'BYN', total_price: 100, nights: 2, guests_count: 2,
   hotel_name: 'Тест-отель', room_name: 'Стандарт', check_in: '2026-11-20', check_out: '2026-11-22' }, o);
 const BOOKINGS = [
   bk({ id: 'b1', booking_num: 'ZD-1001', source: 'direct',   guest_name: 'Анна',  guest_email: 'anna@test.by',  created_at: '2026-10-10T09:00:00Z', host_opened_at: '2026-10-10T10:00:00Z' }),
   bk({ id: 'b2', booking_num: 'ZD-1002', source: 'direct',   guest_name: 'Анна',  guest_email: 'Anna@test.by',  created_at: '2026-10-15T09:00:00Z', host_opened_at: null }),
   bk({ id: 'b3', booking_num: 'OST-2001', source: 'ostrovok', guest_name: 'Борис', guest_email: 'boris@test.by', created_at: '2026-10-12T09:00:00Z', host_opened_at: null }),
+  // порция 39 бэкенда: у Островка вместо host_opened_at — host_opened_na
+  bk({ id: 'b4', booking_num: 'OST-2002', source: 'ostrovok', guest_name: 'Борис', guest_email: 'boris@test.by', created_at: '2026-10-13T09:00:00Z', host_opened_na: true }),
 ];
 const USERS = [
   { id: 'u1', email: 'anna@test.by',  name: 'Анна',  phone: '+375291', role: 'tourist', is_active: true, created_at: '2026-09-01T00:00:00Z' },
@@ -18,7 +24,13 @@ const USERS = [
   { id: 'u4', email: 'adm@test.by',   name: 'Админ', phone: '',        role: 'admin', is_active: true, created_at: '2026-09-04T00:00:00Z' },
 ];
 
-async function run(vw, vh, total) {
+// Ответ GET /api/users бэкенда порции 39: точные числа с сервера (у Анны — 5, больше, чем загружено броней), source_ru у гостя из брони
+const USERS_NEW = USERS.map(u => Object.assign({}, u, { bookings_count: 0, last_booking_at: null, source: null, source_ru: null }));
+Object.assign(USERS_NEW[0], { bookings_count: 5, last_booking_at: '2026-10-18T08:00:00Z', source: 'booking', source_ru: 'из брони' });
+
+async function run(vw, vh, mode) {
+  const total = mode === 'old250' ? 250 : 3;
+  const isNew = mode === 'new';
   const errs = [];
   const srv = http.createServer((q, r) => { r.setHeader('Content-Type', 'text/html; charset=utf-8'); r.end(fs.readFileSync(path.join(ROOT, 'index.html'))); }).listen(0);
   const base = 'http://127.0.0.1:' + srv.address().port + '/';
@@ -33,7 +45,7 @@ async function run(vw, vh, total) {
     if (u.host !== 'api.zaedem.by') return route.fulfill({ status: 200, contentType: 'text/plain', body: '' });   // шрифты и прочее — пусто
     if (p === '/api/users/login') return json(route, { success: true, token: 't', user: { role: 'admin' } });
     if (p === '/api/bookings') return json(route, { bookings: u.searchParams.get('status') ? [] : BOOKINGS, total });
-    if (p === '/api/users') return json(route, { users: USERS, total: USERS.length });
+    if (p === '/api/users') return json(route, { users: isNew ? USERS_NEW : USERS, total: USERS.length });
     const j = p.match(/^\/api\/bookings\/([^/]+)\/journal$/);
     if (j) { const b = BOOKINGS.find(x => x.booking_num === decodeURIComponent(j[1])); return json(route, { booking: b, consents: [], transfers: [] }); }
     if (p === '/api/applications') return json(route, { applications: [] });
@@ -41,17 +53,24 @@ async function run(vw, vh, total) {
     return json(route, {});
   });
   await page.goto(base);
+  // подпись платформы на экране входа: под «Панель администратора», мелко, без горизонтальной прокрутки
+  const tag = await page.$eval('.login-tag', e => ({ t: e.innerText, fs: parseFloat(getComputedStyle(e).fontSize), below: e.getBoundingClientRect().top >= document.querySelector('.login-sub').getBoundingClientRect().bottom - 1, vis: e.offsetParent !== null }));
+  const loginRes = {
+    loginTag: tag.t === 'Белорусская платформа бронирования жилья' && tag.vis && tag.below && tag.fs <= 12,
+    loginNoHScroll: await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth),
+  };
   await page.fill('#loginEmail', 'adm'); await page.fill('#loginPass', 'x'); await page.click('#loginWrap button[type=button], #loginWrap .login-btn, #loginWrap button');
   await page.waitForSelector('#app', { state: 'visible' });
   await page.waitForTimeout(600);
-  const res = {};
+  const res = Object.assign({}, loginRes);
   const noHScroll = async () => page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth);
 
   // журнал: Островок — строки нет; свои (открыл / не открыл) — есть
   await page.evaluate(() => showPage('bookings', null));
   const journal = async (num) => { await page.evaluate(n => showJournal(n), num); await page.waitForSelector('#modal-body .jr-sec'); const t = await page.innerText('#modal-body'); await page.evaluate(() => closeModal && closeModal()); return t; };
   const jo = await journal('OST-2001'), jd1 = await journal('ZD-1001'), jd2 = await journal('ZD-1002');
-  res.journalOstNoRow = !jo.includes('Хозяин открыл') && jo.includes('Источник');
+  const jo2 = await journal('OST-2002');   // Островок с host_opened_na
+  res.journalOstNoRow = !jo.includes('Хозяин открыл') && !jo2.includes('Хозяин открыл') && jo.includes('Источник');
   res.journalDirectRow = jd1.includes('Хозяин открыл') && jd2.includes('Хозяин открыл') && jd2.includes('ещё не открывал');
 
   // детали брони: дата вида «20 нояб. 2026 г.», без GMT
@@ -65,8 +84,13 @@ async function run(vw, vh, total) {
   await page.click('.urole-chip[data-urole="tourist"]');
   const rows = await page.$$eval('#tourists-table tr', trs => trs.slice(1).map(tr => tr.innerText.replace(/\s+/g, ' ')));
   res.guestsListed = rows.length === 2;
-  res.annaCount = rows.some(r => r.includes('anna@test.by') && r.includes(total > 3 ? '≥2' : '2') && r.includes('последняя: 15 окт. 2026 г.'));
+  // new — число и дата с сервера (5, 18 окт.), без «≥»; old — по загруженным броням (2, 15 окт.), «≥» если загружены не все
+  const annaWant = isNew ? ['5', 'последняя: 18 окт. 2026 г.'] : [mode === 'old250' ? '≥2' : '2', 'последняя: 15 окт. 2026 г.'];
+  res.annaCount = rows.some(r => r.includes('anna@test.by') && annaWant.every(x => r.includes(x))) && (!isNew || !rows.join().includes('≥'));
   res.veraNone = rows.some(r => r.includes('vera@test.by') && r.includes('нет'));
+  // метка «из брони» рядом с e-mail — только там, где сервер её прислал
+  const srcLbl = await page.$$eval('#tourists-table tr', trs => trs.slice(1).map(tr => [tr.innerText.includes('anna@test.by'), !!tr.querySelector('.u-src'), (tr.querySelector('.u-src') || {}).innerText]));
+  res.sourceLabel = isNew ? srcLbl.filter(x => x[1]).length === 1 && srcLbl.some(x => x[0] && x[2] === 'из брони') : srcLbl.every(x => !x[1]);
   await page.click('.urole-chip[data-urole="hotelowner"]');
   res.ownerNoCount = (await page.$$eval('#tourists-table tr', trs => trs.slice(1).map(tr => tr.innerText))).every(t => !t.includes('последняя'));
   res.usersNoHScroll = await noHScroll();
@@ -94,11 +118,11 @@ async function run(vw, vh, total) {
 
 (async () => {
   let fail = 0;
-  for (const [w, h] of [[1366, 768], [390, 844]]) for (const total of [3, 250]) {
-    const { res, errs } = await run(w, h, total);
-    for (const k in res) if (!res[k]) { fail++; console.log(`FAIL ${w}x${h} total=${total}: ${k}`); }
+  for (const [w, h] of [[1366, 768], [390, 844]]) for (const mode of ['old3', 'old250', 'new']) {
+    const { res, errs } = await run(w, h, mode);
+    for (const k in res) if (!res[k]) { fail++; console.log(`FAIL ${w}x${h} ${mode}: ${k}`); }
     if (errs.length) console.log(errs.join('\n'));
-    console.log(`${w}x${h} total=${total}: ${Object.values(res).filter(Boolean).length}/${Object.keys(res).length} ok`);
+    console.log(`${w}x${h} ${mode}: ${Object.values(res).filter(Boolean).length}/${Object.keys(res).length} ok`);
   }
   process.exit(fail ? 1 : 0);
 })();

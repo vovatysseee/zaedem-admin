@@ -72,7 +72,9 @@ button{cursor:pointer;font-family:inherit}
 .login-box{background:#fff;border-radius:20px;padding:40px;width:100%;max-width:400px;box-shadow:0 20px 60px rgba(0,0,0,.3)}
 .login-logo{font-family:'Unbounded',sans-serif;font-size:1.4rem;font-weight:800;color:var(--green);margin-bottom:4px}
 .login-logo span{color:var(--lime)}
-.login-sub{font-size:13px;color:var(--muted);margin-bottom:32px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:4px}   /* 19.10: было 32px — отступ теперь у подписи платформы ниже */
+/* 19.10: подпись платформы под «Панель администратора» (мелко, как у логотипа сайта) */
+.login-tag{font-size:11px;color:var(--muted);letter-spacing:.2px;margin-bottom:32px}
 .login-field{margin-bottom:16px}
 .login-field label{display:block;font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px}
 .login-field input{width:100%;padding:12px 14px;border:1.5px solid var(--border);border-radius:var(--r);font-size:14px;font-family:inherit;outline:none;transition:.2s}
@@ -155,6 +157,8 @@ tr:hover td{background:var(--surf2)}
 .ncheck-res{margin-top:10px;font-size:12px;color:var(--text)}
 .ncheck-res pre{max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--surf2);padding:8px;border-radius:8px;font-size:10px;margin-top:6px}
 .act-btn{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;border:none;cursor:pointer}
+/* 19.10: метка «из брони» рядом с e-mail (порция 39 бэкенда: поле source_ru) */
+.u-src{display:inline-block;font-size:10px;color:var(--muted);border:1px solid var(--border);border-radius:5px;padding:0 5px;margin-left:4px;white-space:nowrap}
 /* 19.10: число броней у гостя в «Пользователях» — ссылка во «Все брони» */
 .u-bk{color:var(--blue,#2563eb);text-decoration:underline;cursor:pointer}
 .act-approve{background:rgba(26,92,56,.1);color:var(--green)}
@@ -560,6 +564,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
   <div class="login-box">
     <div class="login-logo">Заедем<span>.by</span></div>
     <div class="login-sub">Панель администратора</div>
+    <div class="login-tag">Белорусская платформа бронирования жилья</div>
     <div class="login-field">
       <label>Логин</label>
       <input type="text" id="loginEmail" placeholder="zaedem_admin" autocomplete="username">
@@ -4266,6 +4271,7 @@ function renderJournal(d) {
 
   // 19.10: у броней Островка хозяина в нашей системе нет — карточку открывать некому, строку
   // «Хозяин открыл» не показываем (иначе вечное «ещё не открывал» читается как сбой). Для своих — как раньше.
+  // Порция 39 бэкенда для Островка шлёт host_opened_na: true — по нему тоже скрываем.
   const head = `
     <div class="jr-sec">
       <div class="jr-h">Бронь</div>
@@ -4275,7 +4281,7 @@ function renderJournal(d) {
       <div class="detail-row"><b>Версия оферты:</b> ${b.offer_version ? esc(b.offer_version) : '<span style="color:var(--hint)">не записана</span>'}</div>
       <div class="detail-row"><b>Акцепт оферты:</b> ${fmtTs(b.offer_accepted_at)}</div>
       <div class="detail-row"><b>Прибытие гостя:</b> ${b.guest_arrival_time ? esc(b.guest_arrival_time) : '<span style="color:var(--hint)">не указано</span>'}</div>
-      ${b.source === 'ostrovok' ? '' : `<div class="detail-row"><b>Хозяин открыл:</b> ${b.host_opened_at ? fmtTs(b.host_opened_at) : '<span style="color:var(--hint)">ещё не открывал</span>'}</div>`}
+      ${(b.source === 'ostrovok' || b.host_opened_na) ? '' : `<div class="detail-row"><b>Хозяин открыл:</b> ${b.host_opened_at ? fmtTs(b.host_opened_at) : '<span style="color:var(--hint)">ещё не открывал</span>'}</div>`}
     </div>
     <div class="jr-sec">
       <div class="jr-h">Деньги</div>
@@ -4605,11 +4611,13 @@ function resetUserFilters() {
   renderTouristsTable(allUsers);
 }
 
-// 19.10: у гостя — число броней и дата последней. Отдельной ручки со счётчиком у бэкенда нет
-// (GET /api/users отдаёт id, email, name, phone, role, is_active, created_at), поэтому считаем
-// по уже загруженным броням, сопоставляя по e-mail. Если сервер отдал не все брони — число
-// со знаком «≥» (честнее, чем занижать молча). Клик — «Все брони» с поиском по e-mail гостя.
+// 19.10: у гостя — число броней и дата последней. Берём с сервера: порция 39 бэкенда отдаёт в
+// GET /api/users поля bookings_count и last_booking_at (по привязке bookings.user_id) — это точное число.
+// Если этих полей нет (бэкенд ещё не влит) — запасной путь: считаем по уже загруженным броням,
+// сопоставляя по e-mail; если сервер отдал не все брони — число со знаком «≥» (честнее, чем занижать молча).
+// Клик — «Все брони» с поиском по e-mail гостя.
 function userBookingStats(u) {
+  if (typeof u.bookings_count === 'number') return { n: u.bookings_count, last: u.last_booking_at ? String(u.last_booking_at) : '', exact: true };
   const em = String(u.email || '').toLowerCase().trim();
   let n = 0, last = '';
   if (em) (allBookings || []).forEach(b => {
@@ -4617,14 +4625,14 @@ function userBookingStats(u) {
     n++;
     if (b.created_at && String(b.created_at) > last) last = String(b.created_at);
   });
-  return { n: n, last: last };
+  return { n: n, last: last, exact: false };
 }
 function userBookingsCell(u) {
   if (u.role !== 'tourist') return '<span style="color:var(--hint)">—</span>';
   const s = userBookingStats(u);
   if (!s.n) return '<span style="color:var(--hint)">нет</span>';
-  const num = (bkNotAll ? '≥' : '') + s.n;
-  return `<a href="#bookings" class="u-bk" onclick="event.preventDefault();openUserBookings('${escAttr(u.email)}')" title="Показать брони гостя во «Все брони»"><b>${num}</b></a><br><span style="color:var(--muted);font-size:10px">последняя: ${fmtDate(s.last)}</span>`;
+  const num = (!s.exact && bkNotAll ? '≥' : '') + s.n;
+  return `<a href="#bookings" class="u-bk" onclick="event.preventDefault();openUserBookings('${escAttr(u.email)}')" title="Показать брони гостя во «Все брони»"><b>${num}</b></a><br><span style="color:var(--muted);font-size:10px">${s.last ? 'последняя: ' + fmtDate(s.last) : ''}</span>`;
 }
 function openUserBookings(email) {
   resetBookingFilters();   // 19.10: сбрасываем прежние фильтры, иначе часть броней гостя может не показаться
@@ -4659,7 +4667,7 @@ function renderTouristsTable(users) {
       ${shown.map(u => `
         <tr>
           <td data-l="Имя">${esc(u.name||u.first_name||'—')}</td>
-          <td data-l="Email">${esc(u.email)}</td>
+          <td data-l="Email">${esc(u.email)}${u.source_ru ? ` <span class="u-src" title="Запись создана автоматически из брони">${esc(u.source_ru)}</span>` : ''}</td>
           <td data-l="Роль">${ROLE_LABEL[u.role] || u.role || '—'}</td>
           <td data-l="Телефон">${esc(u.phone||'—')}</td>
           <td data-l="Брони">${userBookingsCell(u)}</td>
