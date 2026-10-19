@@ -155,6 +155,8 @@ tr:hover td{background:var(--surf2)}
 .ncheck-res{margin-top:10px;font-size:12px;color:var(--text)}
 .ncheck-res pre{max-height:220px;overflow:auto;white-space:pre-wrap;word-break:break-word;background:var(--surf2);padding:8px;border-radius:8px;font-size:10px;margin-top:6px}
 .act-btn{padding:3px 10px;border-radius:6px;font-size:10px;font-weight:700;border:none;cursor:pointer}
+/* 19.10: число броней у гостя в «Пользователях» — ссылка во «Все брони» */
+.u-bk{color:var(--blue,#2563eb);text-decoration:underline;cursor:pointer}
 .act-approve{background:rgba(26,92,56,.1);color:var(--green)}
 .act-approve:hover{background:var(--green);color:#fff}
 .act-reject{background:var(--red-dim);color:#dc2626}
@@ -1539,6 +1541,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
 const API = 'https://api.zaedem.by';
 
 let allBookings = [];
+let bkNotAll = false;   // 19.10: сервер отдал не все брони (limit=100) — число броней у гостя в «Пользователях» считаем по загруженным и помечаем «≥»
 let allApps = [];
 let allUsers = [];
 let allHotels = [];
@@ -3847,8 +3850,9 @@ async function loadBookings() {
     const r = await fetch(`${API}/api/bookings?limit=100`, { headers: authHeaders() });
     const d = await r.json();
     allBookings = d.bookings || [];
+    bkNotAll = Number(d.total || 0) > allBookings.length;   // 19.10: см. bkNotAll
     document.getElementById('nb-bookings').textContent = allBookings.filter(b => b.status === 'confirmed').length;
-  } catch(e) { allBookings = []; }
+  } catch(e) { allBookings = []; bkNotAll = false; }
   // 15.10: брони «Требует проверки» могут быть старше последних 100 — дотягиваем их отдельным
   // запросом и добавляем в список. Старый бэкенд такого статуса не знает и вернёт пустой список.
   try {
@@ -4260,6 +4264,8 @@ function renderJournal(d) {
 
   const money = (v, c) => (v == null || v === '') ? '—' : (parseFloat(v).toFixed(2) + ' ' + esc(c || 'BYN'));
 
+  // 19.10: у броней Островка хозяина в нашей системе нет — карточку открывать некому, строку
+  // «Хозяин открыл» не показываем (иначе вечное «ещё не открывал» читается как сбой). Для своих — как раньше.
   const head = `
     <div class="jr-sec">
       <div class="jr-h">Бронь</div>
@@ -4269,7 +4275,7 @@ function renderJournal(d) {
       <div class="detail-row"><b>Версия оферты:</b> ${b.offer_version ? esc(b.offer_version) : '<span style="color:var(--hint)">не записана</span>'}</div>
       <div class="detail-row"><b>Акцепт оферты:</b> ${fmtTs(b.offer_accepted_at)}</div>
       <div class="detail-row"><b>Прибытие гостя:</b> ${b.guest_arrival_time ? esc(b.guest_arrival_time) : '<span style="color:var(--hint)">не указано</span>'}</div>
-      <div class="detail-row"><b>Хозяин открыл:</b> ${b.host_opened_at ? fmtTs(b.host_opened_at) : '<span style="color:var(--hint)">ещё не открывал</span>'}</div>
+      ${b.source === 'ostrovok' ? '' : `<div class="detail-row"><b>Хозяин открыл:</b> ${b.host_opened_at ? fmtTs(b.host_opened_at) : '<span style="color:var(--hint)">ещё не открывал</span>'}</div>`}
     </div>
     <div class="jr-sec">
       <div class="jr-h">Деньги</div>
@@ -4599,6 +4605,33 @@ function resetUserFilters() {
   renderTouristsTable(allUsers);
 }
 
+// 19.10: у гостя — число броней и дата последней. Отдельной ручки со счётчиком у бэкенда нет
+// (GET /api/users отдаёт id, email, name, phone, role, is_active, created_at), поэтому считаем
+// по уже загруженным броням, сопоставляя по e-mail. Если сервер отдал не все брони — число
+// со знаком «≥» (честнее, чем занижать молча). Клик — «Все брони» с поиском по e-mail гостя.
+function userBookingStats(u) {
+  const em = String(u.email || '').toLowerCase().trim();
+  let n = 0, last = '';
+  if (em) (allBookings || []).forEach(b => {
+    if (String(b.guest_email || '').toLowerCase().trim() !== em) return;
+    n++;
+    if (b.created_at && String(b.created_at) > last) last = String(b.created_at);
+  });
+  return { n: n, last: last };
+}
+function userBookingsCell(u) {
+  if (u.role !== 'tourist') return '<span style="color:var(--hint)">—</span>';
+  const s = userBookingStats(u);
+  if (!s.n) return '<span style="color:var(--hint)">нет</span>';
+  const num = (bkNotAll ? '≥' : '') + s.n;
+  return `<a href="#bookings" class="u-bk" onclick="event.preventDefault();openUserBookings('${escAttr(u.email)}')" title="Показать брони гостя во «Все брони»"><b>${num}</b></a><br><span style="color:var(--muted);font-size:10px">последняя: ${fmtDate(s.last)}</span>`;
+}
+function openUserBookings(email) {
+  resetBookingFilters();   // 19.10: сбрасываем прежние фильтры, иначе часть броней гостя может не показаться
+  const q = document.getElementById('bk-search'); if (q) q.value = email;
+  showPage('bookings', null);
+}
+
 function renderTouristsTable(users) {
   let list = (users || []).filter(u => {
     if (currentUserFilter === 'all') return true;
@@ -4622,13 +4655,14 @@ function renderTouristsTable(users) {
   const shown = moreTake('us', list, currentUserFilter + '|' + fa + '|' + q, function(){ renderTouristsTable(allUsers); });   // 09.10: по 20
   document.getElementById('tourists-table').innerHTML = list.length ? `
     <table>
-      <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
+      <tr><th>Имя</th><th>Email</th><th>Роль</th><th>Телефон</th><th>Брони</th><th>Регистрация</th><th>Статус</th><th>Действия</th></tr>
       ${shown.map(u => `
         <tr>
           <td data-l="Имя">${esc(u.name||u.first_name||'—')}</td>
           <td data-l="Email">${esc(u.email)}</td>
           <td data-l="Роль">${ROLE_LABEL[u.role] || u.role || '—'}</td>
           <td data-l="Телефон">${esc(u.phone||'—')}</td>
+          <td data-l="Брони">${userBookingsCell(u)}</td>
           <td data-l="Регистрация">${fmtDate(u.created_at)}</td>
           <td data-l="Статус">${u.is_active ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Заблокирован</span>'}</td>
           <td style="white-space:nowrap">
