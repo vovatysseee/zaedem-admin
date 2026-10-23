@@ -555,6 +555,43 @@ tr.au-fail:hover td{background:var(--red-dim)}
   .logout-all{min-height:32px}
   .more-btn{min-height:40px;width:100%}
 }
+/* 23.10: роли сотрудников, смена временного пароля, экран «только через VPN», «Сотрудники» и «Отчёты» */
+.tb-user{display:flex;flex-direction:column;align-items:flex-end;line-height:1.25;min-width:0;max-width:210px;margin:0 14px 0 auto}
+.tb-user b{font-size:12px;color:var(--text);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tb-user span{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+.login-note{font-size:13px;color:var(--muted);line-height:1.55;margin:14px 0 18px}
+.login-link{display:block;width:100%;margin-top:10px;padding:10px;background:none;border:none;color:var(--muted);font-size:12px;font-weight:600;font-family:inherit;cursor:pointer}
+.login-link:hover{color:var(--green)}
+.vpn-ico{font-size:38px;line-height:1;margin-bottom:10px}
+.vpn-h{font-size:1.15rem;font-weight:800;margin:0 0 4px}
+.adm-403{display:none;margin:0 0 1rem;padding:10px 14px;border-radius:10px;background:var(--amber-dim);color:#92400e;font-size:12.5px;line-height:1.5;border:1px solid rgba(245,158,11,.35)}
+.na-box{padding:3rem 1.2rem;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+.na-box b{display:block;font-size:1.05rem;color:var(--text);margin:6px 0 2px}
+#app:not(.adm-r-admin) .adm-only{display:none!important}
+.st-me{font-size:10px;color:var(--muted);font-weight:700}
+.st-pwd{display:block;margin:10px 0;padding:12px 14px;background:var(--surf2);border:1.5px dashed var(--border2);border-radius:10px;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:16px;letter-spacing:.5px;word-break:break-all;user-select:all}
+.st-warn{font-size:12px;line-height:1.5;color:#92400e;background:var(--amber-dim);border-radius:8px;padding:8px 12px;margin-bottom:8px}
+.rp-dates{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.rp-dates label{display:flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);font-weight:600}
+.rp-acts{display:flex;gap:8px;flex-wrap:wrap}
+.rp-msg{padding:10px 1.2rem;font-size:12.5px;line-height:1.5;border-bottom:1px solid var(--border)}
+.rp-msg:empty{display:none}
+.rp-msg.ok{color:var(--green)}
+.rp-msg.err{color:#dc2626}
+.rp-st{padding:12px 1.2rem;font-size:12.5px;line-height:1.6;border-bottom:1px solid var(--border)}
+.rp-st b{color:var(--text)}
+.rp-sub{font-size:11px;color:var(--muted);padding:8px 1.2rem 0;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
+@media(max-width:760px){
+  .tb-user{flex:1 1 100%;order:3;align-items:flex-start;max-width:none;margin:0}
+  .tb-r{margin-left:auto}
+  .rp-dates{flex:1 1 100%}
+  .rp-dates label{flex:1 1 100%}
+  .rp-dates input{flex:1}
+  .rp-acts{flex:1 1 100%}
+  .rp-acts .sec-btn{flex:1 1 100%}
+  .login-box{max-width:none}
+  .st-pwd{font-size:14px}
+}
 </style>
 </head>
 <body>
@@ -580,6 +617,41 @@ tr.au-fail:hover td{background:var(--red-dim)}
   </div>
 </div>
 
+<!-- 23.10: обязательная смена временного пароля при первом входе (после выдачи или сброса пароля директором).
+     Отдельный блок, а не часть loginWrap: форма входа остаётся ровно такой, как была -->
+<div class="login-wrap" id="pwWrap" style="display:none">
+  <div class="login-box">
+    <div class="login-logo">Заедем<span>.by</span></div>
+    <div class="login-sub">Смена временного пароля</div>
+    <p class="login-note">Вам выдан временный пароль. Придумайте свой — пока он не сменён, работать в панели нельзя.</p>
+    <div class="login-field">
+      <label for="pwOld">Временный пароль</label>
+      <input type="password" id="pwOld" autocomplete="current-password">
+    </div>
+    <div class="login-field">
+      <label for="pwNew">Новый пароль (от 8 знаков)</label>
+      <input type="password" id="pwNew" autocomplete="new-password">
+    </div>
+    <div class="login-field">
+      <label for="pwNew2">Повторите новый пароль</label>
+      <input type="password" id="pwNew2" autocomplete="new-password">
+    </div>
+    <button class="login-btn" id="pwBtn" onclick="doChangeTmpPassword()">Сменить пароль и войти</button>
+    <button type="button" class="login-link" onclick="admPwCancel()">Назад ко входу</button>
+    <div class="login-err" id="pwErr"></div>
+  </div>
+</div>
+
+<!-- 23.10: сервер ответил «Доступ только через VPN» (бэкенд 40А, STAFF_ALLOWED_NETS) -->
+<div class="login-wrap" id="vpnWrap" style="display:none">
+  <div class="login-box" style="text-align:center">
+    <div class="vpn-ico">🔒</div>
+    <h1 class="vpn-h" id="vpnTitle">Подключите VPN и обновите страницу</h1>
+    <p class="login-note">Панель Заедем.by открывается только из рабочей сети компании. Включите VPN, затем нажмите кнопку ниже.</p>
+    <button class="login-btn" id="vpnBtn" onclick="location.reload()">Обновить страницу</button>
+  </div>
+</div>
+
 <!-- APP -->
 <div id="app" style="display:none;width:100%;display:none">
   <!-- SIDEBAR -->
@@ -589,10 +661,10 @@ tr.au-fail:hover td{background:var(--red-dim)}
       <div class="sb-logo-sub">Панель администратора</div>
     </div>
     <div class="sb-admin">
-      <div class="sb-ava">А</div>
+      <div class="sb-ava" id="sbAva">А</div>
       <div>
-        <div class="sb-admin-name">Администратор</div>
-        <div class="sb-admin-role">Полный доступ</div>
+        <div class="sb-admin-name" id="sbName">Администратор</div>
+        <div class="sb-admin-role" id="sbRole">Директор</div>
       </div>
     </div>
     <div class="sb-nav">
@@ -607,10 +679,14 @@ tr.au-fail:hover td{background:var(--red-dim)}
       <div class="ni" onclick="showPage('moderation',this)"><span class="ni-ico">🕵️</span> На модерации <span class="nb" id="nb-moder">0</span></div>
       <div class="sb-sec">Пользователи</div>
       <div class="ni" onclick="showPage('tourists',this)"><span class="ni-ico">👤</span> Пользователи</div>
+      <!-- 23.10: сотрудники — личные входы директора, бухгалтера и поддержки (только директор) -->
+      <div class="ni" onclick="showPage('staff',this)"><span class="ni-ico">🧑‍💼</span> Сотрудники</div>
       <div class="sb-sec">Островок</div>
       <div class="ni" onclick="showPage('agentika',this)"><span class="ni-ico">💸</span> Агентика <span class="nb" id="nb-agentika" style="display:none">0</span></div>
       <div class="sb-sec">Компания</div>
       <div class="ni" onclick="showPage('pay',this)"><span class="ni-ico">💳</span> Оплаты <span class="nb" id="nb-pay" style="display:none">0</span></div>
+      <!-- 23.10: отчёты бухгалтеру — Excel и отправка на почту (директор и бухгалтер) -->
+      <div class="ni" onclick="showPage('reports',this)"><span class="ni-ico">📑</span> Отчёты</div>
       <div class="sb-sec">Сервер</div>
       <div class="ni" onclick="showPage('logs',this)"><span class="ni-ico">🧾</span> Журнал сервера</div>
       <!-- 15.10: журнал действий админов — кто, что и когда менял -->
@@ -627,6 +703,8 @@ tr.au-fail:hover td{background:var(--red-dim)}
   <div class="main">
     <div class="topbar">
       <div class="tb-title" id="pageTitle">Дашборд</div>
+      <!-- 23.10: кто вошёл — имя и роль по-русски. Вне .tb-r: на телефоне это отдельная строка шапки и не сжимает кнопки -->
+      <div class="tb-user" id="tbUser"><b id="tbUserName"></b><span id="tbUserRole"></span></div>
       <div class="tb-r">
         <div class="tb-bell" style="position:relative;display:inline-block">
           <button class="tb-btn" onclick="toggleBell()" style="position:relative" title="Уведомления">🔔<span id="bell-badge" style="display:none;position:absolute;top:-4px;right:-4px;background:#dc2626;color:#fff;font-size:10px;font-weight:700;min-width:16px;height:16px;border-radius:9px;padding:0 4px;line-height:16px;text-align:center"></span></button>
@@ -639,6 +717,8 @@ tr.au-fail:hover td{background:var(--red-dim)}
       </div>
     </div>
     <div class="content">
+      <!-- 23.10: любой ответ 403 от сервера — спокойная плашка вместо пустого экрана -->
+      <div class="adm-403" id="adm-403" role="alert"></div>
 
       <!-- DASHBOARD -->
       <div class="page on" id="page-dashboard">
@@ -1111,7 +1191,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
             <span class="ag-hint">Брони по дате выезда (п. 3.6). Цена системы, цена гостю, вознаграждение. Отчёт Агентике — до 6-го рабочего дня месяца (п. 3.12). Открывается в Excel.</span>
           </div>
         </div>
-        <div class="section">
+        <div class="section adm-only">
           <div class="sec-head">
             <div><span class="sec-title">Замер выдачи Островка</span> <span class="sec-cnt">эталон до и после смены ключа</span></div>
           </div>
@@ -1128,7 +1208,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
           </div>
           <div id="bn-out-box"></div>
         </div>
-        <div class="section">
+        <div class="section adm-only">
           <div class="sec-head">
             <div><span class="sec-title">Лимиты Островка по нашему ключу</span> <span class="sec-cnt" id="lim-at"></span></div>
             <button class="sec-btn" onclick="agLimits(true,this)">↻ Спросить у Островка</button>
@@ -1137,7 +1217,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
           <div id="lim-box"><div class="empty">Загрузка…</div></div>
         </div>
         <!-- 02.10: дамп каталога Островка — запуск и ход -->
-        <div class="section" id="dump-sec">
+        <div class="section adm-only" id="dump-sec">
           <div class="sec-head">
             <div><span class="sec-title">Каталог Островка (дамп)</span> <span class="sec-cnt" id="dump-at"></span></div>
             <button class="sec-btn" id="dump-btn" onclick="agDumpStart(this)">▶ Запустить дамп</button>
@@ -1146,7 +1226,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
           <div id="dump-box"><div class="empty">Загрузка…</div></div>
         </div>
         <!-- 16.10: отзывы Островка из дампа (порция 31 бэкенда) — ручной запуск и ход. Выключено на сервере — 404, блок так и пишет -->
-        <div class="section" id="rv-sec">
+        <div class="section adm-only" id="rv-sec">
           <div class="sec-head">
             <div><span class="sec-title">Отзывы Островка</span> <span class="sec-cnt" id="rv-at"></span></div>
             <div><button class="sec-btn" id="rv-btn-full" onclick="agRvStart('full',this)">⬇ Загрузить все отзывы</button> <button class="sec-btn" id="rv-btn-inc" onclick="agRvStart('incremental',this)">↻ Обновить</button></div>
@@ -1155,7 +1235,7 @@ tr.au-fail:hover td{background:var(--red-dim)}
           <div id="rv-box"><div class="empty">Загрузка…</div></div>
         </div>
         <!-- 16.10: места рядом с объектами из OpenStreetMap (порция 33 бэкенда) — ручной импорт и ход. Старый сервер — 404, блок так и пишет -->
-        <div class="section" id="nb-sec">
+        <div class="section adm-only" id="nb-sec">
           <div class="sec-head">
             <div><span class="sec-title">Места рядом (OpenStreetMap)</span> <span class="sec-cnt" id="nb-at"></span></div>
             <button class="sec-btn" id="nb-btn" onclick="agNbStart(this)">↻ Обновить места</button>
@@ -1182,6 +1262,67 @@ tr.au-fail:hover td{background:var(--red-dim)}
           </div>
           <div class="hs-total" id="ah-total"></div>
           <div id="ah-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- 23.10: ОТЧЁТЫ (директор и бухгалтер): период → Excel или письмо бухгалтеру; ниже — автоотправка.
+           Ручки бэкенда 40Б: GET /api/admin/reports/export, POST /api/admin/reports/send, GET /api/admin/reports/status -->
+      <div class="page" id="page-reports">
+        <div class="section">
+          <div class="sec-head"><div><span class="sec-title">Отчёт за период</span></div></div>
+          <div class="ag-note">Выберите период и скачайте Excel или отправьте этот же файл на почту бухгалтера. Период — не больше 13 месяцев. Данных гостей в отчёте нет.</div>
+          <div class="fbar">
+            <div class="seg" id="rp-pre">
+              <button type="button" data-p="yesterday" onclick="repPreset('yesterday',this)">Вчера</button>
+              <button type="button" data-p="prevweek" onclick="repPreset('prevweek',this)">Прошлая неделя</button>
+              <button type="button" data-p="prevmonth" onclick="repPreset('prevmonth',this)">Прошлый месяц</button>
+              <button type="button" data-p="thismonth" onclick="repPreset('thismonth',this)">Этот месяц</button>
+            </div>
+            <div class="rp-dates">
+              <label>С <input type="date" id="rp-from" onchange="repManual()"></label>
+              <label>По <input type="date" id="rp-to" onchange="repManual()"></label>
+            </div>
+            <div class="rp-acts">
+              <button class="sec-btn" id="rp-dl" onclick="repDownload(this)">⬇ Скачать Excel</button>
+              <button class="sec-btn" id="rp-send" onclick="repSend(this)">✉ Отправить бухгалтеру</button>
+            </div>
+          </div>
+          <div class="rp-msg" id="rp-msg" role="status"></div>
+        </div>
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Автоотправка</span></div>
+            <button class="sec-btn" onclick="admRefresh(this,'Автоотправка обновлена',repStatus)">↻ Обновить</button>
+          </div>
+          <div id="rp-auto"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- 23.10: СОТРУДНИКИ (только директор): добавить, сменить роль, выключить/включить, сбросить пароль.
+           Ручки бэкенда 40А: /api/admin/staff… (включаются на сервере STAFF_ACCOUNTS=1) -->
+      <div class="page" id="page-staff">
+        <div class="section">
+          <div class="sec-head">
+            <div><span class="sec-title">Сотрудники</span> <span class="sec-cnt" id="st-cnt"></span></div>
+            <div>
+              <button class="sec-btn" onclick="stAddForm()">＋ Добавить сотрудника</button>
+              <button class="sec-btn" onclick="admRefresh(this,'Список обновлён',stLoad)">↻ Обновить</button>
+            </div>
+          </div>
+          <div class="ag-note"><b>Директор</b> — всё. <b>Бухгалтер</b> — оплаты, Агентика, напоминания, отчёты, брони без данных гостей. <b>Поддержка</b> — брони, журнал брони, отмена. Временный пароль показывается один раз; при первом входе сотрудник обязан его сменить.</div>
+          <div id="st-list"><div class="loading"><div class="spin"></div><br>Загрузка...</div></div>
+        </div>
+      </div>
+
+      <!-- 23.10: раздел недоступен этой роли (прямая ссылка, старая закладка) — понятный экран вместо пустой страницы -->
+      <div class="page" id="page-noaccess">
+        <div class="section">
+          <div class="na-box">
+            <div style="font-size:34px">🔒</div>
+            <b>Нет доступа</b>
+            <span id="na-text">Этот раздел недоступен вашей роли.</span><br><br>
+            <button class="sec-btn" onclick="showPage(ADM_HOME[admRole()]||'dashboard',null)">Перейти в доступный раздел</button>
+          </div>
         </div>
       </div>
 
@@ -1556,6 +1697,45 @@ let currentAppFilter = 'all';
 // Кроме токена и срока здесь ничего не храним: данные гостей в localStorage не попадают.
 let adminToken = admTokenLoad();
 
+// ══════════════════════════════════════════════════════
+// 23.10: РОЛИ СОТРУДНИКОВ (бэкенд, порция 40А): директор (admin), бухгалтер (accountant), поддержка (support).
+// Меню и разделы скрываются по роли для удобства; настоящую проверку делает сервер (403) — скрытое здесь
+// по прямому запросу всё равно не откроется. Карта прав разделов повторяет STAFF_ACCESS из src/middleware/auth.js.
+// Директор видит всё, как и раньше.
+// ══════════════════════════════════════════════════════
+const ADM_ROLE_RU = { admin: 'Директор', accountant: 'Бухгалтер', support: 'Поддержка' };
+const ADM_PAGES = {
+  dashboard: ['admin'], applications: ['admin'], hotels: ['admin'], invite: ['admin'], newobj: ['admin'],
+  moderation: ['admin'], tourists: ['admin'], staff: ['admin'], logs: ['admin'], audit: ['admin'],
+  bookings: ['admin', 'accountant', 'support'],
+  agentika: ['admin', 'accountant'], pay: ['admin', 'accountant'], reports: ['admin', 'accountant']
+};
+const ADM_HOME = { admin: 'dashboard', accountant: 'pay', support: 'bookings' };   // с чего начинается работа
+let admUser = admUserLoad();   // кто вошёл: {id, email, name, role}
+let _admTmp = null;            // идёт обязательная смена временного пароля (токен пока только в памяти)
+let _admLastUid = '';          // чьи данные сейчас в памяти — при смене сотрудника без перезагрузки их сбрасываем
+function admNormRole(r) { r = String(r || ''); return r === 'hotelowner' ? 'hotel_owner' : r; }
+function admTokenPayload(t) {   // тело токена (JWT) без проверки подписи — только для показа и меню
+  try {
+    var p = String(t || '').split('.')[1]; if (!p) return {};
+    p = p.replace(/-/g, '+').replace(/_/g, '/'); while (p.length % 4) p += '=';
+    return JSON.parse(atob(p)) || {};
+  } catch (e) { return {}; }
+}
+function admUserLoad() {
+  if (!adminToken) return null;
+  var p = admTokenPayload(adminToken), s = {};
+  try { s = JSON.parse(localStorage.getItem('admin_user') || '{}') || {}; } catch (e) {}
+  var same = !p.id || !s.id || String(p.id) === String(s.id);   // имя из прошлого входа — только если это тот же человек
+  // 23.10: токен без роли — прежний вход директора (раньше пускали только его)
+  return { id: p.id || s.id || '', email: p.email || (same ? s.email : '') || '', name: same ? (s.name || '') : '', role: admNormRole(p.role || (same ? s.role : '') || 'admin') };
+}
+function admUserSave(u) {
+  try { localStorage.setItem('admin_user', JSON.stringify({ id: u.id, email: u.email, name: u.name, role: u.role })); } catch (e) {}
+}
+function admRole() { return admUser ? (ADM_ROLE_RU[admUser.role] ? admUser.role : '') : 'admin'; }
+function admCan(page) { var r = ADM_PAGES[page]; return !r || r.indexOf(admRole()) >= 0; }
+
 // ═ ЗАЩИТА ОТ XSS ═ Данные заявок, броней и пользователей приходят из ПУБЛИЧНЫХ форм.
 // Раньше они вставлялись в innerHTML как есть: заявка с названием вида
 // <img src=x onerror=...> выполняла чужой код прямо в браузере админа и уводила
@@ -1594,7 +1774,7 @@ function admTokenSave(t, remember) {
   try { localStorage.setItem('admin_token', t); localStorage.setItem('admin_exp', String(exp)); } catch (e) {}
 }
 function admTokenClear() {
-  try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_exp'); } catch (e) {}
+  try { localStorage.removeItem('admin_token'); localStorage.removeItem('admin_exp'); localStorage.removeItem('admin_user'); } catch (e) {}
   try { sessionStorage.removeItem('admin_token'); sessionStorage.removeItem('admin_auth'); } catch (e) {}
 }
 function admTokenLoad() {
@@ -1626,8 +1806,8 @@ function admSessionEnded(msg) {
   adminToken = '';
   admTokenClear();
   try { closeModal(); } catch (e) {}
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('loginWrap').style.display = 'flex';
+  _admTmp = null; admUser = null;
+  admShow('login');
   document.documentElement.classList.remove('adm-boot');
   admRememberDefault();
   var p = document.getElementById('loginPass'); if (p) p.value = '';
@@ -1637,19 +1817,22 @@ function admSessionEnded(msg) {
 // Запрос входа (без токена) сюда не попадает: там 401 — «неверный пароль».
 (function () {
   var _fetch = window.fetch.bind(window);
+  window._admRawFetch = _fetch;   // 23.10: запрос без разбора 401/403 — для смены временного пароля (там 401 значит «неверный пароль»)
   window.fetch = function (url, opts) {
     var sent = adminToken;
     return _fetch(url, opts).then(function (r) {
       try {
         var h = opts && opts.headers, auth = h && (h.Authorization || h.authorization);
         if (r.status === 401 && sent && sent === adminToken && auth && String(url).indexOf(API) === 0) admSessionEnded();
+        // 23.10: 403 на запрос с токеном: «Доступ только через VPN» / «смените пароль» / просто «Нет доступа» — без белого экрана
+        if (r.status === 403 && sent && sent === adminToken && auth && String(url).indexOf(API) === 0) admOn403(r);
       } catch (e) {}
       return r;
     });
   };
 })();
 // Срок вышел, пока админка была открыта, — при возврате на вкладку и раз в минуту
-function admCheckExpiry() { if (adminToken && !admTokenValid()) admSessionEnded(); }
+function admCheckExpiry() { if (adminToken && !_admTmp && !admTokenValid()) admSessionEnded(); }   // 23.10: пока меняют временный пароль, токена в хранилище ещё нет
 document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') admCheckExpiry(); });
 setInterval(admCheckExpiry, 60000);
 // Вышли или вошли в другой вкладке того же браузера — эта вкладка делает то же
@@ -1681,12 +1864,20 @@ async function doLogin() {
       body: JSON.stringify({email, password: pass, remember})
     });
     const d = await r.json();
+    // 23.10: «Доступ только через VPN» (бэкенд 40А) — отдельный экран, а не строка ошибки под формой
+    if (r.status === 403 && admIsVpn(d)) { admVpnScreen(); return; }
     if(!r.ok||!d.success){ errEl.textContent = d.error||'Неверный логин или пароль'; return; }
-    if(d.user.role !== 'admin'){ errEl.textContent = 'Доступ только для администраторов'; return; }
+    // 23.10: пускаем директора, бухгалтера и поддержку; гостей и партнёров — по-прежнему нет
+    const role = admNormRole(d.user && d.user.role);
+    if(!ADM_ROLE_RU[role]){ errEl.textContent = 'Доступ только для сотрудников'; return; }
     adminToken = d.token || '';
-    admTokenSave(adminToken, remember);
+    admUser = { id: d.user.id || admTokenPayload(adminToken).id || '', email: d.user.email || email, name: d.user.name || '', role: role };
     errEl.textContent = '';
     document.getElementById('loginPass').value = '';
+    // 23.10: пароль выдан директором (создание или сброс) — до его смены в панель не пускаем; токен пока не сохраняем
+    if (d.user.must_change_password === true) { _admTmp = { remember }; admPwView(pass); return; }
+    admTokenSave(adminToken, remember);
+    admUserSave(admUser);
     admEnter();
   } catch(e) {
     errEl.textContent = 'Ошибка соединения';
@@ -1696,6 +1887,122 @@ async function doLogin() {
 document.getElementById('loginPass').addEventListener('keydown', e => {
   if (e.key === 'Enter') doLogin();
 });
+
+// 23.10: какой из экранов показан: форма входа, смена временного пароля, «только через VPN» или сама панель
+function admShow(v) {
+  var m = { login: 'loginWrap', pw: 'pwWrap', vpn: 'vpnWrap' };
+  Object.keys(m).forEach(function (k) { var e = document.getElementById(m[k]); if (e) e.style.display = (k === v) ? 'flex' : 'none'; });
+  document.getElementById('app').style.display = v === 'app' ? 'flex' : 'none';
+}
+function admIsVpn(d) { return !!d && (d.vpn_required === true || /VPN/.test(String(d.error || ''))); }
+// Ответ «Доступ только через VPN»: токен не стираем — включили VPN, обновили страницу, и вход на месте
+function admVpnScreen() {
+  try { closeModal(); } catch (e) {}
+  document.documentElement.classList.remove('adm-boot');
+  admShow('vpn');
+}
+// Экран смены временного пароля. pass — пароль, только что введённый при входе (подставляем, чтобы не вводить дважды)
+function admPwView(pass) {
+  document.documentElement.classList.remove('adm-boot');
+  admShow('pw');
+  document.getElementById('pwOld').value = pass || '';
+  document.getElementById('pwNew').value = '';
+  document.getElementById('pwNew2').value = '';
+  document.getElementById('pwErr').textContent = '';
+  var f = document.getElementById(pass ? 'pwNew' : 'pwOld'); if (f) { try { f.focus(); } catch (e) {} }
+}
+// Сервер ответил 403 «смените временный пароль» на запрос уже открытой панели (директор сбросил пароль, пока сотрудник работал)
+function admMustChange() {
+  if (_admTmp) return;
+  _admTmp = { remember: true };
+  try { closeModal(); } catch (e) {}
+  admPwView('');
+}
+function admPwCancel() {
+  _admTmp = null; adminToken = ''; admUser = null;
+  admTokenClear();
+  admShow('login');
+  admRememberDefault();
+}
+async function doChangeTmpPassword() {
+  const errEl = document.getElementById('pwErr');
+  const oldP = document.getElementById('pwOld').value, n1 = document.getElementById('pwNew').value, n2 = document.getElementById('pwNew2').value;
+  if (!oldP) { errEl.textContent = 'Введите временный пароль'; return; }
+  if (n1.length < 8) { errEl.textContent = 'Новый пароль — не короче 8 знаков'; return; }
+  if (n1 !== n2) { errEl.textContent = 'Пароли не совпадают'; return; }
+  if (n1 === oldP) { errEl.textContent = 'Новый пароль должен отличаться от временного'; return; }
+  const btn = document.getElementById('pwBtn'); btn.disabled = true;
+  try {
+    const r = await window._admRawFetch(`${API}/api/users/change-password`, {
+      method: 'POST', headers: authHeaders(), body: JSON.stringify({ oldPassword: oldP, newPassword: n1 })
+    });
+    const d = await r.json().catch(() => ({}));
+    if (r.status === 403 && admIsVpn(d)) { admVpnScreen(); return; }
+    if (!r.ok || !d.token) {
+      // 401 здесь — неверный временный пароль (или вход уже отозван); сессию не рвём, даём исправить
+      errEl.textContent = d.error || 'Не удалось сменить пароль';
+      return;
+    }
+    // сервер отозвал прежние входы и выдал новый токен — он уже без метки временного пароля
+    const remember = !!(_admTmp && _admTmp.remember);
+    adminToken = d.token;
+    admTokenSave(adminToken, remember);
+    admUser = Object.assign({}, admUser || {}, { role: admNormRole(admTokenPayload(adminToken).role || (admUser && admUser.role) || 'admin') });
+    admUserSave(admUser);
+    document.getElementById('pwOld').value = ''; document.getElementById('pwNew').value = ''; document.getElementById('pwNew2').value = '';
+    errEl.textContent = '';
+    admEnter();
+    showToast('Пароль изменён');
+  } catch (e) {
+    errEl.textContent = 'Ошибка соединения';
+  } finally { btn.disabled = false; }
+}
+['pwOld', 'pwNew', 'pwNew2'].forEach(function (id) {
+  document.getElementById(id).addEventListener('keydown', function (e) { if (e.key === 'Enter') doChangeTmpPassword(); });
+});
+
+// 23.10: любой 403 на запрос панели — спокойная плашка вверху раздела («Нет доступа»), а не пустой экран или разбор ошибок
+function admOn403(r) {
+  var p; try { p = r.clone().json(); } catch (e) { admNoAccessNote(); return; }
+  p.then(function (d) {
+    if (admIsVpn(d)) { admVpnScreen(); return; }
+    if (d && d.must_change_password === true) { admMustChange(); return; }
+    admNoAccessNote();
+  }).catch(function () { admNoAccessNote(); });
+}
+function admNoAccessNote() {
+  var b = document.getElementById('adm-403'); if (!b) return;
+  var rr = ADM_ROLE_RU[admRole()];
+  b.textContent = 'Нет доступа: ' + (rr ? 'у роли «' + rr + '» нет прав' : 'нет прав') + ' на это действие или эти данные.';
+  b.style.display = 'block';
+}
+// Применить роль: имя и роль вверху, пункты меню и подписи разделов
+function admApplyRole() {
+  var role = admRole(), u = admUser || {};
+  var app = document.getElementById('app');
+  app.className = (app.className || '').replace(/\badm-r-\S+/g, '').trim() + ' adm-r-' + (role || 'none');
+  var nm = u.name || (role === 'admin' ? 'Администратор' : (u.email || 'Сотрудник'));
+  var rr = ADM_ROLE_RU[role] || '';
+  document.getElementById('tbUserName').textContent = nm;
+  document.getElementById('tbUserRole').textContent = rr;
+  document.getElementById('sbName').textContent = nm;
+  document.getElementById('sbRole').textContent = rr;
+  document.getElementById('sbAva').textContent = (nm.trim().charAt(0) || 'А').toUpperCase();
+  var nav = document.querySelectorAll('#app .sb-nav > *');
+  nav.forEach(function (n) {
+    if (!n.classList.contains('ni')) return;
+    var m = /showPage\('([a-z]+)'/.exec(n.getAttribute('onclick') || '');
+    n.style.display = (m && !admCan(m[1])) ? 'none' : '';
+  });
+  nav.forEach(function (sec, i) {   // заголовок раздела прячем, если под ним не осталось пунктов
+    if (!sec.classList.contains('sb-sec')) return;
+    var any = false;
+    for (var j = i + 1; j < nav.length && !nav[j].classList.contains('sb-sec'); j++) {
+      if (nav[j].classList.contains('ni') && nav[j].style.display !== 'none') any = true;
+    }
+    sec.style.display = any ? '' : 'none';
+  });
+}
 
 // 16.10: выход — сначала POST /api/users/logout (порция 31 бэкенда), чтобы выход попал в журнал действий,
 // потом, как раньше, стираем вход. Ручки нет (404), сервер не ответил за 4 с или ошибка сети — выходим всё равно,
@@ -1739,10 +2046,16 @@ function admLogoutAllHide(set) {
 }
 // Показать админку после входа (форма или вход из другой вкладки)
 function admEnter() {
-  _admEnded = false;
-  document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
+  _admEnded = false; _admTmp = null;
+  admShow('app');
   admLogoutAllHide(false);
+  // 23.10: вошёл другой сотрудник без перезагрузки — данные прежнего (например, гостей у директора) из памяти убираем
+  var uid = admUser ? String(admUser.id || admUser.email || '') : '';
+  if (_admLastUid && _admLastUid !== uid) { allBookings = []; allApps = []; allUsers = []; allHotels = []; }
+  _admLastUid = uid;
+  admApplyRole();
+  var cur = curAdmPage();
+  if (!admCan(cur) || cur === 'noaccess') showPage(ADM_HOME[admRole()] || 'dashboard', null, true);
   loadAll({silent:true});
   try { admPwaMaybe(); } catch (e) {}
 }
@@ -1825,11 +2138,13 @@ window.addEventListener('appinstalled', function(){ _admPwaDeferred = null; admP
 // захода), а данные догрузить следом. Раньше показывались вход → дашборд → раздел.
 function admBoot() {
   if (!admTokenValid()) { document.documentElement.classList.remove('adm-boot'); admRememberDefault(); return; }
-  document.getElementById('loginWrap').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
+  admShow('app');
+  _admLastUid = admUser ? String(admUser.id || admUser.email || '') : '';
+  admApplyRole();   // 23.10: имя, роль и меню — до первого показа раздела
   admLogoutAllHide(false);
   try { admPwaMaybe(); } catch (e) {}
-  var bp = (location.hash || '').replace('#', '') || sessionStorage.getItem('adm_page') || 'dashboard';
+  var bp = (location.hash || '').replace('#', '') || sessionStorage.getItem('adm_page') || (ADM_HOME[admRole()] || 'dashboard');
+  if (bp === 'noaccess') bp = ADM_HOME[admRole()] || 'dashboard';
   try { showPage(bp, null, true); } catch (e) { console.error('boot page:', e.message); }
   document.documentElement.classList.remove('adm-boot');
   loadAll({silent:true, boot:true});
@@ -1840,17 +2155,25 @@ setTimeout(function(){ document.documentElement.classList.remove('adm-boot'); },
 
 // ── NAV ──
 function showPage(name, el, boot) {
+  // 23.10: раздел не для этой роли — экран «Нет доступа» (ссылка, закладка, старый адрес), без запросов и без пустой страницы
+  if (!admCan(name)) { name = 'noaccess'; el = null; }
+  var b403 = document.getElementById('adm-403'); if (b403) b403.style.display = 'none';
   moreReset();   // 09.10: вернулись в раздел — длинные списки снова с первых 20 строк
   document.querySelectorAll('.page').forEach(p => p.classList.remove('on'));
   document.querySelectorAll('.ni').forEach(n => n.classList.remove('on'));
   var pg = document.getElementById('page-' + name);
-  if (!pg) { name='dashboard'; pg=document.getElementById('page-dashboard'); }
+  if (!pg) { name=ADM_HOME[admRole()]||'dashboard'; pg=document.getElementById('page-'+name); }
   pg.classList.add('on');
   if (el) el.classList.add('on');
   else document.querySelectorAll('.ni').forEach(function(n){ var oc=n.getAttribute('onclick')||''; if(oc.indexOf("'"+name+"'")>=0)n.classList.add('on'); });
-  const titles = {dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера',pay:'Оплаты и напоминания',audit:'Журнал действий'};
+  const titles = {reports:'Отчёты',staff:'Сотрудники',noaccess:'Нет доступа',dashboard:'Дашборд',bookings:'Все брони',applications:'Заявки отелей',hotels:'Отели',invite:'Пригласить объект',newobj:'Создать объект',moderation:'На модерации',tourists:'Пользователи',agentika:'Агентика',logs:'Журнал сервера',pay:'Оплаты и напоминания',audit:'Журнал действий'};
   document.getElementById('pageTitle').textContent = titles[name] || name;
-  try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
+  if (name === 'noaccess') {
+    var rr = ADM_ROLE_RU[admRole()];
+    document.getElementById('na-text').textContent = rr ? 'Этот раздел недоступен роли «' + rr + '».' : 'Этот раздел недоступен.';
+  } else {
+    try { sessionStorage.setItem('adm_page', name); if(location.hash.replace('#','')!==name) history.replaceState(null,'','#'+name); } catch(e){}
+  }
   // При старте данные ещё не загружены: таблицы нарисует loadAll (refreshCurrentPage),
   // а разделы со своими загрузчиками (модерация, Агентика) начинают грузиться сразу.
   if (!boot) {
@@ -1867,6 +2190,8 @@ function showPage(name, el, boot) {
   if (name === 'agentika' && _agTab === 'paid') ahLoad();
   if (name === 'pay' && _pay.tab === 'hist') phLoad();
   if (name === 'audit') auLoad();
+  if (name === 'staff') stLoad();                       // 23.10
+  if (name === 'reports') { repInit(); repStatus(); }   // 23.10
 }
 // Текущий раздел — перерисовать данными, НЕ переключая страницу (кнопка «Обновить», старт)
 function curAdmPage() { var on = document.querySelector('.page.on'); return on ? on.id.replace('page-', '') : 'dashboard'; }
@@ -1885,7 +2210,310 @@ function refreshCurrentPage(boot) {
     if (!boot && name === 'agentika' && _agTab === 'paid') ahLoad();
     if (!boot && name === 'pay' && _pay.tab === 'hist') phLoad();
     if (!boot && name === 'audit') auLoad();
+    if (!boot && name === 'staff') stLoad();          // 23.10
+    if (!boot && name === 'reports') repStatus();     // 23.10
   } catch (e) { console.error('refresh page:', e.message); }
+}
+
+// ══════════════════════════════════════════════════════
+// 23.10: СОТРУДНИКИ (только директор). Бэкенд, порция 40А, routes/staff.js (на сервере включается STAFF_ACCOUNTS=1):
+//   GET /api/admin/staff → {ok, items:[{id, email, name, role, is_active, must_change_password, created_at}]}
+//   POST /api/admin/staff {email, name, role: accountant|support} → {ok, user, temp_password}   (пароль — один раз)
+//   PATCH /api/admin/staff/:id {role: admin|accountant|support} → {ok, user}
+//   POST /api/admin/staff/:id/disable | /enable → {ok};  POST /api/admin/staff/:id/reset-password → {ok, temp_password}
+// Перед каждым действием — подтверждение. Себя выключить и понизить нельзя (сервер не даст, здесь кнопок у своей строки нет).
+// ══════════════════════════════════════════════════════
+var _st = { items: [] };
+function stRoleName(r) { return ADM_ROLE_RU[r] || r || '—'; }
+async function stLoad() {
+  var box = document.getElementById('st-list'); if (!box) return false;
+  try {
+    var r = await fetch(API + '/api/admin/staff', { headers: authHeaders(), cache: 'no-store' });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (r.status === 404) { box.innerHTML = '<div class="empty">На сервере раздел сотрудников выключен (нужна переменная STAFF_ACCOUNTS=1).</div>'; return false; }
+    if (!r.ok || !d || !d.ok) { box.innerHTML = '<div class="empty">' + esc((d && d.error) || ('Ошибка ' + r.status)) + '</div>'; return false; }
+    _st.items = d.items || [];
+    stRender();
+    return true;
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Сервер не отвечает: ' + esc(e.message) + '</div>';
+    return false;
+  }
+}
+function stRender() {
+  var box = document.getElementById('st-list'); if (!box) return;
+  document.getElementById('st-cnt').textContent = _st.items.length ? '· ' + _st.items.length : '';
+  if (!_st.items.length) { box.innerHTML = '<div class="empty">Сотрудников пока нет. «＋ Добавить сотрудника» — бухгалтер или поддержка.</div>'; return; }
+  var me = String((admUser && admUser.id) || '');
+  box.innerHTML = '<div class="tw-x"><table><tr><th>Сотрудник</th><th>Роль</th><th>Статус</th><th></th></tr>'
+    + _st.items.map(function (u) {
+      var mine = me && String(u.id) === me, id = escAttr(u.id), on = u.is_active !== false;
+      var status = (on ? '<span class="badge badge-green">Активен</span>' : '<span class="badge badge-red">Выключен</span>')
+        + (u.must_change_password ? ' <span class="badge badge-amber">Не сменил временный пароль</span>' : '');
+      var acts = mine ? '<span class="st-me">это вы</span>'
+        : '<button class="act-btn act-cancel" onclick="stRoleForm(\'' + id + '\')">Сменить роль</button>'
+        + '<button class="act-btn ' + (on ? 'act-reject' : 'act-approve') + '" onclick="stToggle(\'' + id + '\')">' + (on ? 'Выключить' : 'Включить') + '</button>'
+        + '<button class="act-btn act-cancel" onclick="stReset(\'' + id + '\')">Сбросить пароль</button>';
+      return '<tr class="' + (on ? '' : 'pay-off') + '">'
+        + '<td data-l="Сотрудник"><b>' + esc(u.name || '—') + '</b><br><span style="color:var(--muted);font-size:10px">' + esc(u.email) + '</span></td>'
+        + '<td data-l="Роль">' + esc(stRoleName(u.role)) + '</td>'
+        + '<td data-l="Статус">' + status + '</td>'
+        + '<td class="pay-acts">' + acts + '</td></tr>';
+    }).join('') + '</table></div>';
+}
+function stFind(id) { return _st.items.filter(function (x) { return String(x.id) === String(id); })[0]; }
+function stWho(u) { return (u.name ? u.name + ' (' + u.email + ')' : u.email); }
+// Общий вызов: возвращает {ok, d} либо null (текст ошибки уже показан)
+async function stCall(method, path, body) {
+  try {
+    var r = await fetch(API + path, { method: method, headers: authHeaders(), body: body ? JSON.stringify(body) : undefined });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.ok !== false) return { d: d };
+    if (r.status === 403) return null;   // «Нет доступа» уже показала общая плашка
+    var msg = r.status === 404 ? 'Не найдено (раздел сотрудников на сервере выключен или сотрудник удалён)' : (d.error || ('Ошибка ' + r.status));
+    showToast(msg, true);
+    var e = document.getElementById('st-err'); if (e) e.textContent = msg;
+    return null;
+  } catch (e) { showToast('Сервис недоступен', true); return null; }
+}
+// Окно «временный пароль»: показывается один раз, после закрытия на странице его уже нет (см. closeModal)
+function stShowPassword(title, u, pwd) {
+  var m = document.querySelector('#modal .modal'); if (m) m.classList.remove('wide');
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML =
+    '<div class="detail-row"><b>Сотрудник:</b> ' + esc(stWho(u)) + '</div>'
+    + '<div class="detail-row"><b>Роль:</b> ' + esc(stRoleName(u.role)) + '</div>'
+    + '<div class="st-warn">Пароль показывается один раз. Скопируйте его и передайте сотруднику. При первом входе он обязан придумать свой.</div>'
+    + '<code class="st-pwd" id="st-pwd">' + esc(pwd) + '</code>'
+    + '<button class="modal-btn modal-btn-primary" id="st-copy" onclick="stCopy()">Скопировать</button>';
+  document.getElementById('modal-action').style.display = 'none';
+  openModal();
+}
+function stCopy() {
+  var el = document.getElementById('st-pwd'), b = document.getElementById('st-copy'); if (!el) return;
+  var t = el.textContent, done = function (ok) { if (b) b.textContent = ok ? 'Скопировано ✓' : 'Выделите и скопируйте вручную'; };
+  try { navigator.clipboard.writeText(t).then(function () { done(true); }, function () { done(false); }); } catch (e) { done(false); }
+}
+function stAddForm() {
+  var m = document.querySelector('#modal .modal'); if (m) m.classList.remove('wide');
+  document.getElementById('modal-title').textContent = 'Новый сотрудник';
+  document.getElementById('modal-body').innerHTML =
+    '<div class="modal-field"><label for="st-email">E-mail (логин)</label><input type="email" id="st-email" autocomplete="off" placeholder="name@zaedem.by"></div>'
+    + '<div class="modal-field"><label for="st-name">Имя</label><input type="text" id="st-name" autocomplete="off" placeholder="Например, Анна Иванова"></div>'
+    + '<div class="modal-field"><label for="st-role">Роль</label><select id="st-role"><option value="accountant">Бухгалтер</option><option value="support">Поддержка</option></select></div>'
+    + '<div class="login-err" id="st-err" style="text-align:left;margin:0 0 8px"></div>'
+    + '<button class="modal-btn modal-btn-primary" id="st-add-btn" onclick="stAddSubmit()">Добавить</button>';
+  document.getElementById('modal-action').style.display = 'none';
+  openModal();
+}
+async function stAddSubmit() {
+  var email = document.getElementById('st-email').value.trim(), name = document.getElementById('st-name').value.trim(), role = document.getElementById('st-role').value;
+  var err = document.getElementById('st-err');
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) { err.textContent = 'Укажите e-mail сотрудника'; return; }
+  if (!name) { err.textContent = 'Укажите имя сотрудника'; return; }
+  if (!confirm('Добавить сотрудника?\n\n' + name + ' (' + email + ')\nРоль: ' + stRoleName(role) + '\n\nЕму будет выдан временный пароль.')) return;
+  var btn = document.getElementById('st-add-btn'); btn.disabled = true;
+  var res = await stCall('POST', '/api/admin/staff', { email: email, name: name, role: role });
+  btn.disabled = false;
+  if (!res || !res.d.temp_password) return;
+  showToast('Сотрудник добавлен');
+  stShowPassword('Сотрудник добавлен', res.d.user || { email: email, name: name, role: role }, res.d.temp_password);
+  stLoad();
+}
+function stRoleForm(id) {
+  var u = stFind(id); if (!u) return;
+  var m = document.querySelector('#modal .modal'); if (m) m.classList.remove('wide');
+  document.getElementById('modal-title').textContent = 'Сменить роль';
+  var opts = ['admin', 'accountant', 'support'].map(function (r) { return '<option value="' + r + '"' + (r === u.role ? ' selected' : '') + '>' + esc(stRoleName(r)) + '</option>'; }).join('');
+  document.getElementById('modal-body').innerHTML =
+    '<div class="detail-row"><b>Сотрудник:</b> ' + esc(stWho(u)) + '</div>'
+    + '<div class="detail-row"><b>Сейчас:</b> ' + esc(stRoleName(u.role)) + '</div>'
+    + '<div class="modal-field"><label for="st-newrole">Новая роль</label><select id="st-newrole">' + opts + '</select></div>'
+    + '<div class="login-err" id="st-err" style="text-align:left;margin:0 0 8px"></div>'
+    + '<button class="modal-btn modal-btn-primary" onclick="stRoleSubmit(\'' + escAttr(id) + '\')">Сменить роль</button>';
+  document.getElementById('modal-action').style.display = 'none';
+  openModal();
+}
+async function stRoleSubmit(id) {
+  var u = stFind(id); if (!u) return;
+  var role = document.getElementById('st-newrole').value;
+  if (role === u.role) { document.getElementById('st-err').textContent = 'Роль не изменилась'; return; }
+  if (!confirm('Сменить роль сотрудника?\n\n' + stWho(u) + '\n' + stRoleName(u.role) + ' → ' + stRoleName(role) + '\n\nВсе его текущие входы будут завершены, ему придётся войти заново.')) return;
+  var res = await stCall('PATCH', '/api/admin/staff/' + encodeURIComponent(id), { role: role });
+  if (!res) return;
+  closeModal(); showToast('Роль изменена'); stLoad();
+}
+async function stToggle(id) {
+  var u = stFind(id); if (!u) return;
+  var on = u.is_active !== false;
+  var q = on ? 'Выключить сотрудника?\n\n' + stWho(u) + '\n\nОн сразу потеряет доступ, все его входы будут завершены.'
+             : 'Включить сотрудника?\n\n' + stWho(u) + '\n\nОн снова сможет войти со своим паролем.';
+  if (!confirm(q)) return;
+  var res = await stCall('POST', '/api/admin/staff/' + encodeURIComponent(id) + (on ? '/disable' : '/enable'));
+  if (!res) return;
+  showToast(on ? 'Сотрудник выключен' : 'Сотрудник включён'); stLoad();
+}
+async function stReset(id) {
+  var u = stFind(id); if (!u) return;
+  if (!confirm('Сбросить пароль?\n\n' + stWho(u) + '\n\nПрежний пароль перестанет работать, все его входы будут завершены. Будет выдан новый временный пароль — его нужно будет сменить при входе.')) return;
+  var res = await stCall('POST', '/api/admin/staff/' + encodeURIComponent(id) + '/reset-password');
+  if (!res || !res.d.temp_password) return;
+  stShowPassword('Пароль сброшен', u, res.d.temp_password);
+  stLoad();
+}
+
+// ══════════════════════════════════════════════════════
+// 23.10: ОТЧЁТЫ бухгалтеру (директор и бухгалтер). Бэкенд, порция 40Б, routes/buh_reports.js
+// (на сервере включается переменной BUH_REPORTS; без неё — 404):
+//   GET  /api/admin/reports/export?from=ГГГГ-ММ-ДД&to=ГГГГ-ММ-ДД → файл .xlsx (тот же, что уходит на почту)
+//   POST /api/admin/reports/send {from, to} → {ok, from, to, to_email (адрес со скрытой частью), rows}
+//   GET  /api/admin/reports/status → {ok, enabled[], buh_email, schema_ready, auto, send_time, dump_window,
+//        last{вид:{period_from, period_to, status, info, sent_at}}, next{вид:{minsk, from, to}}, recent[], pending[]}
+// Периоды считаем по Минску (UTC+3, без перехода на летнее время).
+// ══════════════════════════════════════════════════════
+function repYmd(d) { return d.getUTCFullYear() + '-' + String(d.getUTCMonth() + 1).padStart(2, '0') + '-' + String(d.getUTCDate()).padStart(2, '0'); }
+function repToday() {   // сегодняшняя дата по Минску как ГГГГ-ММ-ДД
+  var t = new Date(Date.now() + 3 * 3600 * 1000);
+  return repYmd(t);
+}
+function repShift(ymd, days) { var p = ymd.split('-'); var d = new Date(Date.UTC(+p[0], +p[1] - 1, +p[2] + days)); return repYmd(d); }
+function repPeriodFor(kind) {
+  var t = repToday(), p = t.split('-').map(Number);
+  if (kind === 'yesterday') { var y = repShift(t, -1); return [y, y]; }
+  if (kind === 'prevweek') {   // прошлая неделя: понедельник — воскресенье
+    var dow = (new Date(Date.UTC(p[0], p[1] - 1, p[2])).getUTCDay() + 6) % 7;   // 0 — понедельник
+    var mon = repShift(t, -dow - 7);
+    return [mon, repShift(mon, 6)];
+  }
+  if (kind === 'prevmonth') {
+    var first = new Date(Date.UTC(p[0], p[1] - 2, 1)), last = new Date(Date.UTC(p[0], p[1] - 1, 0));
+    return [repYmd(first), repYmd(last)];
+  }
+  return [repYmd(new Date(Date.UTC(p[0], p[1] - 1, 1))), t];   // thismonth: с 1-го числа по сегодня
+}
+function repInit() {
+  var f = document.getElementById('rp-from'), t = document.getElementById('rp-to');
+  if (f && t && !f.value && !t.value) {
+    var pr = document.querySelector('#rp-pre button[data-p="prevmonth"]');
+    repPreset('prevmonth', pr);   // по умолчанию — прошлый месяц
+  }
+}
+function repPreset(kind, btn) {
+  var per = repPeriodFor(kind);
+  document.getElementById('rp-from').value = per[0];
+  document.getElementById('rp-to').value = per[1];
+  document.querySelectorAll('#rp-pre button').forEach(function (b) { b.classList.toggle('on', b === btn); });
+  repMsg('');
+}
+function repManual() {   // даты поправили руками — подсветка быстрой кнопки снимается
+  document.querySelectorAll('#rp-pre button').forEach(function (b) { b.classList.remove('on'); });
+  repMsg('');
+}
+function repMsg(text, kind) {
+  var m = document.getElementById('rp-msg'); if (!m) return;
+  m.textContent = text || ''; m.className = 'rp-msg' + (kind ? ' ' + kind : '');
+}
+function repPeriod() {
+  var f = document.getElementById('rp-from').value, t = document.getElementById('rp-to').value;
+  if (!f || !t) { repMsg('Выберите период: даты «С» и «По».', 'err'); return null; }
+  if (f > t) { repMsg('Дата «С» позже даты «По».', 'err'); return null; }
+  return { from: f, to: t };
+}
+function repRu(ymd) { var p = String(ymd || '').split('-'); return p.length === 3 ? p[2] + '.' + p[1] + '.' + p[0] : (ymd || '—'); }
+function repErr(r, d) {
+  if (r.status === 404) return 'Отчёты на сервере выключены (нужна переменная BUH_REPORTS).';
+  if (r.status === 403) return 'Нет доступа к отчётам.';
+  return (d && d.error) || ('Ошибка ' + r.status);
+}
+async function repDownload(btn) {
+  var p = repPeriod(); if (!p) return;
+  var txt = btn.textContent; btn.disabled = true; btn.textContent = 'Готовлю файл…'; repMsg('');
+  try {
+    var r = await fetch(API + '/api/admin/reports/export?from=' + encodeURIComponent(p.from) + '&to=' + encodeURIComponent(p.to), { headers: authHeaders() });
+    if (!r.ok) { var d = await r.json().catch(function () { return {}; }); if (r.status !== 403) repMsg(repErr(r, d), 'err'); return; }
+    var blob = await r.blob();
+    var cd = r.headers.get('Content-Disposition') || '', mm = /filename="?([^";]+)"?/i.exec(cd);
+    var name = mm ? mm[1] : 'zaedem_otchet_' + p.from + '_' + p.to + '.xlsx';
+    var url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(url); }, 1000);
+    repMsg('Файл скачан: ' + name, 'ok');
+  } catch (e) { repMsg('Сервис недоступен — попробуйте позже.', 'err'); }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+async function repSend(btn) {
+  var p = repPeriod(); if (!p) return;
+  if (!confirm('Отправить отчёт бухгалтеру?\n\nПериод: ' + repRu(p.from) + ' — ' + repRu(p.to) + '\nПисьмо уйдёт на почту бухгалтера, указанную на сервере.')) return;
+  var txt = btn.textContent; btn.disabled = true; btn.textContent = 'Отправляю…'; repMsg('');
+  try {
+    var r = await fetch(API + '/api/admin/reports/send', { method: 'POST', headers: authHeaders(), body: JSON.stringify({ from: p.from, to: p.to }) });
+    var d = await r.json().catch(function () { return {}; });
+    if (r.ok && d.ok) {
+      repMsg('Отправлено' + (d.to_email ? ' на ' + d.to_email : '') + ': период ' + repRu(d.from || p.from) + ' — ' + repRu(d.to || p.to) + (d.rows != null ? ', строк: ' + d.rows : '') + '.', 'ok');
+      repStatus();
+    } else if (r.status !== 403) {
+      repMsg(r.status === 409 ? (d.error || 'Адрес бухгалтера на сервере не задан — отправлять некуда.') : repErr(r, d), 'err');
+    }
+  } catch (e) { repMsg('Сервис недоступен — попробуйте позже.', 'err'); }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+var REP_KIND = { manual: 'Вручную', daily: 'Ежедневный', weekly: 'Еженедельный', monthly: 'Ежемесячный', due: 'Сроки оплаты Агентике' };
+var REP_ST = { sent: 'Отправлено', sending: 'Отправляется', failed: 'Не отправлено' };
+function repStBadge(s) { return '<span class="badge ' + (s === 'sent' ? 'badge-green' : s === 'failed' ? 'badge-red' : 'badge-amber') + '">' + esc(REP_ST[s] || s || '—') + '</span>'; }
+function repDT(v) {   // момент отправки — по Минску
+  if (!v) return '—';
+  var d = new Date(v); if (isNaN(d)) return '—';
+  return d.toLocaleString('ru-RU', { timeZone: 'Europe/Minsk', day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+function repPer(a, b) { return !a ? '—' : (a === b ? repRu(a) : repRu(a) + ' — ' + repRu(b)); }
+function repInfo(kind, info) {
+  if (kind === 'due') return info === 'day' ? 'в день срока' : info === 'before' ? 'за несколько дней до срока' : (info || '');
+  return info || '';
+}
+async function repStatus() {
+  var box = document.getElementById('rp-auto'); if (!box) return false;
+  try {
+    var r = await fetch(API + '/api/admin/reports/status', { headers: authHeaders(), cache: 'no-store' });
+    var d = null; try { d = await r.json(); } catch (e) {}
+    if (r.status === 404) { box.innerHTML = '<div class="empty">Отчёты на сервере выключены (нужна переменная BUH_REPORTS).</div>'; return false; }
+    if (!r.ok || !d || d.ok === false) { box.innerHTML = '<div class="empty">' + esc((d && d.error) || ('Ошибка ' + r.status)) + '</div>'; return false; }
+    var enabled = d.enabled || [], kinds = ['monthly', 'weekly', 'daily'].filter(function (k) { return enabled.indexOf(k) >= 0; });
+    var due = enabled.indexOf('due') >= 0;
+    var why = !d.buh_email ? 'адрес бухгалтера на сервере не задан' : !d.schema_ready ? 'на сервере нет журнала отправок' : (!kinds.length && !due) ? 'автоматические отчёты не включены (доступна только отправка кнопкой)' : '';
+    var head = '<div class="rp-st">'
+      + (d.auto ? '<span class="badge badge-green">Автоотправка работает</span>' : '<span class="badge badge-gray">Автоотправка не работает</span>' + (why ? ' — ' + esc(why) : ''))
+      + '<br>Почта бухгалтера: <b>' + esc(d.buh_email || 'не задана') + '</b>'
+      + (d.send_time ? '<br>Время отправки: <b>' + esc(d.send_time) + '</b>' : '')
+      + (d.dump_window ? '<br><span style="color:var(--muted)">' + esc(d.dump_window) + '</span>' : '')
+      + ((d.pending || []).length ? '<br><span class="badge badge-amber">Не ушло вовремя: ' + d.pending.length + '</span> — уйдёт при ближайшей проверке' : '')
+      + '</div>';
+    var last = d.last || {}, next = d.next || {};
+    var rows = kinds.map(function (k) {
+      var l = last[k], n = next[k];
+      return '<tr><td data-l="Что"><b>' + esc(REP_KIND[k]) + '</b></td>'
+        + '<td data-l="Последняя отправка">' + (l ? repStBadge(l.status) + '<br><span style="color:var(--muted);font-size:11px">' + esc(repDT(l.sent_at || l.created_at)) + ' · за ' + esc(repPer(l.period_from, l.period_to)) + '</span>' : '<span style="color:var(--muted)">ещё не отправлялся</span>') + '</td>'
+        + '<td data-l="Следующая отправка">' + (n ? '<b>' + esc(n.minsk) + '</b><br><span style="color:var(--muted);font-size:11px">за ' + esc(repPer(n.from, n.to)) + '</span>' : '—') + '</td></tr>';
+    });
+    if (due) {
+      var ld = last.due;
+      rows.push('<tr><td data-l="Что"><b>' + esc(REP_KIND.due) + '</b></td>'
+        + '<td data-l="Последняя отправка">' + (ld ? repStBadge(ld.status) + '<br><span style="color:var(--muted);font-size:11px">' + esc(repDT(ld.sent_at || ld.created_at)) + '</span>' : '<span style="color:var(--muted)">ещё не отправлялось</span>') + '</td>'
+        + '<td data-l="Следующая отправка"><span style="color:var(--muted)">утром в день срока и за несколько дней до него</span></td></tr>');
+    }
+    var table = rows.length ? '<div class="tw-x"><table><tr><th>Что</th><th>Последняя отправка</th><th>Следующая отправка</th></tr>' + rows.join('') + '</table></div>' : '';
+    var rec = d.recent || [];
+    var hist = rec.length ? '<div class="rp-sub">Что отправлено (последние ' + rec.length + ')</div><div class="tw-x"><table><tr><th>Когда</th><th>Что</th><th>Период</th><th>Статус</th><th>Заметка</th></tr>'
+      + rec.map(function (x) {
+        return '<tr><td data-l="Когда">' + esc(repDT(x.sent_at || x.created_at)) + '</td><td data-l="Что">' + esc(REP_KIND[x.kind] || x.kind) + '</td>'
+          + '<td data-l="Период">' + esc(repPer(x.period_from, x.period_to)) + '</td><td data-l="Статус">' + repStBadge(x.status) + '</td>'
+          + '<td data-l="Заметка">' + esc(repInfo(x.kind, x.info)) + '</td></tr>';
+      }).join('') + '</table></div>' : '<div class="empty">Отправок пока не было.</div>';
+    box.innerHTML = head + table + hist;
+    return true;
+  } catch (e) {
+    box.innerHTML = '<div class="empty">Сервер не отвечает: ' + esc(e.message) + '</div>';
+    return false;
+  }
 }
 
 // ══ КАЛЕНДАРИ (01.10): свои вместо системных — см. zdp в начале скрипта ══
@@ -2597,11 +3225,14 @@ async function loadAgentika(){
   const mi=document.getElementById('ag-month');
   if(mi && !mi.value){ const d=new Date(); d.setDate(1); d.setMonth(d.getMonth()-1); mi.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); }
   initAdminCalendars();
-  agBenchHistory();
-  agLimits(false);
-  agDump();
-  agRvStatus();   // 16.10: отзывы Островка
-  agNbStatus();   // 16.10: места рядом (OpenStreetMap)
+  // 23.10: замер, лимиты, дамп, отзывы и места рядом — служебные ручки Островка, у бухгалтера к ним доступа нет (403)
+  if (admRole() === 'admin') {
+    agBenchHistory();
+    agLimits(false);
+    agDump();
+    agRvStatus();   // 16.10: отзывы Островка
+    agNbStatus();   // 16.10: места рядом (OpenStreetMap)
+  }
   const box=document.getElementById('ag-unpaid');
   try{
     const r=await fetch(API+'/api/agentika/payables',{headers:authHeaders()});
@@ -3481,24 +4112,31 @@ async function rejectModeration(id){
 // Теперь каждый блок обновляется независимо, а о сбоях сообщаем.
 async function loadAll(opts) {
   const silent = opts && opts.silent;
-  const jobs = [
+  // 23.10: бухгалтер и поддержка читают только брони — остальное сервер им не отдаёт (403), такие запросы не шлём.
+  //        Директор грузит всё, как раньше.
+  const isAdm = admRole() === 'admin';
+  const jobs = isAdm ? [
     ['брони',        loadBookings],
     ['заявки',       loadApps],
     ['пользователи', loadUsers],
     ['объекты',      loadHotels],
     ['модерация',    bellLoadModer],
+  ] : [
+    ['брони',        loadBookings],
   ];
   const res = await Promise.allSettled(jobs.map(j => j[1]()));
   const failed = jobs.filter((j, i) => res[i].status === 'rejected').map(j => j[0]);
   if (failed.length) console.warn('Не обновилось:', failed.join(', '));
 
-  loadCities();
-  renderDashboard();
-  // График грузим отдельно и НЕ ждём: он тянет свой запрос к БД,
-  // и если статистика подтормозит, дашборд не должен из-за неё стоять.
-  loadStats();
+  if (isAdm) {
+    loadCities();
+    renderDashboard();
+    // График грузим отдельно и НЕ ждём: он тянет свой запрос к БД,
+    // и если статистика подтормозит, дашборд не должен из-за неё стоять.
+    loadStats();
+  }
   try{ bellCollect(); }catch(e){}
-  try{ payBadge(); }catch(e){}   // 03.10: счётчик просроченных и близких оплат в меню
+  if (admCan('pay')) { try{ payBadge(); }catch(e){} }   // 03.10: счётчик просроченных и близких оплат в меню (23.10: директору и бухгалтеру)
   // 02.10: открытый раздел перерисовываем на месте — без переключения страниц
   // (раньше здесь был showPage: при F5 и «Обновить» экран прыгал через дашборд)
   refreshCurrentPage(opts && opts.boot);
@@ -4460,14 +5098,16 @@ function renderBookingsTable(bookings) {
   syncFilterBar(['bk-search','bk-fstatus','bk-fsource','bk-dfrom','bk-dto'],
                 'bk-reset', 'bookings-cnt', bookings.length, (allBookings||[]).length);
   const shown = moreTake('bk', bookings, JSON.stringify(getBookingFilters()), applyBookingFilters);   // 09.10: по 20
+  // 23.10: бухгалтер — без данных гостей, без журнала и отмены; поддержка — журнал и отмена; директор — всё, как было
+  const bkRole = admRole(), noGuest = bkRole === 'accountant', canJournal = bkRole !== 'accountant', canCancel = bkRole !== 'accountant';
   document.getElementById('bookings-table').innerHTML = bookings.length ? `
     <table>
-      <tr><th>Бронь</th><th>Источник</th><th>Гость</th><th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
+      <tr><th>Бронь</th><th>Источник</th>${noGuest ? '' : '<th>Гость</th>'}<th>Отель</th><th>Заезд</th><th>Выезд</th><th>Ночей</th><th>Сумма</th><th>Статус</th><th></th></tr>
       ${shown.map(b => `
         <tr>
           <td data-l="Бронь"><b>${esc(b.booking_num)}</b></td>
           <td data-l="Источник">${sourceBadge(b.source)}</td>
-          <td data-l="Гость">${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>
+          ${noGuest ? '' : `<td data-l="Гость">${esc(b.guest_name||'—')}<br><span style="color:var(--muted);font-size:10px">${esc(b.guest_email)}</span></td>`}
           <td data-l="Отель">${esc(b.hotel_name||'—')}</td>
           <td data-l="Заезд">${fmtDate(b.check_in)}</td>
           <td data-l="Выезд">${fmtDate(b.check_out)}</td>
@@ -4476,8 +5116,8 @@ function renderBookingsTable(bookings) {
           <td data-l="Статус">${bkStatusBadge(b)}</td>
           <td style="display:flex;gap:4px">
             <button class="act-btn act-approve" onclick="showBooking('${escAttr(b.id)}')">Детали</button>
-            <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>
-            ${b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
+            ${canJournal ? `<button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue)" title="Согласия, журнал передачи данных, ответы поставщика">Журнал</button>` : ''}
+            ${canCancel && b.status!=='cancelled'?`<button class="act-btn" onclick="adminCancelBooking('${escAttr(b.booking_num)}')" style="background:var(--red-dim);color:var(--red)">✗</button>`:''}
           </td>
         </tr>`).join('')}
     </table>${moreBtn('bk')}` : emptyBox((allBookings||[]).length, 'resetBookingFilters()', 'Броней пока нет');
@@ -4500,14 +5140,16 @@ function csvCell(v) {
 // ── ЭКСПОРТ CSV (для бухгалтерии) ──
 function exportBookingsCSV() {
   const list = filterBookingList();
-  const headers = ['Номер брони','Источник','Гость','Email','Телефон','Отель','Номер','Заезд','Выезд','Ночей','Гостей','Сумма BYN','Статус','Создано'];
+  // 23.10: у бухгалтера в выгрузке нет столбцов с данными гостя (сервер их и не присылает)
+  const noG = admRole() === 'accountant';
+  const headers = ['Номер брони','Источник'].concat(noG ? [] : ['Гость','Email','Телефон']).concat(['Отель','Номер','Заезд','Выезд','Ночей','Гостей','Сумма BYN','Статус','Создано']);
   const rows = list.map(b => [
-    b.booking_num, (b.source==='ostrovok'?'Островок':'Прямая'),
-    b.guest_name||'', b.guest_email||'', b.guest_phone||'',
+    b.booking_num, (b.source==='ostrovok'?'Островок':'Прямая')
+  ].concat(noG ? [] : [b.guest_name||'', b.guest_email||'', b.guest_phone||'']).concat([
     b.hotel_name||'', b.room_name||'',
     b.check_in||'', b.check_out||'', b.nights||'', b.guests_count||'',
     parseFloat(b.total_price||0).toFixed(2), (isNeedsCheck(b) ? 'needs_check' : (b.status||'')), (b.created_at||'').slice(0,10)
-  ]);
+  ]));
   const csv = [headers, ...rows].map(r =>
     r.map(csvCell).join(',')
   ).join('\r\n');
@@ -4833,10 +5475,12 @@ function showBooking(id) {
   // остались бы растянутыми после просмотра журнала.
   const _m = document.querySelector('#modal .modal'); if (_m) _m.classList.remove('wide');
   document.getElementById('modal-title').textContent = `Бронь ${esc(b.booking_num)}`;
+  // 23.10: бухгалтеру данные гостя и журнал не показываем (сервер их не присылает)
+  const noGuest = admRole() === 'accountant';
   document.getElementById('modal-body').innerHTML = `
-    <div class="detail-row"><b>Гость:</b> ${esc(b.guest_name||'—')}</div>
+    ${noGuest ? '' : `<div class="detail-row"><b>Гость:</b> ${esc(b.guest_name||'—')}</div>
     <div class="detail-row"><b>Email:</b> ${esc(b.guest_email)}</div>
-    <div class="detail-row"><b>Телефон:</b> ${esc(b.guest_phone||'—')}</div>
+    <div class="detail-row"><b>Телефон:</b> ${esc(b.guest_phone||'—')}</div>`}
     <div class="detail-row"><b>Отель:</b> ${esc(b.hotel_name||'—')}</div>
     <div class="detail-row"><b>Номер:</b> ${esc(b.room_name||'—')}</div>
     <div class="detail-row"><b>Заезд:</b> ${fmtDate(b.check_in)}</div>
@@ -4849,9 +5493,9 @@ function showBooking(id) {
     <div class="detail-row"><b>Статус:</b> ${bkStatusBadge(b)}</div>
     ${needsCheckBoxHTML(b)}
     <div class="detail-row"><b>Создана:</b> ${fmtDate(b.created_at)}</div>
-    <div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
+    ${noGuest ? '' : `<div style="margin-top:14px;padding-top:12px;border-top:1px solid var(--border)">
       <button class="act-btn" onclick="showJournal('${escAttr(b.booking_num)}')" style="background:var(--blue-dim);color:var(--blue);padding:6px 14px">Открыть журнал брони →</button>
-    </div>
+    </div>`}
   `;
   document.getElementById('modal-action').style.display = 'none';
   openModal();
@@ -4888,18 +5532,21 @@ function mealRowHTML(b) {
 function needsCheckBoxHTML(b) {
   if (!isNeedsCheck(b)) return '';
   const num = escAttr(b.booking_num);
-  const ask = b.source === 'ostrovok'
+  // 23.10: директор — все кнопки; поддержка — «Проверить у Островка» и обычная отмена (подтверждать и отменять «только у нас»
+  //        сервер ей не разрешает); бухгалтер — только прочитать
+  const nr = admRole(), nAsk = nr !== 'accountant', nCancel = nr !== 'accountant', nAdmin = nr === 'admin';
+  const ask = nAsk && b.source === 'ostrovok'
     ? `<button class="act-btn" style="background:var(--blue-dim);color:var(--blue)" onclick="ncheckAsk('${num}')">🔎 Проверить у Островка</button>` : '';
   // 16.10: «Отменить только у нас» — бронь, которой у Островка нет (порция 30 бэкенда: только брони Островка)
-  const localOnly = b.source === 'ostrovok'
+  const localOnly = nAdmin && b.source === 'ostrovok'
     ? `<button class="act-btn act-reject" style="background:transparent;border:1.5px solid #dc2626" onclick="ncheckCancelLocal('${num}')">✗ Отменить только у нас (у Островка заказа нет)</button>` : '';
   return `<div class="ncheck-box">
     <b>⚠️ Требует проверки.</b> Островок за 15 минут не подтвердил и не отклонил бронь.
     Проверьте её у Островка и решите вручную: подтвердить или отменить.
     <div class="ncheck-acts">
       ${ask}
-      <button class="act-btn act-approve" onclick="ncheckSetStatus('${num}','confirmed')">✓ Подтвердить</button>
-      <button class="act-btn act-reject" onclick="ncheckSetStatus('${num}','cancelled')">✗ Отменить</button>
+      ${nAdmin ? `<button class="act-btn act-approve" onclick="ncheckSetStatus('${num}','confirmed')">✓ Подтвердить</button>` : ''}
+      ${nCancel ? `<button class="act-btn act-reject" onclick="ncheckSetStatus('${num}','cancelled')">✗ Отменить</button>` : ''}
       ${localOnly}
     </div>
     <div class="ncheck-res" id="ncheck-res"></div>
@@ -5051,7 +5698,11 @@ function generatePassword(len) {
 }
 
 function openModal() { document.getElementById('modal').classList.add('open'); }
-function closeModal() { document.getElementById('modal').classList.remove('open'); }
+function closeModal() {
+  document.getElementById('modal').classList.remove('open');
+  // 23.10: выданный временный пароль показывается один раз — закрыли окно, из страницы он исчезает
+  var pw = document.getElementById('st-pwd'); if (pw) pw.textContent = '';
+}
 document.getElementById('modal').addEventListener('click', e => { if(e.target===e.currentTarget) closeModal(); });
 
 function showToast(msg, err=false) {
